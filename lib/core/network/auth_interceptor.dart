@@ -6,12 +6,11 @@ import '../storage/token_storage.dart';
 class AuthInterceptor extends Interceptor {
   @override
   Future<void> onRequest(
-      RequestOptions options,
-      RequestInterceptorHandler handler,
-      ) async {
-    // No enviar Authorization en endpoints públicos
-    if (options.path == ApiConstants.login ||
-        options.path == ApiConstants.register) {
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    // No enviar Authorization en endpoints públicos.
+    if (ApiConstants.publicPaths.contains(options.path)) {
       handler.next(options);
       return;
     }
@@ -19,7 +18,7 @@ class AuthInterceptor extends Interceptor {
     final token = await TokenStorage.getToken();
 
     if (token != null && token.isNotEmpty) {
-      options.headers["Authorization"] = "Bearer $token";
+      options.headers['Authorization'] = 'Bearer $token';
     }
 
     handler.next(options);

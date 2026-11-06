@@ -19,13 +19,10 @@ se incluye localmente con su licencia OFL, sin descargas en tiempo de ejecución
 
 Acceso, registro y perfil están conectados al backend local. El cierre de sesión
 borra el JWT local. Ver `local-backend.md` para contratos y pruebas reales.
-La recuperación de contraseña depende de endpoints anteriores que no aparecen
-en la documentación actual del backend.
+La recuperación de contraseña no existe en el backend; el enlace lo explica.
 Rutinas, estadísticas, reto y sugerencias son ejemplos locales; no hay una
-integración de IA ni persistencia remota para ellos. Las preferencias del perfil
-se guardan y recuperan del backend con JWT. Favoritos y el
-interruptor de notificaciones son estado local de la pantalla; no programan
-notificaciones. Los registros de series duran mientras la sesión está abierta.
+integración de IA ni persistencia remota para ellos. El perfil se guarda, se recupera y se edita en el backend con JWT. Los favoritos
+se guardan solo en el dispositivo (el backend no tiene endpoint para ellos). Los registros de series duran mientras la sesión está abierta.
 Google y Apple aparecen deshabilitados hasta implementar sus proveedores.
 
 ## Ejecutar y verificar

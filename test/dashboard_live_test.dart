@@ -64,8 +64,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
     var progress = 37;
     var loads = 0;
+    // Relative to today: the home tab only lists today's and upcoming workouts.
+    final day = DateTime.now().add(const Duration(days: 1));
+    final scheduled = day.toIso8601String().substring(0, 10);
     await tester.pumpWidget(ProviderScope(overrides: [
-      currentPlanProvider.overrideWith((ref) async => {'planId': 3, 'weekStartDate': '2026-10-26', 'weekEndDate': '2026-11-01', 'workouts': [{'plannedWorkoutId': 21, 'workoutName': 'Rutina enviada por servidor', 'scheduledDate': '2026-10-30', 'expectedDurationMinutes': 25, 'status': 'PLANNED', 'exercises': []}]}),
+      currentPlanProvider.overrideWith((ref) async => {'planId': 3, 'weekStartDate': '2026-10-26', 'weekEndDate': '2026-11-01', 'workouts': [{'plannedWorkoutId': 21, 'workoutName': 'Rutina enviada por servidor', 'scheduledDate': scheduled, 'expectedDurationMinutes': 25, 'status': 'SCHEDULED', 'exercises': []}]}),
       weeklyMetricsProvider.overrideWith((ref) async { loads++; return [{'weekStartDate': '2026-10-19', 'weekEndDate': '2026-10-25', 'weightedAdherencePct': progress, 'completedWorkouts': 1, 'scheduledWorkouts': 3, 'totalTrainingMinutes': 25}]; }),
       interventionsProvider.overrideWith((ref) async => [{'messageShown': 'Ajuste real recibido', 'appliedAt': '2026-10-26'}]),
       dashboardProfileProvider.overrideWith((ref) async => {'goalText': 'Objetivo del usuario'}),
@@ -73,7 +76,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Rutina enviada por servidor'), 180, scrollable: find.byType(Scrollable).first);
     expect(find.text('Rutina enviada por servidor'), findsOneWidget);
-    expect(find.text('Viernes · 30/10/2026'), findsOneWidget);
+    expect(find.text(trainingDay(scheduled)), findsOneWidget);
+    expect(find.text('Programado'), findsWidgets);
     expect(find.text('Full body suave'), findsNothing);
     await tester.tap(find.text('Rutinas')); await tester.pumpAndSettle();
     expect(find.text('GENERAL'), findsOneWidget);
@@ -91,8 +95,9 @@ void main() {
     expect(find.byTooltip('Editar perfil'), findsNothing);
     await tester.scrollUntilVisible(find.text('Cuenta'), 200, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Cuenta')); await tester.pumpAndSettle();
-    expect(find.text('Perfil de solo lectura.'), findsOneWidget);
-    expect(find.text('Editar perfil'), findsNothing);
+    // The profile can be edited (PUT /users/me/profile) once it exists.
+    expect(find.text('Editar perfil'), findsOneWidget);
+    expect(find.textContaining('lunes siguiente'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

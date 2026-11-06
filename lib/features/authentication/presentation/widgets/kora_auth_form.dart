@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/api/api_constants.dart';
 import '../../../../shared/widgets/kora_ui.dart';
 import '../../../../shared/widgets/fs_text_field.dart';
 import '../providers/auth_provider.dart';
@@ -162,7 +163,16 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => context.push(AppRoutes.forgotPassword),
+                        onPressed: ApiConstants.passwordRecoveryAvailable
+                            ? () => context.push(AppRoutes.forgotPassword)
+                            : () => showDialog<void>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Recuperar contraseña'),
+                                    content: const Text('La recuperación de contraseña todavía no está disponible. Si no recuerdas tu clave, contacta al equipo del estudio.'),
+                                    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido'))],
+                                  ),
+                                ),
                         child: const Text('¿Olvidaste la clave?'),
                       ),
                     ),

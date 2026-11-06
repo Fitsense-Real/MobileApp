@@ -19,7 +19,7 @@ class ProfileFake extends ProfileRepository {
   @override
   Future<List<Equipment>> equipment() async => [const Equipment('machine', 'Máquina', true), const Equipment('cable', 'Polea', true), const Equipment('band', 'Banda', false)];
   @override
-  Future<void> save(Map<String,dynamic> body, {required bool exists}) async { saves++; saved = body; }
+  Future<Map<String, dynamic>?> save(Map<String,dynamic> body, {required bool exists}) async { saves++; saved = body; return body; }
 }
 class PlansFake extends PlanRepository {
   PlansFake() : super(Dio());

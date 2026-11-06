@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,11 +8,17 @@ import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../../plans/data/plan_repository.dart';
 import '../data/profile_repository.dart';
+import '../../dashboard/data/dashboard_repository.dart' show dashboardProfileProvider;
+import '../../catalog/data/catalog_repository.dart';
+import 'blocked_exercise_picker.dart';
 import 'equipment_picker.dart';
 import 'generating_plan.dart';
 
 class OnboardingPage extends ConsumerStatefulWidget {
-  const OnboardingPage({super.key});
+  const OnboardingPage({super.key, this.edit = false});
+
+  /// Edit an existing profile (PUT) instead of creating one and a plan.
+  final bool edit;
   @override
   ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
 }
@@ -34,15 +41,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   int get maxWeeklySessions => level == 'BEGINNER' ? 4 : 6;
   String? get daysError => days.isEmpty ? 'Elige al menos un día para entrenar.' : days.length > maxWeeklySessions ? 'Para ${levels[level]} puedes elegir como máximo $maxWeeklySessions días. Desmarca ${days.length - maxWeeklySessions} para continuar.' : null;
   final selectedEquipment = <String>{};
-  List<int> blocked = [];
+  /// Exercise ids sent as `blockedExerciseIds`; names only for display.
+  final blocked = <int, String>{};
   List<Equipment> equipment = [];
   bool selectGymOnCatalogLoad = false;
-  final permissions = <String, bool>{'allowHighImpact': true, 'allowFloorExercises': true, 'allowKneelingExercises': true, 'allowHangingExercises': true, 'allowOverheadExercises': true};
   static const levels = {'BEGINNER': 'Principiante', 'INTERMEDIATE': 'Intermedio', 'ADVANCED': 'Avanzado'};
   static const goals = {'GAIN_MUSCLE': 'Ganar masa muscular', 'LOSE_WEIGHT': 'Perder grasa', 'INCREASE_STRENGTH': 'Aumentar fuerza', 'GENERAL_FITNESS': 'Mejorar condición'};
   static const goalImages = {'GAIN_MUSCLE': 'strength', 'LOSE_WEIGHT': 'cardio', 'INCREASE_STRENGTH': 'challenge', 'GENERAL_FITNESS': 'mobility'};
   static const locations = {'HOME': 'Casa', 'GYM': 'Gimnasio', 'MIXED': 'Ambos'};
-  static const permissionLabels = {'allowHighImpact': 'Saltos y alto impacto', 'allowFloorExercises': 'Ejercicios en el suelo', 'allowKneelingExercises': 'Ejercicios de rodillas', 'allowHangingExercises': 'Ejercicios colgado', 'allowOverheadExercises': 'Brazos sobre la cabeza'};
 
   @override
   void initState() { super.initState(); load(); }
@@ -55,7 +61,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       final data = await ref.read(profileRepositoryProvider).fetch();
       if (!mounted) return;
       exists = data != null;
-      if (exists) {
+      if (exists && !widget.edit) {
         if (mounted) context.go(AppRoutes.accountSetup);
         return;
       }
@@ -67,14 +73,23 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         notes.text = data['healthNotes'] as String? ?? '';
         sex = data['biologicalSex'] as String?;
         level = data['fitnessLevel'] as String; goal = data['goalType'] as String; location = data['trainingLocation'] as String;
-        days..clear()..addAll((data['availableDays'] as List).cast<int>());
+        days..clear()..addAll((data['availableDays'] as List).map((d) => (d as num).toInt()));
         selectedEquipment..clear()..addAll((data['equipmentCodes'] as List? ?? []).cast<String>());
-        blocked = (data['blockedExerciseIds'] as List? ?? []).cast<int>();
-        for (final key in permissions.keys.toList()) { permissions[key] = data[key] as bool? ?? true; }
+        blocked..clear()..addAll({for (final id in (data['blockedExerciseIds'] as List? ?? [])) (id as num).toInt(): 'Ejercicio #$id'});
       }
       await loadEquipment();
+      if (blocked.isNotEmpty) unawaited(resolveBlockedNames());
     } catch (e) { if (mounted) setState(() { error = apiError(e); loadFailed = true; }); }
     finally { if (mounted) setState(() => loading = false); }
+  }
+  Future<void> resolveBlockedNames() async {
+    final catalog = ref.read(catalogRepositoryProvider);
+    for (final id in blocked.keys.toList()) {
+      try {
+        final name = (await catalog.exercise(id))['name'];
+        if (mounted && name is String && blocked.containsKey(id)) setState(() => blocked[id] = name);
+      } catch (_) { /* keep the placeholder name */ }
+    }
   }
   Future<void> loadEquipment() async {
     try {
@@ -128,8 +143,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       'targetWeightKg': target.text.trim().isEmpty ? null : parse(target),
       'fitnessLevel': level, 'goalType': goal, 'goalText': goalText.text.trim(), 'trainingLocation': location,
       'daysPerWeek': days.length, 'availableDays': days.toList()..sort(), 'sessionMinutes': int.parse(minutes.text.trim()),
-      'equipmentCodes': selectedEquipment.toList()..sort(), 'blockedExerciseIds': blocked,
-      'healthNotes': notes.text.trim(), ...permissions,
+      'equipmentCodes': selectedEquipment.toList()..sort(), 'blockedExerciseIds': blocked.keys.toList()..sort(),
+      'healthNotes': notes.text.trim().isEmpty ? null : notes.text.trim(),
     };
   }
   Future<void> submit() async {
@@ -142,6 +157,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         await ref.read(profileRepositoryProvider).save(profileBody(), exists: exists);
         if (!mounted) return;
         exists = true; profileSaved = true;
+        if (widget.edit) {
+          ref.invalidate(dashboardProfileProvider);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil actualizado. Los cambios se aplicarán al plan del lunes siguiente.')));
+          context.canPop() ? context.pop() : context.go(AppRoutes.dashboard);
+          return;
+        }
       }
       setState(() => savingProfile = false);
       final repository = ref.read(planRepositoryProvider);
@@ -150,7 +172,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       if (plan == null) {
         try { plan = await repository.generate(); }
         on DioException catch (e) {
-          if (e.response?.statusCode != 409) rethrow;
+          if (!isPlanConflict(e)) rethrow;
           plan = await repository.current();
           if (plan == null) rethrow;
         }
@@ -171,6 +193,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final result = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: EquipmentPicker(items: equipment, selected: selectedEquipment, home: location == 'HOME')));
     if (result != null && mounted) setState(() { selectedEquipment..clear()..addAll(result); profileSaved = false; });
   }
+  Future<void> pickBlocked() async {
+    final result = await showModalBottomSheet<Map<int, String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: BlockedExercisePicker(selected: blocked)));
+    if (result != null && mounted) setState(() { blocked..clear()..addAll(result); profileSaved = false; });
+  }
   Widget goalCard(MapEntry<String, String> entry) {
     final selected = goal == entry.key;
     return Padding(padding: const EdgeInsets.only(bottom: 12), child: Semantics(selected: selected, child: Material(color: selected ? Kora.forest : Colors.white, borderRadius: BorderRadius.circular(24), clipBehavior: Clip.antiAlias, child: InkWell(onTap: () => setState(() { goal = entry.key; profileSaved = false; }), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
@@ -183,15 +209,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   Widget build(BuildContext context) {
     if (loading) return const KoraPage(child: Center(child: CircularProgressIndicator()));
     if (busy) return GeneratingPlan(saving: savingProfile);
-    if (profileSaved) return KoraPage(child: ListView(padding: const EdgeInsets.all(24), children: [
+    if (profileSaved && !widget.edit) {
+      return KoraPage(child: ListView(padding: const EdgeInsets.all(24), children: [
       const KoraLogo(), const SizedBox(height: 24),
       Text(error ?? 'Tu perfil está guardado.'), const SizedBox(height: 24),
       KoraButton(label: 'Reintentar generación', onPressed: submit),
     ]));
+    }
     if (loadFailed) return KoraPage(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(error!), const SizedBox(height: 20), KoraButton(label: 'Reintentar', onPressed: load), TextButton(onPressed: () => context.go(AppRoutes.login), child: const Text('Iniciar sesión'))])));
     const titles = [('¿Cuál es tu', 'objetivo?'), ('Perfil', 'físico.'), ('Tu ritmo', 'semanal.'), ('¿Qué equipo', 'tienes?'), ('Tu movimiento,', 'tu bienestar.')];
     return KoraPage(maxWidth: 560, child: ListView(controller: scroll, padding: const EdgeInsets.all(24), children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(onPressed: () { if (step > 0) { setState(() { step--; error = null; }); scroll.jumpTo(0); } else { context.go(AppRoutes.dashboard); } }, icon: const Icon(Icons.arrow_back), tooltip: 'Volver'), Text('Paso ${step + 1} de 5', style: const TextStyle(color: Kora.muted)), const KoraLogo(width: 70)]),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(onPressed: () { if (step > 0) { setState(() { step--; error = null; }); scroll.jumpTo(0); } else if (widget.edit && context.canPop()) { context.pop(); } else { context.go(AppRoutes.dashboard); } }, icon: const Icon(Icons.arrow_back), tooltip: 'Volver'), Text('Paso ${step + 1} de 5', style: const TextStyle(color: Kora.muted)), const KoraLogo(width: 70)]),
       const SizedBox(height: 16), LinearProgressIndicator(value: (step + 1) / 5, color: Kora.lime, backgroundColor: Colors.white), const SizedBox(height: 28),
       KoraHeading(titles[step].$1, accent: titles[step].$2), const SizedBox(height: 24),
       Form(key: form, onChanged: () => profileSaved = false, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -201,7 +229,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           field('Cuéntanos qué quieres lograr', goalText, maxLength: 500, lines: 2, validator: (v) => (v ?? '').trim().isEmpty ? 'Describe tu objetivo' : (v ?? '').length > 500 ? 'Máximo 500 caracteres' : null),
         ],
         if (step == 1) ...[
-          Padding(padding: const EdgeInsets.only(bottom: 20), child: TextFormField(key: const ValueKey('birthday'), controller: birth, readOnly: true, onTap: pickBirthday, decoration: InputDecoration(labelText: 'Fecha de nacimiento', hintText: 'Elige tu cumpleaños', suffixIcon: IconButton(onPressed: pickBirthday, icon: const Icon(Icons.calendar_month), tooltip: 'Elegir cumpleaños')), validator: validBirth)),
+          Padding(padding: const EdgeInsets.only(bottom: 20), child: TextFormField(key: const ValueKey('birthday'), controller: birth, readOnly: true, enabled: !widget.edit, onTap: pickBirthday,  decoration: InputDecoration(labelText: 'Fecha de nacimiento', hintText: 'Elige tu cumpleaños', suffixIcon: IconButton(onPressed: pickBirthday, icon: const Icon(Icons.calendar_month), tooltip: 'Elegir cumpleaños')), validator: validBirth)),
           DropdownButtonFormField<String>(isExpanded: true, value: sex, decoration: const InputDecoration(labelText: 'Sexo biológico (opcional)'), items: const [DropdownMenuItem(value: null, child: Text('Prefiero no indicarlo')), DropdownMenuItem(value: 'MALE', child: Text('Masculino')), DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')), DropdownMenuItem(value: 'OTHER', child: Text('Otro'))], onChanged: (v) => setState(() => sex = v)), const SizedBox(height: 20),
           field('Estatura (cm)', height, validator: (v) => number(v,120,250), keyboard: const TextInputType.numberWithOptions(decimal: true)),
           field('Peso actual (kg)', weight, validator: (v) => number(v,30,300), keyboard: const TextInputType.numberWithOptions(decimal: true)),
@@ -214,7 +242,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           Wrap(spacing: 8, runSpacing: 8, children: [for (var i=1;i<=7;i++) FilterChip(label: Text(['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][i-1]), selected: days.contains(i), selectedColor: Kora.lime, onSelected: !days.contains(i) && days.length >= maxWeeklySessions ? null : (v) => setState(() { v ? days.add(i) : days.remove(i); profileSaved = false; error = null; }))]), const SizedBox(height: 16),
           if (days.length > maxWeeklySessions) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(daysError!, style: const TextStyle(color: Colors.red))),
           Text('${days.length} ${days.length == 1 ? 'sesión' : 'sesiones'} por semana', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)), const SizedBox(height: 24),
-          field('Minutos por sesión', minutes, validator: (v) => number(v,30,120,integer: true), keyboard: TextInputType.number),
+          field('Minutos por sesión', minutes, validator: (v) => number(v,15,180,integer: true), keyboard: TextInputType.number),
         ],
         if (step == 3) ...[
           ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.asset('assets/images/kora/strength.jpg', height: 150, width: double.infinity, fit: BoxFit.cover)), const SizedBox(height: 24),
@@ -222,8 +250,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             if (location == v) return;
             location = v;
             selectGymOnCatalogLoad = v == 'GYM' && equipmentError != null;
-            if (v == 'GYM') selectedEquipment.addAll(equipment.where((e) => e.selectedForGym).map((e) => e.code));
-            if (v == 'HOME') selectedEquipment.removeWhere((code) => equipment.any((e) => e.code == code && e.requiresGym));
+            if (v == 'GYM') { selectedEquipment.addAll(equipment.where((e) => e.selectedForGym).map((e) => e.code)); }
+            if (v == 'HOME') { selectedEquipment.removeWhere((code) => equipment.any((e) => e.code == code && e.requiresGym)); }
           }),
           KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(selectedEquipment.isEmpty ? 'Sin equipo · peso corporal' : '${selectedEquipment.length} equipos seleccionados', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12),
             if (equipmentError != null) ...[Text(equipmentError!), TextButton(onPressed: loadEquipment, child: const Text('Reintentar catálogo'))]
@@ -232,14 +260,19 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           ])),
         ],
         if (step == 4) ...[
-          const Text('Desactiva los movimientos que prefieres evitar.', style: TextStyle(fontSize: 16, color: Kora.muted)), const SizedBox(height: 16),
-          KoraCard(padding: const EdgeInsets.symmetric(horizontal: 8), child: Column(children: [for (final entry in permissionLabels.entries) SwitchListTile(title: Text(entry.value, style: const TextStyle(fontSize: 16)), value: permissions[entry.key]!, onChanged: (v) => setState(() { permissions[entry.key] = v; profileSaved = false; }))])),
+          const Text('El plan ya excluye saltos, trabajo en suelo o carga axial según tu edad y nivel. Si hay ejercicios concretos que no puedes o no quieres hacer, agrégalos aquí.', style: TextStyle(fontSize: 16, color: Kora.muted)), const SizedBox(height: 16),
+          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(blocked.isEmpty ? 'Sin ejercicios excluidos' : '${blocked.length} ${blocked.length == 1 ? 'ejercicio excluido' : 'ejercicios excluidos'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(onPressed: pickBlocked, icon: const Icon(Icons.block), label: const Text('Elegir ejercicios a evitar')),
+            if (blocked.isNotEmpty) Wrap(spacing: 6, children: [for (final entry in blocked.entries) InputChip(label: Text(entry.value), onDeleted: () => setState(() { blocked.remove(entry.key); profileSaved = false; }))]),
+          ])),
           const SizedBox(height: 24), field('Notas de salud (opcional)', notes, maxLength: 500, lines: 3, validator: (v) => (v ?? '').length > 500 ? 'Máximo 500 caracteres' : null),
-          const Text('Las notas son informativas. Usa los interruptores para excluir movimientos.', style: TextStyle(fontSize: 14,color: Kora.muted)),
+          const Text('Las notas son informativas: el generador no las interpreta. Usa la lista de ejercicios a evitar para excluirlos.', style: TextStyle(fontSize: 14,color: Kora.muted)),
         ],
       ])),
       if (error != null) Padding(padding: const EdgeInsets.symmetric(vertical:16), child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 15))),
-      const SizedBox(height: 24), KoraButton(label: step < 4 ? 'Continuar' : profileSaved ? 'Reintentar generación' : 'Generar mi plan', onPressed: step < 4 ? advance : submit), const SizedBox(height: 24),
+      const SizedBox(height: 24), KoraButton(label: step < 4 ? 'Continuar' : widget.edit ? 'Guardar cambios' : profileSaved ? 'Reintentar generación' : 'Generar mi plan', onPressed: step < 4 ? advance : submit), const SizedBox(height: 24),
     ]));
   }
 }

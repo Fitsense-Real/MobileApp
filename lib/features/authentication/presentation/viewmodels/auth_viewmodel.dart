@@ -5,6 +5,7 @@ import '../../domain/usecases/get_current_user_use_case.dart';
 import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/logout_use_case.dart';
 import '../../domain/usecases/register_use_case.dart';
+import '../../../../core/providers/core_providers.dart';
 import '../providers/auth_provider.dart';
 import '../state/auth_state.dart';
 
@@ -89,7 +90,7 @@ class AuthViewModel extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString(),
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
 
       return false;
@@ -100,6 +101,21 @@ class AuthViewModel extends Notifier<AuthState> {
     await _logoutUseCase();
 
     state = const AuthState();
+  }
+
+  /// Restores a session from the stored JWT. Returns false when there is no
+  /// valid token; network errors keep the token for the next attempt.
+  Future<bool> restoreSession() async {
+    final user = await ref.read(sessionServiceProvider).restore();
+    if (user == null) return false;
+    state = AuthState(isAuthenticated: true, user: user);
+    return true;
+  }
+
+  /// Withdraws from the study and refreshes the account. Throws on failure.
+  Future<void> withdrawFromStudy() async {
+    final user = await ref.read(authRepositoryProvider).withdrawFromStudy();
+    state = state.copyWith(user: user);
   }
 
   Future<void> loadCurrentUser() async {

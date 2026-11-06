@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../shared/widgets/kora_ui.dart';
+import '../providers/auth_provider.dart';
 
-class SplashPage extends StatelessWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
+  @override
+  ConsumerState<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends ConsumerState<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    // A JWT lasts 7 days: reuse it instead of asking for credentials again.
+    Future.microtask(() async {
+      final restored = await ref.read(authViewModelProvider.notifier).restoreSession();
+      if (restored && mounted) context.go(AppRoutes.accountSetup);
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Kora.forest,

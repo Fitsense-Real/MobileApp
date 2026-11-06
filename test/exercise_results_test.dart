@@ -50,8 +50,8 @@ void main() {
   });
   test('Prescription shows repetitions or explicitly identifies timed exercises', () {
     expect(exercisePrescription({'plannedSets': 3, 'plannedReps': 10}), contains('10 repeticiones por serie'));
-    expect(exercisePrescription({'plannedSets': 3, 'plannedDurationSeconds': 90}), contains('Por tiempo · sin repeticiones asignadas'));
-    expect(exercisePrescription({'plannedSets': 3, 'plannedDurationSeconds': 90}), contains('90 s'));
+    expect(exercisePrescription({'plannedSets': 3, 'plannedDurationSeconds': 90}), '3 series · 90 s por serie');
+    expect(exercisePrescription({'prescriptionType': 'DURATION', 'plannedSets': 2}), contains('Duración no indicada'));
   });
   Future<void> open(WidgetTester tester, void Function(Json?) done) async {
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (context) => TextButton(onPressed: () async { done(await showDialog<Json>(context: context, builder: (_) => const ExerciseResultDialog(exercise: exercise))); }, child: const Text('Open'))))));
@@ -83,14 +83,15 @@ void main() {
     tester.view.physicalSize = const Size(600, 1100); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
     final repository = ReportFake();
-    await tester.pumpWidget(ProviderScope(overrides: [workoutRepositoryProvider.overrideWithValue(repository)], child: const MaterialApp(home: PlannedWorkoutPage(workout: {'plannedWorkoutId': 21, 'workoutName': 'Entrenamiento anterior', 'status': 'EXPIRED', 'exercises': [exercise]}))));
+    await tester.pumpWidget(ProviderScope(overrides: [workoutRepositoryProvider.overrideWithValue(repository)], child: const MaterialApp(home: PlannedWorkoutPage(workout: {'plannedWorkoutId': 21, 'workoutName': 'Entrenamiento anterior', 'status': 'SKIPPED', 'expiresAt': '2026-01-01T23:59:00-05:00', 'exercises': [exercise]}))));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ya lo hice · registrar entrenamiento')); await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar entrenamiento')); await tester.pumpAndSettle();
     expect(find.text('Indica el resultado de cada ejercicio antes de guardar.'), findsOneWidget);
     await tester.tap(find.text('Registrar ejercicio')); await tester.pumpAndSettle();
     await tester.tap(find.text('Lo completé')); await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(find.widgetWithText(TextFormField, 'Repeticiones por serie')).controller!.text, '10');
+    expect(tester.widget<TextFormField>(find.widgetWithText(TextFormField, 'Repeticiones totales (todas las series)')).controller!.text, '30');
+    expect(find.text('Comenzar entrenamiento'), findsNothing);
     await tester.tap(find.text('Usar resultado')); await tester.pumpAndSettle();
     expect(repository.body, isNull);
     await tester.tap(find.text('Guardar entrenamiento')); await tester.pumpAndSettle();

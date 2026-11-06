@@ -37,14 +37,23 @@ marcados; no hay un desplegable adicional de sesiones. Se valida fecha real ante
 estatura 120–250, pesos 30–300, duración entera 15–180, 1–7 sesiones y
 suficientes días distintos (lunes=1, domingo=7). No se inventa una edad mínima.
 Objetivo obligatorio y notas opcionales: máximo 500 caracteres.
-Los cinco permisos se envían como booleanos: false excluye el movimiento.
-Las notas no sustituyen a los permisos. Los blockedExerciseIds existentes
-se preservan al editar; en creación se envía una lista vacía. La selección
-visual de ejercicios bloqueados queda fuera de esta integración inicial.
+Solo se envían los campos de `CreateUserProfileResource` (en `PUT`, los de
+`UpdateUserProfileResource`, que no incluye `birthDate`). El backend no tiene
+permisos de movimiento: excluye saltos, suelo y carga axial por edad y nivel
+(`SafetyProfile`). Por eso el paso 5 ya no muestra interruptores, sino un
+buscador del catálogo (`GET /catalog/exercises?search=`) que llena
+`blockedExerciseIds`. Las notas de salud son informativas.
+
+El perfil se edita desde Perfil → Cuenta → Editar perfil (`PUT`). La fecha
+de nacimiento no se puede cambiar y los cambios se aplican al plan del lunes
+siguiente; editar no genera un plan.
 
 El consentimiento al estudio está desmarcado inicialmente; nunca se deduce
 de pulsar el botón de registro. La zona horaria inicial es America/Lima y
 puede editarse.
+
+Un plan ya existente se informa como 422 (`PlanAlreadyExistsException`); la
+app lo reconcilia igual que un 409.
 
 Tras guardar el perfil se consulta el plan actual y, si no existe, se llama
 `POST /users/me/plan/generate` sin cuerpo, con Bearer JWT y hasta cinco minutos
@@ -69,12 +78,32 @@ fecha/hora y esfuerzo, incluso para entrenamientos vencidos. Cada ejercicio ofre
 completado (cantidades prescritas), parcial (cantidades reales y motivo) o no
 realizado (cantidades cero y motivo). Los GIF se resuelven desde gifPath y se
 cargan sin JWT desde el repositorio público. Las rutinas se agrupan por fecha.
-La navegación por versiones históricas de planes todavía no tiene interfaz.
+Perfil → Historial de planes usa `GET /users/me/plans` y abre cada versión
+con `GET /users/me/plan/{id}`, incluidas las reemplazadas.
+Cada ejercicio ofrece «Ver instrucciones» (`GET /catalog/exercises/{id}`).
+
+Reglas de ejecución copiadas del backend (`workout_rules.dart`): solo se puede
+comenzar en vivo un entrenamiento SCHEDULED/IN_PROGRESS antes de `expiresAt`.
+El registro retrospectivo se permite salvo en COMPLETED, PARTIAL o REPLACED,
+de modo que un SKIPPED por vencimiento todavía puede registrarse. En un
+ejercicio DURATION, «Lo completé» envía series × segundos, que es el
+denominador del backend; antes enviaba solo los segundos de una serie y el
+servidor lo marcaba como parcial.
 Las métricas se muestran con su fecha de
 cálculo; no se inventan cálculos nuevos después de una sesión.
 
-La documentación del backend actual no incluye recuperación de contraseña;
-las pantallas anteriores siguen dependiendo de esos endpoints pendientes.
+El backend no incluye recuperación de contraseña. Mientras
+`ApiConstants.passwordRecoveryAvailable` sea false, el enlace de la pantalla de
+acceso explica que no está disponible y no llama a endpoints inexistentes.
+
+## Sesión y estudio
+
+El JWT dura 7 días: al abrir la app se valida con `GET /users/me` y, si es
+válido, se entra sin pedir credenciales. Solo un 401 borra el token; un fallo
+de red o un 5xx lo conserva. En Perfil → Cuenta se muestra la participación en
+el estudio y, si corresponde, «Retirarme del estudio» (`POST /users/me/withdraw`).
+
+Los errores muestran `message` y la lista `details` de `ApiErrorResource`.
 
 ## Prueba de servidor
 
@@ -85,7 +114,11 @@ de prueba se dejó en el servidor; no se guardaron contraseña ni JWT en archivo
 
 Pruebas del cliente:
 
+`test/backend_alignment_test.dart` compara cada llamada de la app con las
+rutas de los controladores del backend y usa fixtures con los campos reales de
+sus recursos.
+
 ```powershell
-.\tmp\flutter-sdk\bin\flutter.bat test --no-pub test/backend_contract_test.dart test/onboarding_flow_test.dart
+.\tmp\flutter-sdk\bin\flutter.bat test --no-pub test/backend_alignment_test.dart test/backend_contract_test.dart test/onboarding_flow_test.dart test/profile_edit_test.dart
 .\tmp\flutter-sdk\bin\flutter.bat test --no-pub --concurrency=1 test/dashboard_live_test.dart test/account_setup_test.dart
 ```

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../dashboard/data/dashboard_repository.dart';
+import '../../../core/api/json.dart';
+import '../domain/workout_rules.dart';
+
+export '../domain/workout_rules.dart' show prescribedResult;
 
 const skipReasons = {
   'LACK_OF_TIME': 'Falta de tiempo', 'FATIGUE': 'Fatiga',
@@ -7,28 +10,31 @@ const skipReasons = {
   'PAIN_OR_DISCOMFORT': 'Dolor o molestias', 'SCHEDULE_CHANGE': 'Cambio de horario', 'OTHER': 'Otro motivo',
 };
 
-Json prescribedResult(Json exercise) => {
-  'actualSets': exercise['plannedSets'] ?? 0,
-  'actualRepsTotal': (exercise['plannedSets'] as num? ?? 1) * (exercise['plannedReps'] as num? ?? 0),
-  'actualDurationSeconds': exercise['plannedDurationSeconds'] ?? 0,
-  'actualLoadKg': exercise['targetLoadKg'] ?? 0,
-  'skipReason': null,
-};
-String exercisePrescription(Json exercise) => [
-  if (exercise['plannedSets'] != null) '${exercise['plannedSets']} series',
-  if (exercise['plannedReps'] is num && (exercise['plannedReps'] as num) > 0)
-    '${exercise['plannedReps']} repeticiones por serie'
-  else if (exercise['plannedDurationSeconds'] is num && (exercise['plannedDurationSeconds'] as num) > 0)
-    'Por tiempo · sin repeticiones asignadas'
-  else 'Repeticiones no indicadas en el plan',
-  if (exercise['plannedDurationSeconds'] != null) '${exercise['plannedDurationSeconds']} s',
-  if (exercise['targetLoadKg'] != null) '${exercise['targetLoadKg']} kg',
-].join(' · ');
+String exercisePrescription(Json exercise) {
+  final sets = exercise['plannedSets'];
+  final reps = exercise['plannedReps'];
+  final seconds = exercise['plannedDurationSeconds'];
+  return [
+    if (sets != null) '$sets ${sets == 1 ? 'serie' : 'series'}',
+    if (isDurationBased(exercise))
+      seconds is num && seconds > 0 ? '$seconds s por serie' : 'Duración no indicada en el plan'
+    else
+      reps is num && reps > 0 ? '$reps repeticiones por serie' : 'Repeticiones no indicadas en el plan',
+    if (exercise['targetLoadKg'] != null) '${exercise['targetLoadKg']} kg',
+  ].join(' · ');
+}
+
+/// Label of a session exercise. Uses the backend `status` (ExerciseOutcome:
+/// COMPLETED, PARTIAL, SKIPPED) when present; drafts are classified locally.
 String resultLabel(Json? result) {
   if (result == null) return 'Sin registrar';
+  switch (result['status']) {
+    case 'COMPLETED': return 'Completado';
+    case 'PARTIAL': return 'Parcial';
+    case 'SKIPPED': return 'No realizado';
+  }
   final amount = ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].fold<num>(0, (sum, key) => sum + (result[key] as num? ?? 0));
-  if (amount == 0 && result['skipReason'] != null) return 'No realizado';
-  if (amount == 0) return 'Sin registrar';
+  if (amount == 0) return result['skipReason'] != null ? 'No realizado' : 'Sin registrar';
   if (result['completionPercentage'] is num) return (result['completionPercentage'] as num) >= 100 ? 'Completado' : 'Parcial';
   return result['skipReason'] != null ? 'Parcial' : 'Realizado';
 }
@@ -43,26 +49,24 @@ class ExerciseResultDialog extends StatefulWidget {
 }
 class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
   final form = GlobalKey<FormState>();
-  static const fields = {'actualSets': 'Series realizadas', 'actualRepsTotal': 'Repeticiones totales (todas las series)', 'actualDurationSeconds': 'Duración realizada (segundos)', 'actualLoadKg': 'Carga utilizada (kg)'};
+  static const fields = {'actualSets': 'Series realizadas', 'actualRepsTotal': 'Repeticiones totales (todas las series)', 'actualDurationSeconds': 'Duración total realizada (segundos, todas las series)', 'actualLoadKg': 'Carga utilizada (kg)'};
   late final controllers = {for (final key in fields.keys) key: TextEditingController(text: '${widget.existing?[key] ?? ''}')};
   String? outcome, message;
   late String? reason = widget.existing?['skipReason'] as String?;
   @override
   void dispose() { for (final controller in controllers.values) { controller.dispose(); } super.dispose(); }
   void choose(String value) => setState(() {
-    if (outcome == 'complete' && value == 'partial') controllers['actualRepsTotal']!.text = '${prescribedResult(widget.exercise)['actualRepsTotal']}';
     outcome = value; message = null;
     if (value == 'complete' || value == 'none') {
       final defaults = prescribedResult(widget.exercise);
-      for (final entry in controllers.entries) { entry.value.text = '${value == 'none' ? 0 : defaults[entry.key]}'; }
-      if (value == 'complete') controllers['actualRepsTotal']!.text = '${widget.exercise['plannedReps'] ?? 0}';
+      for (final entry in controllers.entries) { entry.value.text = value == 'none' ? '0' : '${defaults[entry.key] ?? ''}'; }
     }
     if (value == 'complete') reason = null;
   });
   void save() {
     if (outcome == null) { setState(() => message = 'Indica si realizaste el ejercicio.'); return; }
     if (!form.currentState!.validate()) return;
-    final Json body = outcome == 'complete' ? prescribedResult(widget.exercise) : {for (final e in controllers.entries) e.key: num.tryParse(e.value.text.replaceAll(',', '.')) ?? 0, 'skipReason': reason};
+    final Json body = outcome == 'complete' ? prescribedResult(widget.exercise) : {for (final e in controllers.entries) e.key: e.key == 'actualLoadKg' ? num.tryParse(e.value.text.replaceAll(',', '.')) : num.tryParse(e.value.text.replaceAll(',', '.')) ?? 0, 'skipReason': reason};
     if (outcome != 'none' && ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].every((key) => body[key] == 0)) {
       setState(() => message = 'Registra al menos una serie, repetición o segundo realizado.'); return;
     }
@@ -77,7 +81,7 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     Wrap(spacing: 8, children: [for (final entry in {'complete': 'Lo completé', 'partial': 'Lo hice parcialmente', 'none': 'No lo hice'}.entries) ChoiceChip(label: Text(entry.value), selected: outcome == entry.key, onSelected: (_) => choose(entry.key))]),
     if (outcome == 'complete') const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Se usarán las cantidades de tu plan. Si hiciste menos, elige parcialmente.')),
     if (outcome != 'none') for (final entry in fields.entries) Padding(padding: const EdgeInsets.only(top: 12), child: TextFormField(
-      controller: controllers[entry.key], readOnly: outcome == 'complete', decoration: InputDecoration(labelText: outcome == 'complete' && entry.key == 'actualRepsTotal' ? 'Repeticiones por serie' : entry.value),
+      controller: controllers[entry.key], readOnly: outcome == 'complete', decoration: InputDecoration(labelText: entry.value),
       keyboardType: TextInputType.numberWithOptions(decimal: entry.key == 'actualLoadKg'), validator: (value) {
         if (value == null || value.trim().isEmpty) return null;
         final parsed = entry.key == 'actualLoadKg' ? double.tryParse(value.replaceAll(',', '.')) : int.tryParse(value);

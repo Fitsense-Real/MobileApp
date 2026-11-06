@@ -55,14 +55,14 @@ void main() {
                       'Sesión de recuperación',
                     ][i],
                     'focusCode': [
-                      'MOBILITY',
-                      'CARDIO',
-                      'STRENGTH',
-                      'RECOVERY',
+                      'CORE',
+                      'LOWER_BODY',
+                      'UPPER_BODY',
+                      'FULL_BODY',
                     ][i],
                     'scheduledDate': date,
                     'expectedDurationMinutes': 20 + i * 5,
-                    'status': 'PLANNED',
+                    'status': 'SCHEDULED',
                   },
               ],
             },
@@ -114,6 +114,7 @@ void main() {
         'cardio.jpg',
         'strength.jpg',
         'full_body.jpg',
+        'home_body.jpg',
       ]) {
         await precacheImage(
           AssetImage('assets/images/kora/$name'),
@@ -140,7 +141,7 @@ void main() {
     }
     await tester.tap(find.widgetWithText(NavigationDestination, 'Rutinas'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CARDIO'));
+    await tester.tap(find.text('TREN INFERIOR'));
     await tester.pumpAndSettle();
     expect(find.text('Cardio en casa'), findsOneWidget);
     expect(find.text('Fuerza total'), findsNothing);

@@ -1,25 +1,46 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api/api_constants.dart';
+import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
 
+/// Execution endpoints. Every write returns the `WorkoutSessionResource`.
 class WorkoutRepository {
   WorkoutRepository(this.dio);
   final Dio dio;
-  Future<Map<String, dynamic>> report(Object workoutId, Map<String, dynamic> body) async => Map<String, dynamic>.from((await dio.post('/workouts/$workoutId/report', data: body)).data as Map);
-  Future<Map<String, dynamic>?> current() async {
+
+  /// Session in progress, or null (the backend answers 204 when none).
+  Future<Json?> current() async {
     try {
-      final response = await dio.get('/sessions/current');
-      if (response.statusCode == 204 || response.data == null) return null;
-      return Map<String, dynamic>.from(response.data as Map);
+      final response = await dio.get(ApiConstants.currentSession);
+      if (response.statusCode == 204 || response.data is! Map) return null;
+      return jsonMap(response.data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
       rethrow;
     }
   }
-  Future<Map<String, dynamic>> start(Object workoutId) async => Map<String, dynamic>.from((await dio.post('/workouts/$workoutId/start')).data as Map);
-  Future<Map<String, dynamic>> record(Object sessionId, Object exerciseId, Map<String, dynamic> body) async => Map<String, dynamic>.from((await dio.put('/sessions/$sessionId/exercises/$exerciseId', data: body)).data as Map);
-  Future<Map<String, dynamic>> finish(Object sessionId, Map<String, dynamic> body) async => Map<String, dynamic>.from((await dio.post('/sessions/$sessionId/finish', data: body)).data as Map);
-  Future<Map<String, dynamic>> abandon(Object sessionId) async => Map<String, dynamic>.from((await dio.post('/sessions/$sessionId/abandon')).data as Map);
-  Future<void> skip(Object workoutId, String reason) async { await dio.post('/workouts/$workoutId/skip', data: {'reason': reason}); }
+
+  Future<Json> byId(Object sessionId) async => jsonMap((await dio.get(ApiConstants.session(sessionId))).data);
+  Future<Json> start(Object workoutId) async => jsonMap((await dio.post(ApiConstants.startWorkout(workoutId))).data);
+
+  /// PUT replaces the previous result for that exercise; it never accumulates.
+  Future<Json> record(Object sessionId, Object plannedExerciseId, Json body) async =>
+      jsonMap((await dio.put(ApiConstants.sessionExercise(sessionId, plannedExerciseId), data: body)).data);
+
+  /// Body: `{sessionRpe (1–10, required), satisfaction?, activeMinutes?}`.
+  Future<Json> finish(Object sessionId, Json body) async =>
+      jsonMap((await dio.post(ApiConstants.finishSession(sessionId), data: body)).data);
+  Future<Json> abandon(Object sessionId) async => jsonMap((await dio.post(ApiConstants.abandonSession(sessionId))).data);
+
+  /// Retroactive report: `{performedAt, sessionRpe, satisfaction?, activeMinutes?, exercises: [...]}`.
+  Future<Json> report(Object workoutId, Json body) async =>
+      jsonMap((await dio.post(ApiConstants.reportWorkout(workoutId), data: body)).data);
+
+  /// The backend answers 204; reason is a `SkipReason` code.
+  Future<void> skip(Object workoutId, String reason) async {
+    await dio.post(ApiConstants.skipWorkout(workoutId), data: {'reason': reason});
+  }
 }
+
 final workoutRepositoryProvider = Provider((ref) => WorkoutRepository(ref.watch(dioProvider)));

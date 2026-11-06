@@ -10,7 +10,12 @@ class UserMapper {
       firstName: response.firstName,
       lastName: response.lastName,
       email: response.email,
-      role: response.role,
+      timezone: response.timezone,
+      status: response.status,
+      studyParticipant: response.studyParticipant,
+      participantCode: response.participantCode,
+      enrolledAt: response.enrolledAt,
+      withdrawnAt: response.withdrawnAt,
     );
   }
 }

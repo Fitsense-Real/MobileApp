@@ -7,18 +7,27 @@ import '../../../../shared/widgets/kora_ui.dart';
 import '../../../../core/api/api_error.dart';
 import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../../plans/data/plan_repository.dart';
+import '../../../workouts/domain/workout_rules.dart';
 import '../../../workouts/presentation/planned_workout_page.dart';
+import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
-String displayDate(dynamic value) {
+/// Dates (yyyy-MM-dd) are shown as sent; timestamps with an offset are shown
+/// in local time so a 23:59-05:00 value never moves to the next day in UTC.
+DateTime? parseDate(dynamic value) {
   final date = DateTime.tryParse('$value');
+  return date != null && date.isUtc ? date.toLocal() : date;
+}
+
+String displayDate(dynamic value) {
+  final date = parseDate(value);
   return date == null
       ? 'Sin fecha'
       : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
 
 String trainingDay(dynamic value) {
-  final date = DateTime.tryParse('$value');
+  final date = parseDate(value);
   if (date == null) return 'Sin fecha';
   const days = [
     'Lunes',
@@ -35,18 +44,9 @@ String trainingDay(dynamic value) {
 String metricValue(dynamic value, {String suffix = ''}) => value is num
     ? '${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)}$suffix'
     : '—';
-String workoutStatus(dynamic status) =>
-    const {
-      'PLANNED': 'Pendiente',
-      'SCHEDULED': 'Programado',
-      'PENDING': 'Pendiente',
-      'IN_PROGRESS': 'En curso',
-      'COMPLETED': 'Completado',
-      'SKIPPED': 'Omitido',
-      'EXPIRED': 'Vencido',
-      'PARTIALLY_COMPLETED': 'Parcialmente completado',
-    }[status] ??
-    '$status';
+String workoutStatus(dynamic status) => workoutStatusLabel(status);
+
+const riskLevelLabels = {'LOW': 'Bajo', 'MODERATE': 'Moderado', 'HIGH': 'Alto', 'CRITICAL': 'Crítico'};
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key, this.initialTab = 0});
@@ -212,32 +212,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
     ),
   );
-  String categoryOf(Json workout) {
-    final code = '${workout['focusCode'] ?? ''}'.toUpperCase();
-    if (code.contains('CARDIO') ||
-        code.contains('AEROBIC') ||
-        code.contains('ENDURANCE')) {
-      return 'Cardio';
-    }
-    if (code.contains('MOBILITY') ||
-        code.contains('FLEX') ||
-        code.contains('RECOVERY')) {
-      return 'Movilidad';
-    }
-    if (code.contains('STRENGTH') ||
-        code.contains('HYPERTROPHY') ||
-        code.contains('UPPER') ||
-        code.contains('LOWER') ||
-        code.contains('FULL_BODY')) {
-      return 'Fuerza';
-    }
-    return 'General';
-  }
+  /// Category chip from planning `WorkoutFocus`; unknown focus is General.
+  String categoryOf(Json workout) => workoutFocusLabels['${workout['focusCode']}'] ?? 'General';
 
-  String photo(Json workout) => switch (categoryOf(workout)) {
-    'Cardio' => 'cardio',
-    'Movilidad' => 'mobility',
-    'Fuerza' => 'strength',
+  String photo(Json workout) => switch ('${workout['focusCode']}') {
+    'FULL_BODY' => 'full_body',
+    'UPPER_BODY' || 'PUSH' || 'PULL' => 'strength',
+    'LOWER_BODY' || 'LEGS' => 'home_body',
+    'CORE' => 'mobility',
     _ => 'full_body',
   };
   List<Json> workoutsOf(Json? plan) => jsonRows(
@@ -348,7 +330,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          workoutStatus(workout['status'] ?? 'PLANNED'),
+                          workoutStatus(workout['status']),
                           style: const TextStyle(
                             fontSize: 10,
                             letterSpacing: .6,
@@ -427,7 +409,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: label('Tu plan de la semana', color: Kora.lime),
+                      child: label(
+                        (plan['planVersion'] as num? ?? 1) > 1
+                            ? 'Tu plan de la semana · v${plan['planVersion']}'
+                            : 'Tu plan de la semana',
+                        color: Kora.lime,
+                      ),
                     ),
                     if (remaining != null && remaining > 0)
                       Text(
@@ -931,7 +918,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Calculado: ${displayDate(metric['calculatedAt'])}',
+          [
+            'Calculado: ${displayDate(metric['calculatedAt'])}',
+            if (riskLevelLabels[metric['riskLevel']] != null)
+              'Riesgo de abandono: ${riskLevelLabels[metric['riskLevel']]}',
+          ].join(' · '),
           style: const TextStyle(color: Kora.sage, fontSize: 10),
         ),
       ],
@@ -1059,6 +1050,57 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     trailing: danger ? null : const Icon(Icons.chevron_right, size: 16),
     onTap: action,
   );
+  void planHistory() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .7,
+        child: const PlanHistorySheet(),
+      ),
+    ),
+  );
+
+  Widget studyStatus() => Consumer(builder: (context, ref, _) {
+    final user = ref.watch(authViewModelProvider).user;
+    if (user == null) return const SizedBox.shrink();
+    if (!user.studyParticipant) {
+      return const Text('No participas en el estudio.', style: TextStyle(color: Kora.sage));
+    }
+    if (user.withdrawnAt != null) {
+      return Text('Te retiraste del estudio el ${displayDate(user.withdrawnAt!.toIso8601String())}.', style: const TextStyle(color: Kora.sage));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Participas en el estudio${user.participantCode == null ? '' : ' · código ${user.participantCode}'}.'),
+      TextButton(
+        onPressed: () => withdraw(context),
+        style: TextButton.styleFrom(foregroundColor: Colors.redAccent, padding: EdgeInsets.zero),
+        child: const Text('Retirarme del estudio'),
+      ),
+    ]);
+  });
+
+  Future<void> withdraw(BuildContext sheetContext) async {
+    final confirmed = await showDialog<bool>(
+      context: sheetContext,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirarme del estudio'),
+        content: const Text('Dejarás de participar en el estudio. Los datos ya recolectados no se borran y puedes seguir usando la app.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retirarme')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(authViewModelProvider.notifier).withdrawFromStudy();
+    } catch (e) {
+      if (mounted) showInfo('Retirarme del estudio', apiError(e));
+    }
+  }
+
   Future<void> logout() async {
     try {
       await ref.read(authViewModelProvider.notifier).logout();
@@ -1109,6 +1151,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ),
             const Divider(height: 1),
             menuRow(Icons.notifications_none, 'Notificaciones', notifications),
+            const Divider(height: 1),
+            menuRow(Icons.history, 'Historial de planes', planHistory),
           ],
         ),
         padding: EdgeInsets.zero,
@@ -1146,7 +1190,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           () => ref.invalidate(dashboardProfileProvider),
                         ),
                         const SizedBox(height: 20),
-                        const Text('Perfil de solo lectura.', style: TextStyle(color: Kora.sage)),
+                        if (profile.asData?.value != null)
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.push('/onboarding?edit=1');
+                            },
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text('Editar perfil'),
+                          ),
+                        const Text('Los cambios del perfil se aplican al plan del lunes siguiente.', style: TextStyle(color: Kora.sage, fontSize: 11)),
+                        const SizedBox(height: 20),
+                        studyStatus(),
                       ],
                     ),
                   ),

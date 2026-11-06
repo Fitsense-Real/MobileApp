@@ -12,85 +12,49 @@ class AuthRemoteDataSource {
 
   const AuthRemoteDataSource(this._dio);
 
-  Future<AuthenticationResponse> login(
-      LoginRequest request,
-      ) async {
-    try {
-      final response = await _dio.post(
-        ApiConstants.login,
-        data: request.toJson(),
-      );
+  Future<AuthenticationResponse> login(LoginRequest request) => _call(
+    () => _dio.post(ApiConstants.login, data: request.toJson()),
+    (data) => AuthenticationResponse.fromJson(data),
+  );
 
-      return AuthenticationResponse.fromJson(response.data);
+  Future<UserResponse> register(RegisterRequest request) => _call(
+    () => _dio.post(ApiConstants.register, data: request.toJson()),
+    UserResponse.fromJson,
+  );
+
+  Future<UserResponse> me() => _call(() => _dio.get(ApiConstants.me), UserResponse.fromJson);
+
+  /// Voluntary withdrawal from the study. Collected data is kept.
+  Future<UserResponse> withdraw() =>
+      _call(() => _dio.post(ApiConstants.withdraw), UserResponse.fromJson);
+
+  Future<void> forgotPassword(String email) => _call(
+    () => _dio.post(ApiConstants.forgotPassword, data: {'email': email}),
+    (_) {},
+  );
+
+  Future<void> resetPassword({required String code, required String password}) => _call(
+    () => _dio.post(ApiConstants.resetPassword, data: {'code': code, 'password': password}),
+    (_) {},
+  );
+
+  Future<T> _call<T>(
+    Future<Response<dynamic>> Function() request,
+    T Function(Map<String, dynamic>) parse,
+  ) async {
+    try {
+      final response = await request();
+      final data = response.data;
+      return parse(data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{});
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  Future<UserResponse> register(
-      RegisterRequest request,
-      ) async {
-    try {
-      final response = await _dio.post(
-        ApiConstants.register,
-        data: request.toJson(),
-      );
-
-      return UserResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<UserResponse> me() async {
-    try {
-      final response = await _dio.get(
-        ApiConstants.me,
-      );
-
-      return UserResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<void> forgotPassword(
-      String email,
-      ) async {
-    try {
-      await _dio.post(
-        ApiConstants.forgotPassword,
-        data: {
-          "email": email,
-        },
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<void> resetPassword({
-    required String code,
-    required String password,
-  }) async {
-    try {
-      await _dio.post(
-        ApiConstants.resetPassword,
-        data: {
-          "code": code,
-          "password": password,
-        },
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Exception _handleError(DioException e) {
+  ApiException _handleError(DioException e) {
     if (e.response?.statusCode == 401 && e.requestOptions.path == ApiConstants.login) {
-      return Exception('Correo o contraseña incorrectos.');
+      return ApiException('Correo o contraseña incorrectos.', statusCode: 401, cause: e);
     }
-    return Exception(apiError(e));
+    return ApiException.from(e);
   }
-
 }

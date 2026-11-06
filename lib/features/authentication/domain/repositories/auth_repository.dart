@@ -20,6 +20,9 @@ abstract class AuthRepository {
 
   Future<void> logout();
 
+  /// Voluntary withdrawal from the study (`POST /users/me/withdraw`).
+  Future<User> withdrawFromStudy();
+
   Future<void> forgotPassword(
       String email,
       );

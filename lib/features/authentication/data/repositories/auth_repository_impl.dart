@@ -66,6 +66,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User> withdrawFromStudy() async {
+    return UserMapper.toEntity(await remoteDataSource.withdraw());
+  }
+
+  @override
   Future<void> logout() async {
     await TokenStorage.deleteToken();
   }

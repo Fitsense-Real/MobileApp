@@ -44,7 +44,7 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
         try {
           plan = await repository.generate();
         } on DioException catch (e) {
-          if (e.response?.statusCode != 409) rethrow;
+          if (!isPlanConflict(e)) rethrow;
           plan = await repository.current();
           if (plan == null) rethrow;
         }
