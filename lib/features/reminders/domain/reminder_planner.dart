@@ -60,6 +60,12 @@ const dueWarningHour = 20;
 /// iOS keeps at most 64 pending notifications; stay well below.
 const maxReminders = 20;
 
+/// Fixed ids of the "new plan" reminders. Workout ids map below 1e9, so
+/// these never collide with them.
+const nextPlanReminderId = 1999999990;
+const nextPlanFollowUpId = 1999999991;
+const nextPlanPayload = 'plan:next';
+
 /// One notification to schedule. [at] is a wall-clock time in the user's
 /// timezone (the same one the backend uses for `scheduledDate`/`expiresAt`).
 class PlannedReminder {
@@ -80,12 +86,19 @@ class PlannedReminder {
   String toString() => 'PlannedReminder($id, $at, $title)';
 }
 
-/// Reminders for the open workouts of [plan] that are still ahead of [now].
+/// Reminders for the open workouts of [plan] that are still ahead of [now],
+/// plus the "new plan" reminders for the week after it.
 ///
 /// Only SCHEDULED/IN_PROGRESS workouts that are not safety-blocked get
 /// reminders: completed, partial, skipped or replaced ones never notify.
 /// Rescheduling on every plan refresh removes reminders of workouts that the
 /// user has already registered.
+///
+/// The app only knows the plan it last downloaded: the backend generates the
+/// next one on Monday while the app may be closed. So the Monday after
+/// [plan] ends (and Wednesday, if the app was still not opened) a reminder
+/// invites the user to open Kora; opening it downloads the new plan and
+/// replaces every reminder, these two included.
 List<PlannedReminder> planReminders(Json? plan, {required DateTime now, required ReminderSettings settings}) {
   if (plan == null || !settings.enabled) return const [];
   final reminders = <PlannedReminder>[];
@@ -126,5 +139,31 @@ List<PlannedReminder> planReminders(Json? plan, {required DateTime now, required
     }
   }
   reminders.sort((a, b) => a.at.compareTo(b.at));
-  return reminders.take(maxReminders).toList();
+  final next = nextPlanReminders(plan, now: now, settings: settings);
+  // The chain to the next week must survive the cap.
+  return [...reminders.take(maxReminders - next.length), ...next];
+}
+
+/// "Your new plan is ready" on the Monday after [plan] ends, and a follow-up
+/// on Wednesday, both at the user's reminder time.
+List<PlannedReminder> nextPlanReminders(Json plan, {required DateTime now, required ReminderSettings settings}) {
+  final end = DateTime.tryParse('${plan['weekEndDate']}');
+  if (end == null) return const [];
+  final monday = DateTime(end.year, end.month, end.day + 1);
+  return [
+    PlannedReminder(
+      id: nextPlanReminderId,
+      at: DateTime(monday.year, monday.month, monday.day, settings.hour, settings.minute),
+      title: 'Tu plan de esta semana está listo',
+      body: 'Abre Kora para ver tus entrenamientos y activar sus recordatorios.',
+      payload: nextPlanPayload,
+    ),
+    PlannedReminder(
+      id: nextPlanFollowUpId,
+      at: DateTime(monday.year, monday.month, monday.day + 2, settings.hour, settings.minute),
+      title: 'Aún no revisas tu plan de esta semana',
+      body: 'Tus entrenamientos te esperan en Kora. Ábrela para verlos.',
+      payload: nextPlanPayload,
+    ),
+  ].where((r) => r.at.isAfter(now)).toList();
 }

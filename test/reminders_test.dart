@@ -21,6 +21,9 @@ Json workout(int id, String date, {String status = 'SCHEDULED', bool blocked = f
   'expectedDurationMinutes': 40, 'status': status, 'safetyBlocked': blocked, 'exercises': [],
 };
 
+/// Workout reminders only (without the next-plan chain).
+List<PlannedReminder> workoutsOnly(List<PlannedReminder> all) => all.where((r) => r.payload != nextPlanPayload).toList();
+
 Json planWith(List<Json> workouts) => {'planId': 3, 'weekStartDate': '2026-11-02', 'weekEndDate': '2026-11-08', 'workouts': workouts};
 
 class FakeScheduler implements ReminderScheduler {
@@ -60,7 +63,7 @@ void main() {
     const settings = ReminderSettings(configured: true);
 
     test('a future open workout gets the day reminder and the due warning', () {
-      final reminders = planReminders(planWith([workout(21, '2026-11-06')]), now: now, settings: settings);
+      final reminders = workoutsOnly(planReminders(planWith([workout(21, '2026-11-06')]), now: now, settings: settings));
       expect(reminders, [
         PlannedReminder(id: 42, at: DateTime(2026, 11, 6, 8), title: 'Hoy toca: Piernas 21',
             body: '40 min · Tren inferior. Ábrelo en Kora para empezar.', payload: 'workout:21'),
@@ -70,7 +73,7 @@ void main() {
     });
 
     test('today after the reminder hour only keeps the due warning', () {
-      final reminders = planReminders(planWith([workout(21, '2026-11-05')]), now: now, settings: settings);
+      final reminders = workoutsOnly(planReminders(planWith([workout(21, '2026-11-05')]), now: now, settings: settings));
       expect(reminders.map((r) => r.at), [DateTime(2026, 11, 5, 20)]);
     });
 
@@ -84,26 +87,53 @@ void main() {
         workout(6, '2026-11-06', blocked: true),
         workout(7, '2026-11-07', status: 'IN_PROGRESS'),
       ]), now: now, settings: settings);
-      expect(reminders.map((r) => r.payload).toSet(), {'workout:7'});
+      expect(workoutsOnly(reminders).map((r) => r.payload).toSet(), {'workout:7'});
     });
 
     test('disabled reminders, no plan, or an evening hour', () {
       final plan = planWith([workout(21, '2026-11-06')]);
       expect(planReminders(plan, now: now, settings: settings.copyWith(enabled: false)), isEmpty);
       expect(planReminders(null, now: now, settings: settings), isEmpty);
-      final evening = planReminders(plan, now: now, settings: settings.copyWith(hour: 20, minute: 30));
+      final evening = workoutsOnly(planReminders(plan, now: now, settings: settings.copyWith(hour: 20, minute: 30)));
       expect(evening.map((r) => r.title), ['Hoy toca: Piernas 21'], reason: 'no second warning after 20:00');
-      expect(planReminders(plan, now: now, settings: settings.copyWith(dueWarning: false)).length, 1);
+      expect(workoutsOnly(planReminders(plan, now: now, settings: settings.copyWith(dueWarning: false))).length, 1);
     });
 
     test('ordered by time and capped for iOS', () {
       final many = [for (var i = 0; i < 30; i++) workout(100 + i, DateTime(2026, 11, 6 + i).toIso8601String().substring(0, 10))];
-      final reminders = planReminders(planWith(many.reversed.toList()), now: now, settings: settings);
-      expect(reminders, hasLength(maxReminders));
+      final all = planReminders(planWith(many.reversed.toList()), now: now, settings: settings);
+      expect(all, hasLength(maxReminders));
+      expect(all.where((r) => r.payload == nextPlanPayload), hasLength(2), reason: 'the chain to next week survives the cap');
+      final reminders = workoutsOnly(all);
       expect(reminders.first.at, DateTime(2026, 11, 6, 8));
       for (var i = 1; i < reminders.length; i++) {
         expect(reminders[i].at.isBefore(reminders[i - 1].at), isFalse);
       }
+    });
+
+    test('the Monday after the plan, and Wednesday, invite to open the new plan', () {
+      final next = planReminders(planWith([workout(21, '2026-11-04', status: 'COMPLETED')]), now: now, settings: settings.copyWith(hour: 7, minute: 30))
+          .where((r) => r.payload == nextPlanPayload).toList();
+      expect(next, [
+        PlannedReminder(id: nextPlanReminderId, at: DateTime(2026, 11, 9, 7, 30), title: 'Tu plan de esta semana está listo',
+            body: 'Abre Kora para ver tus entrenamientos y activar sus recordatorios.', payload: nextPlanPayload),
+        PlannedReminder(id: nextPlanFollowUpId, at: DateTime(2026, 11, 11, 7, 30), title: 'Aún no revisas tu plan de esta semana',
+            body: 'Tus entrenamientos te esperan en Kora. Ábrela para verlos.', payload: nextPlanPayload),
+      ], reason: 'scheduled even when every workout of the week is done');
+    });
+
+    test('past next-plan reminders are skipped and disabled settings schedule none', () {
+      final tuesday = DateTime(2026, 11, 10, 9);
+      final next = nextPlanReminders(planWith([]), now: tuesday, settings: settings);
+      expect(next.map((r) => r.id), [nextPlanFollowUpId]);
+      expect(planReminders(planWith([]), now: now, settings: settings.copyWith(enabled: false)), isEmpty);
+      expect(nextPlanReminders({'workouts': []}, now: now, settings: settings), isEmpty, reason: 'no weekEndDate');
+    });
+
+    test('tapping opens Rutinas for a workout and Inicio for the new plan', () {
+      expect(reminderRoute('workout:21'), '/dashboard?tab=1');
+      expect(reminderRoute(nextPlanPayload), '/dashboard');
+      expect(reminderRoute(null), '/dashboard');
     });
 
     test('settings survive storage as JSON', () {
@@ -132,7 +162,8 @@ void main() {
       await settle();
       expect(scheduler.permissionRequests, 1);
       expect(store.value, const ReminderSettings(configured: true));
-      expect(scheduler.scheduled, hasLength(2));
+      expect(workoutsOnly(scheduler.scheduled!), hasLength(2));
+      expect(scheduler.scheduled!.where((r) => r.payload == nextPlanPayload), hasLength(2));
       expect(scheduler.timezone, 'America/Lima');
     });
 
@@ -151,12 +182,13 @@ void main() {
       var status = 'SCHEDULED';
       final c = container(scheduler: scheduler, store: store, plan: () => planWith([workout(21, '2026-11-06', status: status)]));
       await settle();
-      expect(scheduler.scheduled, hasLength(2));
+      expect(workoutsOnly(scheduler.scheduled!), hasLength(2));
       status = 'COMPLETED';
       c.invalidate(currentPlanProvider);
       await settle();
-      expect(scheduler.scheduled, isEmpty);
-      expect(scheduler.cancels, 1);
+      expect(workoutsOnly(scheduler.scheduled!), isEmpty);
+      expect(scheduler.scheduled!.map((r) => r.payload), [nextPlanPayload, nextPlanPayload],
+          reason: 'only the chain to next week remains');
       expect(scheduler.permissionRequests, 0, reason: 'already configured');
     });
 

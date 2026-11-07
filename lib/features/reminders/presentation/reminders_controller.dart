@@ -33,9 +33,13 @@ class ReminderSettingsStore {
 final reminderSettingsStoreProvider = Provider((ref) => const ReminderSettingsStore());
 
 final reminderSchedulerProvider = Provider<ReminderScheduler>(
-  // Tapping a reminder opens the routines tab.
-  (ref) => LocalNotificationScheduler(onTap: (_) => AppRouter.router.go('/dashboard?tab=1')),
+  // A workout reminder opens Rutinas; the new-plan reminder opens Inicio.
+  (ref) => LocalNotificationScheduler(onTap: (payload) => AppRouter.router.go(reminderRoute(payload))),
 );
+
+/// Screen opened by tapping a reminder with [payload].
+String reminderRoute(String? payload) =>
+    payload != null && payload.startsWith('workout:') ? '/dashboard?tab=1' : '/dashboard';
 
 class RemindersController extends AsyncNotifier<ReminderSettings> {
   int? get _userId => ref.read(authViewModelProvider).user?.id;

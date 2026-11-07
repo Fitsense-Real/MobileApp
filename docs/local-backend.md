@@ -177,5 +177,14 @@ No dependen del backend: la app los calcula a partir del plan vigente con
   entrenamiento, sus avisos desaparecen. Al cerrar sesión se cancelan todos.
 - La primera vez que hay plan se pide el permiso (Android 13+ e iOS). Si se
   niega, quedan desactivados y se pueden activar en Perfil → Recordatorios.
+- Plan de la semana siguiente: el backend lo genera el lunes aunque la app
+  esté cerrada, y la app solo conoce el último plan que descargó. Por eso se
+  programa «Tu plan de esta semana está listo» el lunes posterior al fin del
+  plan y «Aún no revisas tu plan de esta semana» el miércoles, a la hora
+  elegida. Al abrir la app se descarga el plan nuevo y se reemplazan todos
+  los avisos, estos dos incluidos, así que la cadena no se corta. Tocar uno
+  de estos avisos abre Inicio; tocar el de un entrenamiento abre Rutinas.
 - Android usa alarmas inexactas (no requiere `SCHEDULE_EXACT_ALARM`) y
-  reprograma tras reiniciar el teléfono. En web y escritorio no hacen nada.
+  reprograma tras reiniciar el teléfono. «Forzar detención» desde Ajustes o
+  el ahorro de batería de algunos fabricantes pueden cancelar o retrasar los
+  avisos hasta que se abra la app. En web y escritorio no hacen nada.

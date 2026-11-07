@@ -24,7 +24,7 @@ class RemindersSheet extends ConsumerWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(24, 0, 24, 24), children: [
       const Text('Recordatorios', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
       const SizedBox(height: 8),
-      const Text('Te avisamos los días que tienes entrenamiento. Si ya lo registraste, el aviso se cancela.',
+      const Text('Te avisamos los días que tienes entrenamiento y cuando tu plan de la semana está listo. Si ya registraste un entrenamiento, su aviso se cancela.',
           style: TextStyle(color: Colors.black54)),
       const SizedBox(height: 12),
       if (settings == null)
