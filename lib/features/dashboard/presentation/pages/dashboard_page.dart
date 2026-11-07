@@ -726,9 +726,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final pct = metric['weightedAdherencePct'] as num?;
     final change = pct == null || previous == null ? null : pct - previous;
     final chart = rows.take(7).toList().reversed.toList();
+    // The backend records an intervention every week, NONE included: only a
+    // real adjustment means this week's plan was adapted.
     final adjusted =
         metric['planId'] != null &&
-        interventions.any((r) => r['resultingPlanId'] == metric['planId']);
+        interventions.any(
+          (r) =>
+              r['resultingPlanId'] == metric['planId'] &&
+              ((r['adjustmentTypes'] as List?) ?? const [])
+                  .any((t) => t != 'NONE'),
+        );
     return Column(
       children: [
         Align(

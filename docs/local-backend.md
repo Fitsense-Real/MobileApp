@@ -122,3 +122,23 @@ sus recursos.
 .\tmp\flutter-sdk\bin\flutter.bat test --no-pub test/backend_alignment_test.dart test/backend_contract_test.dart test/onboarding_flow_test.dart test/profile_edit_test.dart
 .\tmp\flutter-sdk\bin\flutter.bat test --no-pub --concurrency=1 test/dashboard_live_test.dart test/account_setup_test.dart
 ```
+
+## Datos de prueba de adherencia
+
+`docs/sql/seed_adherencia_demo.sql` crea el usuario
+`adherencia.demo@example.com` / `Kora2026!` con 7 semanas cerradas y la semana
+actual en curso (fechas relativas a `CURRENT_DATE`). Las métricas se calculan
+desde las sesiones insertadas con las reglas de `WeeklyMetricsCalculator`
+(config MVP-1.7) y hay una intervención por semana, como hace el backend.
+Es idempotente: al volver a ejecutarlo recrea solo a ese usuario.
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/sql/seed_adherencia_demo.sql
+psql "$DATABASE_URL" -f docs/sql/verify_adherencia_demo.sql
+```
+
+`verify_adherencia_demo.sql` muestra, por pantalla de la app, lo que se debe
+ver (Progreso, Resumen de ajustes, Historial de planes, semana actual) y
+recalcula la adherencia ponderada desde las sesiones para comprobarla.
+`test/adherence_history_test.dart` valida la pestaña Progreso con esos mismos
+datos exportados en `test/fixtures/adherencia_demo.json`.
