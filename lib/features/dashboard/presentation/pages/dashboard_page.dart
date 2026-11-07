@@ -10,6 +10,8 @@ import '../../../plans/data/plan_repository.dart';
 import '../../../workouts/domain/workout_rules.dart';
 import '../../../workouts/presentation/planned_workout_page.dart';
 import '../../../pain/presentation/pain_exclusions_sheet.dart';
+import '../../../reminders/presentation/reminders_controller.dart';
+import '../../../reminders/presentation/reminders_sheet.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
@@ -1126,6 +1128,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
+  void reminders() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => const SafeArea(child: RemindersSheet()),
+  );
+
   void painExclusions() => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -1240,6 +1249,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             const Divider(height: 1),
             menuRow(Icons.notifications_none, 'Notificaciones', notifications),
             const Divider(height: 1),
+            menuRow(Icons.alarm, 'Recordatorios', reminders),
+            const Divider(height: 1),
             menuRow(Icons.history, 'Historial de planes', planHistory),
             const Divider(height: 1),
             menuRow(Icons.healing_outlined, 'Ejercicios excluidos por dolor', painExclusions),
@@ -1331,6 +1342,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final metrics = ref.watch(weeklyMetricsProvider);
     final interventions = ref.watch(interventionsProvider);
     final profile = ref.watch(dashboardProfileProvider);
+    // Keeps workout reminders in sync with the plan (best effort, no UI).
+    ref.watch(reminderSyncProvider);
     return KoraPage(
       patternColor: const Color(0x0AD9FF59),
       maxWidth: 600,

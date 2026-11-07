@@ -6,6 +6,7 @@ import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/logout_use_case.dart';
 import '../../domain/usecases/register_use_case.dart';
 import '../../../../core/providers/core_providers.dart';
+import '../../../reminders/presentation/reminders_controller.dart';
 import '../providers/auth_provider.dart';
 import '../state/auth_state.dart';
 
@@ -98,6 +99,10 @@ class AuthViewModel extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Reminders belong to this account: never notify after logging out.
+    try {
+      await ref.read(reminderSchedulerProvider).cancelAll();
+    } catch (_) {}
     await _logoutUseCase();
 
     state = const AuthState();

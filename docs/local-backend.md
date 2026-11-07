@@ -162,3 +162,20 @@ ver (Progreso, Resumen de ajustes, Historial de planes, semana actual) y
 recalcula la adherencia semanal desde las sesiones para comprobarla.
 `test/adherence_history_test.dart` valida la pestaña Progreso con esos mismos
 datos exportados en `test/fixtures/adherencia_demo.json`.
+
+## Recordatorios (notificaciones locales)
+
+No dependen del backend: la app los calcula a partir del plan vigente con
+`flutter_local_notifications` y los programa en el teléfono.
+
+- Por cada entrenamiento SCHEDULED/IN_PROGRESS no bloqueado por seguridad:
+  «Hoy toca: …» a la hora elegida (por defecto 08:00) y «Tu entrenamiento
+  vence hoy» a las 20:00, antes del `expiresAt` de las 23:59.
+- La hora se interpreta en la zona horaria del usuario (`timezone` de
+  `/users/me`), la misma que usa el backend para las fechas del plan.
+- Se reprograman cada vez que el plan se recarga: al registrar u omitir un
+  entrenamiento, sus avisos desaparecen. Al cerrar sesión se cancelan todos.
+- La primera vez que hay plan se pide el permiso (Android 13+ e iOS). Si se
+  niega, quedan desactivados y se pueden activar en Perfil → Recordatorios.
+- Android usa alarmas inexactas (no requiere `SCHEDULE_EXACT_ALARM`) y
+  reprograma tras reiniciar el teléfono. En web y escritorio no hacen nada.
