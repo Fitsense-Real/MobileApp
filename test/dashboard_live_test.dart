@@ -95,9 +95,9 @@ void main() {
     expect(find.byTooltip('Editar perfil'), findsNothing);
     await tester.scrollUntilVisible(find.text('Cuenta'), 200, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Cuenta')); await tester.pumpAndSettle();
-    // The profile can be edited (PUT /users/me/profile) once it exists.
-    expect(find.text('Editar perfil'), findsOneWidget);
-    expect(find.textContaining('lunes siguiente'), findsOneWidget);
+    // generation: PUT /users/me/profile answers 422 after the first plan.
+    expect(find.textContaining('Perfil de solo lectura'), findsOneWidget);
+    expect(find.text('Editar perfil'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

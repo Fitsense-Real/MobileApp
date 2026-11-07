@@ -1,5 +1,8 @@
 # Backend local
 
+La app se alinea con la rama `generation` de Fitsense-Real/Backend (esquema
+V44). `main` del backend está desactualizado (V24) y no sirve de referencia.
+
 La app usa `http://10.0.2.2:8080/api/v1` en el emulador Android y
 `http://localhost:8080/api/v1` en web/escritorio. En Android debug se permite
 HTTP local; no se cambió la política de tráfico de la versión release.
@@ -37,16 +40,16 @@ marcados; no hay un desplegable adicional de sesiones. Se valida fecha real ante
 estatura 120–250, pesos 30–300, duración entera 15–180, 1–7 sesiones y
 suficientes días distintos (lunes=1, domingo=7). No se inventa una edad mínima.
 Objetivo obligatorio y notas opcionales: máximo 500 caracteres.
-Solo se envían los campos de `CreateUserProfileResource` (en `PUT`, los de
-`UpdateUserProfileResource`, que no incluye `birthDate`). El backend no tiene
-permisos de movimiento: excluye saltos, suelo y carga axial por edad y nivel
-(`SafetyProfile`). Por eso el paso 5 ya no muestra interruptores, sino un
-buscador del catálogo (`GET /catalog/exercises?search=`) que llena
-`blockedExerciseIds`. Las notas de salud son informativas.
+Solo se envían los campos de `CreateUserProfileResource`, incluidos los cinco
+permisos de movimiento de V25 (`allowHighImpact`, `allowFloorExercises`,
+`allowKneelingExercises`, `allowHangingExercises`, `allowOverheadExercises`;
+true = permitido). El paso 5 además ofrece un buscador del catálogo
+(`GET /catalog/exercises?search=`) que llena `blockedExerciseIds`.
 
-El perfil se edita desde Perfil → Cuenta → Editar perfil (`PUT`). La fecha
-de nacimiento no se puede cambiar y los cambios se aplican al plan del lunes
-siguiente; editar no genera un plan.
+El perfil es de solo lectura después del primer plan: en `generation`,
+`PUT /users/me/profile` responde 422 a partir de ese momento y el perfil se
+mantiene durante todo el estudio. Perfil → Cuenta muestra los datos y los
+movimientos excluidos.
 
 El consentimiento al estudio está desmarcado inicialmente; nunca se deduce
 de pulsar el botón de registro. La zona horaria inicial es America/Lima y
@@ -92,9 +95,26 @@ servidor lo marcaba como parcial.
 Las métricas se muestran con su fecha de
 cálculo; no se inventan cálculos nuevos después de una sesión.
 
-El backend no incluye recuperación de contraseña. Mientras
-`ApiConstants.passwordRecoveryAvailable` sea false, el enlace de la pantalla de
-acceso explica que no está disponible y no llama a endpoints inexistentes.
+Recuperación de contraseña (`PasswordResetController`): «¿Olvidaste la clave?»
+llama a `POST /auth/password-reset/request` con el correo y luego
+`POST /auth/password-reset/confirm` con `{token, newPassword}`. El código es
+un token de 43 caracteres, no un PIN. El backend todavía no envía correos:
+solo lo escribe en el log con `fitsense.password-reset.delivery=dev-log`.
+
+## Novedades de generation que usa la app
+
+- Entrenamientos con `safetyBlocked`: se muestra `safetyBlockMessage` y no se
+  puede iniciar. Un ejercicio con `safetyBlockReason` solo se registra como
+  «No lo hice», en vivo o en el registro retrospectivo.
+- Omitir por falta de tiempo pide, de forma opcional, `lackOfTimeContext`
+  (IMPREVISTO, SIN_TIEMPO_ESE_DIA, MENOS_TIEMPO_HABITUAL + `availableMinutes`).
+- Progreso muestra la cobertura de registro de V30 (`recordedWorkouts`,
+  `registrationCoveragePct`, `observedAdherencePct`). La tarjeta «Adaptación»
+  usa `GET /users/me/plan/adaptations` (`resultado`); sin ese dato, las
+  intervenciones distintas de NONE.
+- Rutinas muestra `GET /users/me/plan/limitations` cuando hay limitaciones.
+- Perfil → Ejercicios excluidos por dolor (`GET /users/me/pain-exclusions`)
+  permite pedir la reactivación con confirmación explícita.
 
 ## Sesión y estudio
 
@@ -129,7 +149,7 @@ sus recursos.
 `adherencia.demo@example.com` / `Kora2026!` con 7 semanas cerradas y la semana
 actual en curso (fechas relativas a `CURRENT_DATE`). Las métricas se calculan
 desde las sesiones insertadas con las reglas de `WeeklyMetricsCalculator`
-(config MVP-1.7) y hay una intervención por semana, como hace el backend.
+(rama generation: promedio simple por entrenamiento, config activa) y hay una intervención por semana, como hace el backend.
 Es idempotente: al volver a ejecutarlo recrea solo a ese usuario.
 
 ```bash
@@ -139,6 +159,6 @@ psql "$DATABASE_URL" -f docs/sql/verify_adherencia_demo.sql
 
 `verify_adherencia_demo.sql` muestra, por pantalla de la app, lo que se debe
 ver (Progreso, Resumen de ajustes, Historial de planes, semana actual) y
-recalcula la adherencia ponderada desde las sesiones para comprobarla.
+recalcula la adherencia semanal desde las sesiones para comprobarla.
 `test/adherence_history_test.dart` valida la pestaña Progreso con esos mismos
 datos exportados en `test/fixtures/adherencia_demo.json`.

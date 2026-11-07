@@ -12,6 +12,9 @@ class UserResponse {
   final DateTime? enrolledAt;
   final DateTime? withdrawnAt;
 
+  /// USER or ADMIN (V35). Informative: the backend authorizes each request.
+  final String role;
+
   const UserResponse({
     required this.id,
     required this.firstName,
@@ -23,6 +26,7 @@ class UserResponse {
     this.participantCode,
     this.enrolledAt,
     this.withdrawnAt,
+    this.role = 'USER',
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
@@ -38,6 +42,7 @@ class UserResponse {
       participantCode: json['participantCode'] as String?,
       enrolledAt: date(json['enrolledAt']),
       withdrawnAt: date(json['withdrawnAt']),
+      role: (json['role'] ?? 'USER') as String,
     );
   }
 }

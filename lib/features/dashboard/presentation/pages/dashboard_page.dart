@@ -9,6 +9,7 @@ import '../../../authentication/presentation/providers/auth_provider.dart';
 import '../../../plans/data/plan_repository.dart';
 import '../../../workouts/domain/workout_rules.dart';
 import '../../../workouts/presentation/planned_workout_page.dart';
+import '../../../pain/presentation/pain_exclusions_sheet.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
@@ -45,6 +46,20 @@ String metricValue(dynamic value, {String suffix = ''}) => value is num
     ? '${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)}$suffix'
     : '—';
 String workoutStatus(dynamic status) => workoutStatusLabel(status);
+
+const movementLabels = {
+  'allowHighImpact': 'saltos y alto impacto',
+  'allowFloorExercises': 'ejercicios en el suelo',
+  'allowKneelingExercises': 'ejercicios de rodillas',
+  'allowHangingExercises': 'ejercicios colgado',
+  'allowOverheadExercises': 'brazos sobre la cabeza',
+};
+
+/// Movements the profile excludes (`allow* = false`, V25), as a profile line.
+String avoidedMovements(Json profile) {
+  final avoided = [for (final e in movementLabels.entries) if (profile[e.key] == false) e.value];
+  return avoided.isEmpty ? '' : '\nEvitas: ${avoided.join(', ')}';
+}
 
 const riskLevelLabels = {'LOW': 'Bajo', 'MODERATE': 'Moderado', 'HIGH': 'Alto', 'CRITICAL': 'Crítico'};
 
@@ -115,6 +130,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ref.invalidate(weeklyMetricsProvider);
     ref.invalidate(interventionsProvider);
     ref.invalidate(dashboardProfileProvider);
+    ref.invalidate(planAdaptationsProvider);
+    ref.invalidate(planLimitationsProvider);
     // Each section renders its own error instead of hiding successful sections.
     await Future.wait<void>([
       ref
@@ -710,7 +727,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget progress(List<Json> rows, List<Json> interventions) {
+  Widget progress(List<Json> rows, List<Json> interventions, [List<Json>? adaptations]) {
     if (rows.isEmpty) {
       return surface(
         const Text('Todavía no hay métricas semanales calculadas.'),
@@ -726,16 +743,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final pct = metric['weightedAdherencePct'] as num?;
     final change = pct == null || previous == null ? null : pct - previous;
     final chart = rows.take(7).toList().reversed.toList();
-    // The backend records an intervention every week, NONE included: only a
-    // real adjustment means this week's plan was adapted.
-    final adjusted =
-        metric['planId'] != null &&
-        interventions.any(
-          (r) =>
-              r['resultingPlanId'] == metric['planId'] &&
-              ((r['adjustmentTypes'] as List?) ?? const [])
-                  .any((t) => t != 'NONE'),
-        );
+    // generation: GET /users/me/plan/adaptations says whether the plan that
+    // came out of an adaptation really changed (`resultado`). Without that
+    // record, fall back to interventions: the backend stores one every week,
+    // NONE included, so only a real adjustment counts.
+    final adaptation = metric['planId'] == null
+        ? null
+        : adaptations?.where((a) => a['resultingPlanId'] == metric['planId']).firstOrNull;
+    final adjusted = adaptation != null
+        ? appliedAdaptationResults.contains(adaptation['resultado'])
+        : metric['planId'] != null &&
+            interventions.any(
+              (r) =>
+                  r['resultingPlanId'] == metric['planId'] &&
+                  ((r['adjustmentTypes'] as List?) ?? const [])
+                      .any((t) => t != 'NONE'),
+            );
+    final coverage = metric['registrationCoveragePct'] as num?;
+    final observed = metric['observedAdherencePct'] as num?;
     return Column(
       children: [
         Align(
@@ -932,6 +957,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ].join(' · '),
           style: const TextStyle(color: Kora.sage, fontSize: 10),
         ),
+        // V30: how much of the week has a record. A low value means missing
+        // data, not 0 % adherence, so the observed value is shown apart.
+        if (coverage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              [
+                'Registraste ${metricValue(metric['recordedWorkouts'])} de ${metricValue(metric['scheduledWorkouts'])} entrenamientos (${metricValue(coverage, suffix: '%')})',
+                if (coverage < 100 && observed != null)
+                  'Cumplimiento en lo registrado: ${metricValue(observed, suffix: '%')}',
+              ].join(' · '),
+              style: const TextStyle(color: Kora.sage, fontSize: 10),
+            ),
+          ),
+        if (adaptation?['motivoTexto'] != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('${adaptation!['motivoTexto']}', style: const TextStyle(color: Kora.sage, fontSize: 10)),
+          ),
       ],
     );
   }
@@ -1057,6 +1101,43 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     trailing: danger ? null : const Icon(Icons.chevron_right, size: 16),
     onTap: action,
   );
+  /// GET /users/me/plan/limitations. Informative: hidden while loading or on
+  /// error so it never blocks the routines below.
+  Widget planLimitations() {
+    final items = jsonRows(ref.watch(planLimitationsProvider).asData?.value['limitations']);
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: surface(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            label('Lo que tu plan no puede cubrir'),
+            for (final item in items) ...[
+              const SizedBox(height: 12),
+              Text('${item['title'] ?? item['code']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              if (item['message'] != null)
+                Text('${item['message']}', style: const TextStyle(color: Kora.sage, fontSize: 11, height: 1.5)),
+            ],
+          ],
+        ),
+        color: Kora.ivory,
+      ),
+    );
+  }
+
+  void painExclusions() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .7,
+        child: const PainExclusionsSheet(),
+      ),
+    ),
+  );
+
   void planHistory() => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -1160,6 +1241,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             menuRow(Icons.notifications_none, 'Notificaciones', notifications),
             const Divider(height: 1),
             menuRow(Icons.history, 'Historial de planes', planHistory),
+            const Divider(height: 1),
+            menuRow(Icons.healing_outlined, 'Ejercicios excluidos por dolor', painExclusions),
           ],
         ),
         padding: EdgeInsets.zero,
@@ -1192,21 +1275,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           (data) => Text(
                             data == null
                                 ? 'No hay perfil registrado.'
-                                : '${data['goalText'] ?? ''}\nCumpleaños: ${displayDate(data['birthDate'])}\nEstatura: ${metricValue(data['heightCm'], suffix: ' cm')}\nPeso: ${metricValue(data['currentWeightKg'], suffix: ' kg')}\n${metricValue(data['daysPerWeek'])} días · ${metricValue(data['sessionMinutes'], suffix: ' min')}',
+                                : '${data['goalText'] ?? ''}\nCumpleaños: ${displayDate(data['birthDate'])}\nEstatura: ${metricValue(data['heightCm'], suffix: ' cm')}\nPeso: ${metricValue(data['currentWeightKg'], suffix: ' kg')}\n${metricValue(data['daysPerWeek'])} días · ${metricValue(data['sessionMinutes'], suffix: ' min')}${avoidedMovements(data)}',
                           ),
                           () => ref.invalidate(dashboardProfileProvider),
                         ),
                         const SizedBox(height: 20),
-                        if (profile.asData?.value != null)
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              context.push('/onboarding?edit=1');
-                            },
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            label: const Text('Editar perfil'),
-                          ),
-                        const Text('Los cambios del perfil se aplican al plan del lunes siguiente.', style: TextStyle(color: Kora.sage, fontSize: 11)),
+                        const Text('Perfil de solo lectura: se mantiene durante todo el estudio.', style: TextStyle(color: Kora.sage)),
                         const SizedBox(height: 20),
                         studyStatus(),
                       ],
@@ -1382,16 +1456,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 22),
               if (plan.hasValue) todayRoutines(plan.value),
             ],
-            if (tab == 1)
+            if (tab == 1) ...[
+              planLimitations(),
               section(
                 plan,
                 routines,
                 () => ref.invalidate(currentPlanProvider),
               ),
+            ],
             if (tab == 2) ...[
               section(
                 metrics,
-                (rows) => progress(rows, interventions.asData?.value ?? []),
+                (rows) => progress(rows, interventions.asData?.value ?? [], ref.watch(planAdaptationsProvider).asData?.value),
                 () => ref.invalidate(weeklyMetricsProvider),
               ),
               const SizedBox(height: 24),

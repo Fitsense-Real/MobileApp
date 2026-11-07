@@ -19,6 +19,14 @@ class PlanRepository {
       return week != 0 ? week : ((b['planVersion'] as num?) ?? 0).compareTo((a['planVersion'] as num?) ?? 0);
     });
 
+  /// `PlanLimitationsResource`: what the plan cannot cover with the declared
+  /// equipment and restrictions (`{weekStartDate, limitations: [...]}`).
+  Future<Json> limitations() async => jsonMap((await dio.get(ApiConstants.planLimitations)).data);
+
+  /// `AdaptationOutcome` per week. `resultado` says whether the plan really
+  /// changed; `adjustmentApplied` on the plan is only the decision's name.
+  Future<List<Json>> adaptations() async => jsonRows((await dio.get(ApiConstants.planAdaptations)).data);
+
   Future<Json> generate() async {
     // No body: the backend uses the profile associated with the JWT.
     final cancel = CancelToken();
@@ -79,3 +87,16 @@ final planHistoryProvider = FutureProvider.autoDispose<List<Json>>((ref) {
 final planByIdProvider = FutureProvider.autoDispose.family<Json, int>(
   (ref, id) => ref.watch(planRepositoryProvider).byId(id),
 );
+
+final planLimitationsProvider = FutureProvider.autoDispose<Json>((ref) {
+  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+  return ref.watch(planRepositoryProvider).limitations();
+});
+
+final planAdaptationsProvider = FutureProvider.autoDispose<List<Json>>((ref) {
+  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+  return ref.watch(planRepositoryProvider).adaptations();
+});
+
+/// Adaptation results that mean the published plan actually changed.
+const appliedAdaptationResults = {'ADAPTACION_APLICADA', 'REGENERACION_SEGURA_SUSTITUCION'};

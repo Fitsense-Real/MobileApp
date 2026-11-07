@@ -81,7 +81,13 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       for (final entry in skipReasons.entries) SimpleDialogOption(onPressed: () => Navigator.pop(context, entry.key), child: Text(entry.value)),
     ]));
     if (reason == null || !mounted) return;
-    await act(() async { await repository.skip(widget.workout['plannedWorkoutId'], reason); closed = true; });
+    Json? context_;
+    if (reason == 'LACK_OF_TIME') {
+      // generation: optional context so the plan reacts to the real cause.
+      context_ = await showDialog<Json>(context: context, builder: (_) => const LackOfTimeDialog());
+      if (!mounted) return;
+    }
+    await act(() async { await repository.skip(widget.workout['plannedWorkoutId'], reason, lackOfTimeContext: context_?['lackOfTimeContext'] as String?, availableMinutes: context_?['availableMinutes'] as int?); closed = true; });
   }
   Future<void> abandon() async {
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('Abandonar sesión'), content: const Text('La sesión no contará como intento y el entrenamiento seguirá pendiente.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Continuar entrenando')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Abandonar'))]));
@@ -115,6 +121,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       if (busy) const LinearProgressIndicator(),
       if (error != null) KoraCard(child: Column(children: [Text(error!), TextButton(onPressed: busy ? null : () => act(() async { session = await repository.current(); }), child: const Text('Consultar estado de sesión'))])),
       if (session != null && !ownSession) const KoraCard(child: Text('Tienes otra sesión en curso. Regresa a esa rutina para terminarla o abandonarla.')),
+      if (isSafetyBlocked(workout)) KoraCard(child: Text('${workout['safetyBlockMessage'] ?? 'Este entrenamiento contiene ejercicios que ya no son seguros para ti y espera una versión corregida del plan.'}')),
       if (!closed && status == 'REPLACED') const KoraCard(child: Text('Este entrenamiento pertenece a una versión anterior del plan y fue reemplazado.')),
       if (!closed && (status == 'COMPLETED' || status == 'PARTIAL')) KoraCard(child: Text('Este entrenamiento ya está registrado como ${workoutStatusLabel(status).toLowerCase()}.')),
       if (!closed && !reporting && session == null && isOpenWorkout(workout) && isExpiredWorkout(workout)) const KoraCard(child: Text('El plazo para hacerlo en vivo venció. Si lo realizaste, puedes registrarlo.')),
@@ -128,6 +135,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         Text(exercisePrescription(exercise)),
         if (exercise['restSeconds'] != null) Text('Descanso: ${exercise['restSeconds']} s'),
         if (exercise['notes'] != null) Text('${exercise['notes']}'),
+        if (isUnsafeExercise(exercise)) Text('No es seguro para ti: ${exercise['safetyBlockReason']}. Solo puede registrarse como no realizado.', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
         if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => showInstructions(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
         Text(resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
         if (resultFor(exercise) case final result?) Text('Guardado: ${result['actualSets'] ?? '—'} series · ${result['actualRepsTotal'] ?? '—'} reps · ${result['actualDurationSeconds'] ?? '—'} s', style: const TextStyle(color: Kora.muted)),
@@ -151,6 +159,51 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       ],
     ])));
   }
+}
+
+/// Optional context of a LACK_OF_TIME skip (`ContextoFaltaDeTiempo`).
+/// Returns null when the user prefers not to answer, which the backend
+/// treats as "not informed" and keeps the session.
+class LackOfTimeDialog extends StatefulWidget {
+  const LackOfTimeDialog({super.key});
+  @override
+  State<LackOfTimeDialog> createState() => _LackOfTimeDialogState();
+}
+
+class _LackOfTimeDialogState extends State<LackOfTimeDialog> {
+  static const options = {
+    'IMPREVISTO': 'Fue algo puntual',
+    'SIN_TIEMPO_ESE_DIA': 'Ese día no tuve ningún minuto',
+    'MENOS_TIEMPO_HABITUAL': 'Suelo tener menos tiempo para este entrenamiento',
+  };
+  String? choice;
+  final minutes = TextEditingController();
+  String? error;
+  @override
+  void dispose() { minutes.dispose(); super.dispose(); }
+  void save() {
+    if (choice == null) { Navigator.pop(context); return; }
+    if (choice == 'MENOS_TIEMPO_HABITUAL') {
+      final value = int.tryParse(minutes.text.trim());
+      if (value == null || value < 15 || value > 180) { setState(() => error = 'Indica entre 15 y 180 minutos'); return; }
+      Navigator.pop(context, <String, dynamic>{'lackOfTimeContext': choice, 'availableMinutes': value});
+      return;
+    }
+    Navigator.pop(context, <String, dynamic>{'lackOfTimeContext': choice});
+  }
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Sobre la falta de tiempo'),
+    content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Opcional: nos ayuda a ajustar tu próxima semana.'),
+      for (final entry in options.entries) RadioListTile<String>(contentPadding: EdgeInsets.zero, value: entry.key, groupValue: choice, title: Text(entry.value), onChanged: (v) => setState(() { choice = v; error = null; })),
+      if (choice == 'MENOS_TIEMPO_HABITUAL') TextField(controller: minutes, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Minutos que sueles tener (15–180)', errorText: error)),
+    ])),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Prefiero no decir')),
+      FilledButton(onPressed: save, child: const Text('Continuar')),
+    ],
+  );
 }
 
 String displayDay(Object? value) {

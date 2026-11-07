@@ -166,7 +166,7 @@ class _ForgotPasswordFormState
                         title:
                         "¿Olvidaste tu contraseña?",
                         subtitle:
-                        "No te preocupes. Ingresa el correo asociado a tu cuenta y te enviaremos un enlace para recuperar el acceso.",
+                        "No te preocupes. Ingresa el correo asociado a tu cuenta y te enviaremos un código para restablecer tu contraseña.",
                       )
                           .animate()
                           .fade(

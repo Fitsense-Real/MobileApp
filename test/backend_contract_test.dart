@@ -54,8 +54,8 @@ void main() {
     await profiles.save({'sessionMinutes': 30}, exists: true);
     expect(adapter.requests[3].headers['Authorization'], 'Bearer test-token');
     expect(adapter.requests[4].method, 'POST');
-    // The backend has no movement-permission fields; they must not be sent.
-    expect(adapter.requests[4].data.containsKey('allowHighImpact'), isFalse);
+    // V25 movement permissions are part of CreateUserProfileResource.
+    expect(adapter.requests[4].data['allowHighImpact'], false);
     expect(adapter.requests[4].data['availableDays'], [1, 3, 5]);
     expect(adapter.requests[5].method, 'PUT');
     final plan = await PlanRepository(dio).generate();

@@ -51,7 +51,9 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
   final form = GlobalKey<FormState>();
   static const fields = {'actualSets': 'Series realizadas', 'actualRepsTotal': 'Repeticiones totales (todas las series)', 'actualDurationSeconds': 'Duración total realizada (segundos, todas las series)', 'actualLoadKg': 'Carga utilizada (kg)'};
   late final controllers = {for (final key in fields.keys) key: TextEditingController(text: '${widget.existing?[key] ?? ''}')};
-  String? outcome, message;
+  late final bool unsafe = isUnsafeExercise(widget.exercise);
+  late String? outcome = unsafe ? 'none' : null;
+  String? message;
   late String? reason = widget.existing?['skipReason'] as String?;
   @override
   void dispose() { for (final controller in controllers.values) { controller.dispose(); } super.dispose(); }
@@ -66,7 +68,7 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
   void save() {
     if (outcome == null) { setState(() => message = 'Indica si realizaste el ejercicio.'); return; }
     if (!form.currentState!.validate()) return;
-    final Json body = outcome == 'complete' ? prescribedResult(widget.exercise) : {for (final e in controllers.entries) e.key: e.key == 'actualLoadKg' ? num.tryParse(e.value.text.replaceAll(',', '.')) : num.tryParse(e.value.text.replaceAll(',', '.')) ?? 0, 'skipReason': reason};
+    final Json body = outcome == 'complete' ? prescribedResult(widget.exercise) : outcome == 'none' ? {'actualSets': 0, 'actualRepsTotal': 0, 'actualDurationSeconds': 0, 'actualLoadKg': 0, 'skipReason': reason} : {for (final e in controllers.entries) e.key: e.key == 'actualLoadKg' ? num.tryParse(e.value.text.replaceAll(',', '.')) : num.tryParse(e.value.text.replaceAll(',', '.')) ?? 0, 'skipReason': reason};
     if (outcome != 'none' && ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].every((key) => body[key] == 0)) {
       setState(() => message = 'Registra al menos una serie, repetición o segundo realizado.'); return;
     }
@@ -78,7 +80,8 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     const SizedBox(height: 12),
     Text(widget.draft ? 'Completa el resultado. Se enviará cuando guardes el entrenamiento.' : 'Guardar reemplaza el resultado anterior en tu sesión.'),
     const SizedBox(height: 12),
-    Wrap(spacing: 8, children: [for (final entry in {'complete': 'Lo completé', 'partial': 'Lo hice parcialmente', 'none': 'No lo hice'}.entries) ChoiceChip(label: Text(entry.value), selected: outcome == entry.key, onSelected: (_) => choose(entry.key))]),
+    if (unsafe) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Este ejercicio ya no es seguro para ti (${widget.exercise['safetyBlockReason']}). Solo puedes registrarlo como no realizado.', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+    Wrap(spacing: 8, children: [for (final entry in {'complete': 'Lo completé', 'partial': 'Lo hice parcialmente', 'none': 'No lo hice'}.entries) if (!unsafe || entry.key == 'none') ChoiceChip(label: Text(entry.value), selected: outcome == entry.key, onSelected: (_) => choose(entry.key))]),
     if (outcome == 'complete') const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Se usarán las cantidades de tu plan. Si hiciste menos, elige parcialmente.')),
     if (outcome != 'none') for (final entry in fields.entries) Padding(padding: const EdgeInsets.only(top: 12), child: TextFormField(
       controller: controllers[entry.key], readOnly: outcome == 'complete', decoration: InputDecoration(labelText: entry.value),

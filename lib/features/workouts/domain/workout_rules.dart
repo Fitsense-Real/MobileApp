@@ -6,6 +6,9 @@
 //   (SCHEDULED/IN_PROGRESS) workout that is not past `expiresAt`; report
 //   rejects only COMPLETED and PARTIAL, so expired (SKIPPED) workouts can be
 //   reported retroactively.
+// - generation: a safety-blocked workout cannot start; an unsafe exercise
+//   (safetyBlockReason) can only be recorded as skipped, with a reason and
+//   no work, both live and in the retroactive report.
 // - execution WorkoutSessionExercise: completion = actual / planned, where the
 //   planned total is sets × reps (SETS_REPS) or sets × seconds (DURATION).
 
@@ -53,9 +56,16 @@ bool isExpiredWorkout(Json workout, {DateTime? now}) {
   return expires != null && (now ?? DateTime.now()).isAfter(expires);
 }
 
-/// A live session can be started only on open, non-expired workouts.
+/// Published plan that now conflicts with the user's safety (generation:
+/// PublishedPlanSafetyService). The backend refuses to start it.
+bool isSafetyBlocked(Json workout) => workout['safetyBlocked'] == true;
+
+/// An exercise that is no longer safe can only be recorded as not done.
+bool isUnsafeExercise(Json exercise) => exercise['safetyBlockReason'] != null;
+
+/// A live session can be started only on open, non-expired, unblocked workouts.
 bool canStartWorkout(Json workout, {DateTime? now}) =>
-    isOpenWorkout(workout) && !isExpiredWorkout(workout, now: now);
+    isOpenWorkout(workout) && !isExpiredWorkout(workout, now: now) && !isSafetyBlocked(workout);
 
 /// Retroactive report: allowed unless the workout already counts
 /// (COMPLETED/PARTIAL) or belongs to a replaced plan version.

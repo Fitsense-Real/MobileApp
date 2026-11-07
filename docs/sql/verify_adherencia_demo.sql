@@ -49,14 +49,14 @@ SELECT to_char(pw.scheduled_date, 'TMDay DD/MM') AS dia, pw.workout_name, pw.foc
  WHERE u.email = 'adherencia.demo@example.com' AND p.status = 'ACTIVE'
  ORDER BY pw.scheduled_date, pw.display_order;
 
-\echo '5) Coherencia: adherencia ponderada recalculada desde las sesiones (debe coincidir)'
+\echo '5) Coherencia: adherencia recalculada desde las sesiones (promedio simple, debe coincidir)'
 SELECT m.week_number AS semana, m.weighted_adherence_pct AS guardada,
-       round(sum(pw.expected_duration_minutes * coalesce(s.completion_percentage, 0))
-             / sum(pw.expected_duration_minutes), 2) AS recalculada
+       round(avg(coalesce(s.completion_percentage, 0)), 2) AS recalculada,
+       m.recorded_workouts AS con_registro, m.registration_coverage_pct AS cobertura
   FROM weekly_user_metrics m
   JOIN users u USING (user_id)
   JOIN planned_workouts pw ON pw.plan_id = m.plan_id
   LEFT JOIN workout_sessions s ON s.planned_workout_id = pw.planned_workout_id AND s.counts_toward_adherence
  WHERE u.email = 'adherencia.demo@example.com'
- GROUP BY m.week_number, m.weighted_adherence_pct
+ GROUP BY m.week_number, m.weighted_adherence_pct, m.recorded_workouts, m.registration_coverage_pct
  ORDER BY m.week_number;

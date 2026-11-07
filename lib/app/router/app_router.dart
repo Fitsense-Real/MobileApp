@@ -19,7 +19,7 @@ class AppRouter {
 
     routes: [
       GoRoute(path: AppRoutes.accountSetup, builder: (_, __) => const AccountSetupPage()),
-      GoRoute(path: '/onboarding', builder: (_, state) => OnboardingPage(edit: state.uri.queryParameters['edit'] == '1')),
+      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
       GoRoute(
         path: '/workout',
         redirect: (_, __) => '${AppRoutes.dashboard}?tab=1',

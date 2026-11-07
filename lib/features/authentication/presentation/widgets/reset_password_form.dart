@@ -120,18 +120,19 @@ height: AppSpacing.xxl,
 
 FSTextField(
 controller: _codeController,
-label: "Código de verificación",
-hint: "123456",
-prefixIcon: Icons.pin_outlined,
-keyboardType: TextInputType.number,
+label: "Código de recuperación",
+hint: "Pega el código que recibiste",
+prefixIcon: Icons.key_outlined,
+keyboardType: TextInputType.visiblePassword,
+// The backend sends a 43-character URL-safe code (max 200), not a PIN.
 validator: (value) {
 if (value == null ||
 value.trim().isEmpty) {
 return "Ingrese el código";
 }
 
-if (value.length != 6) {
-return "El código debe tener 6 dígitos";
+if (value.trim().length > 200) {
+return "El código no es válido";
 }
 
 return null;
@@ -159,6 +160,10 @@ return "Ingrese una contraseña";
 
 if (value.length < 8) {
 return "Debe contener al menos 8 caracteres";
+}
+
+if (value.length > 72) {
+return "Usa como máximo 72 caracteres";
 }
 
 return null;

@@ -33,8 +33,9 @@ class AuthRemoteDataSource {
     (_) {},
   );
 
+  /// `PasswordResetConfirmResource`: the code sent by email is the `token`.
   Future<void> resetPassword({required String code, required String password}) => _call(
-    () => _dio.post(ApiConstants.resetPassword, data: {'code': code, 'password': password}),
+    () => _dio.post(ApiConstants.resetPassword, data: {'token': code, 'newPassword': password}),
     (_) {},
   );
 

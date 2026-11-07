@@ -37,9 +37,16 @@ class WorkoutRepository {
   Future<Json> report(Object workoutId, Json body) async =>
       jsonMap((await dio.post(ApiConstants.reportWorkout(workoutId), data: body)).data);
 
-  /// The backend answers 204; reason is a `SkipReason` code.
-  Future<void> skip(Object workoutId, String reason) async {
-    await dio.post(ApiConstants.skipWorkout(workoutId), data: {'reason': reason});
+  /// The backend answers 204; reason is a `SkipReason` code. With
+  /// LACK_OF_TIME, `lackOfTimeContext` (IMPREVISTO, SIN_TIEMPO_ESE_DIA,
+  /// MENOS_TIEMPO_HABITUAL) and `availableMinutes` (15–180, required with
+  /// MENOS_TIEMPO_HABITUAL) are optional.
+  Future<void> skip(Object workoutId, String reason, {String? lackOfTimeContext, int? availableMinutes}) async {
+    await dio.post(ApiConstants.skipWorkout(workoutId), data: {
+      'reason': reason,
+      if (lackOfTimeContext != null) 'lackOfTimeContext': lackOfTimeContext,
+      if (availableMinutes != null) 'availableMinutes': availableMinutes,
+    });
   }
 }
 

@@ -16,9 +16,11 @@
 --
 -- Las fechas son relativas a CURRENT_DATE (lunes = inicio de semana) y las
 -- métricas se calculan aquí con las mismas reglas que WeeklyMetricsCalculator
--- (config MVP-1.7: sesión válida >= 30 %, completada >= 80 %, riesgo por
--- adherencia, racha de saltos, caída y RPE). Los mensajes de las
--- intervenciones copian AdjustmentDecisionTable.
+-- de la rama generation (esquema V44, config activa MVP-1.8): adherencia
+-- semanal = promedio simple del cumplimiento de cada entrenamiento (cada uno
+-- pesa 1), sesión válida >= 30 %, completada >= 80 %, cobertura de registro
+-- de V30 y riesgo por adherencia, racha de saltos, caída y RPE. Los mensajes
+-- de las intervenciones copian AdjustmentDecisionTable.
 --
 -- Es idempotente: si el usuario ya existe, borra todo lo suyo y lo vuelve a
 -- crear. No toca a ningún otro usuario. Ejecutar con:
@@ -83,14 +85,14 @@ DECLARE
   a_minutes int; a_num numeric; a_den numeric; a_rpes int[]; a_sats int[];
   a_reasons text[]; a_streak int; a_session_pcts numeric[];
   a_planned_vol int; a_exec_vol int; a_planned_reps int; a_planned_secs int;
-  a_exec_reps int; a_exec_secs int;
+  a_exec_reps int; a_exec_secs int; a_recorded int; a_obs_num numeric;
   m_weighted numeric; m_prev numeric; m_score int; m_level text; m_factors jsonb;
   m_days smallint; m_reason text; m_rpe numeric; m_drop numeric;
   v_metric bigint; v_types text[]; v_message text; v_outcome text; v_after numeric;
   v_change numeric;
 BEGIN
   SELECT version INTO v_config FROM calculation_configs WHERE is_active ORDER BY valid_from DESC LIMIT 1;
-  v_config := coalesce(v_config, 'MVP-1.7');
+  v_config := coalesce(v_config, 'MVP-1.8');
 
   SELECT exercise_id INTO v_squat  FROM exercises WHERE source_code = '1685' AND is_active;
   SELECT exercise_id INTO v_bridge FROM exercises WHERE source_code = '0870' AND is_active;
@@ -153,7 +155,7 @@ BEGIN
     a_valid := 0; a_completed := 0; a_skipped := 0; a_assigned := 0; a_completed_ex := 0;
     a_minutes := 0; a_num := 0; a_den := 0; a_rpes := '{}'; a_sats := '{}'; a_reasons := '{}';
     a_session_pcts := '{}'; a_planned_vol := 0; a_exec_vol := 0; a_planned_reps := 0;
-    a_planned_secs := 0; a_exec_reps := 0; a_exec_secs := 0;
+    a_planned_secs := 0; a_exec_reps := 0; a_exec_secs := 0; a_recorded := 0; a_obs_num := 0;
 
     FOR i IN 1..3 LOOP
       IF w < 8 THEN
@@ -205,11 +207,13 @@ BEGIN
         END IF;
       END LOOP;
       a_assigned := a_assigned + 3;
-      a_den := a_den + v_minutes[w];
+      a_den := a_den + 1;   -- V31+: cada previsto pesa 1
 
       IF v_target IS NULL THEN
         -- Sin sesión: cuenta como salto y su causa entra al motivo dominante.
         IF v_status = 'SKIPPED' THEN
+          -- Omisión declarada (con causa): hay registro (V30).
+          a_recorded := a_recorded + 1;
           a_skipped := a_skipped + 1;
           a_reasons := a_reasons || v_wreason;
           a_session_pcts := a_session_pcts || 0::numeric;
@@ -265,7 +269,8 @@ BEGIN
              status = CASE WHEN v_session_pct >= 80 THEN 'COMPLETED' ELSE 'PARTIAL' END
        WHERE session_id = v_session;
 
-      a_num := a_num + v_minutes[w] * v_session_pct;
+      a_num := a_num + v_session_pct;
+      a_recorded := a_recorded + 1; a_obs_num := a_obs_num + v_session_pct;
       a_session_pcts := a_session_pcts || v_session_pct;
       IF v_session_pct >= 30 THEN a_valid := a_valid + 1; ELSE a_skipped := a_skipped + 1; END IF;
       IF v_session_pct >= 80 THEN a_completed := a_completed + 1; END IF;
@@ -318,14 +323,16 @@ BEGIN
         average_satisfaction, consecutive_skips, days_since_last_workout, dominant_skip_reason,
         risk_score, risk_level, risk_factors, is_dropout, calculation_version, calculated_at,
         planned_week_volume, executed_volume, planned_reps, planned_seconds, executed_reps,
-        executed_seconds)
+        executed_seconds, recorded_workouts, observed_adherence_pct, registration_coverage_pct)
     VALUES (v_user, v_plan, w, v_week_start, v_week_end, true, 3, a_valid, a_completed, a_skipped,
             a_assigned, a_completed_ex, m_weighted, round(a_valid * 100.0 / 3, 2),
             round(a_completed * 100.0 / 3, 2), round(a_completed_ex * 100.0 / a_assigned, 2),
             a_minutes, m_rpe, (SELECT round(avg(x), 2) FROM unnest(a_sats) x),
             a_streak, m_days, m_reason, m_score, m_level, m_factors, coalesce(m_days >= 14, false),
             v_config, (v_week_end + 1 + time '00:30') AT TIME ZONE v_tz,
-            a_planned_vol, a_exec_vol, a_planned_reps, a_planned_secs, a_exec_reps, a_exec_secs)
+            a_planned_vol, a_exec_vol, a_planned_reps, a_planned_secs, a_exec_reps, a_exec_secs,
+            a_recorded, round(a_obs_num / nullif(a_recorded, 0), 2),
+            round(a_recorded * 100.0 / 3, 2))
     RETURNING weekly_metric_id INTO v_metric;
     v_metric_ids := v_metric_ids || v_metric;
   END LOOP;

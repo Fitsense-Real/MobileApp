@@ -21,10 +21,12 @@ const createProfileFields = {
   'birthDate', 'biologicalSex', 'heightCm', 'currentWeightKg', 'targetWeightKg',
   'fitnessLevel', 'goalType', 'goalText', 'trainingLocation', 'daysPerWeek',
   'availableDays', 'sessionMinutes', 'equipmentCodes', 'blockedExerciseIds', 'healthNotes',
+  // V25 movement permissions (true = allowed; omitted on update = kept).
+  'allowHighImpact', 'allowFloorExercises', 'allowKneelingExercises', 'allowHangingExercises', 'allowOverheadExercises',
 };
 
-/// `UpdateUserProfileResource`: same as create except the birth date, which
-/// cannot change after creation.
+/// `UpdateUserProfileResource`: same as create except the birth date. The
+/// backend accepts it only before the first plan (422 afterwards).
 final updateProfileFields = {...createProfileFields}..remove('birthDate');
 
 class ProfileRepository {
@@ -47,7 +49,7 @@ class ProfileRepository {
     return jsonRows(response.data).map(Equipment.fromJson).toList();
   }
 
-  /// POST creates (once per user); PUT updates and applies from next Monday.
+  /// POST creates (once per user); PUT only works before the first plan.
   Future<Json?> save(Json body, {required bool exists}) async {
     final allowed = exists ? updateProfileFields : createProfileFields;
     final payload = {for (final e in body.entries) if (allowed.contains(e.key)) e.key: e.value};

@@ -1,4 +1,5 @@
-// Contract tests against the Fitsense-Real/Backend REST API. Fixtures copy
+// Contract tests against the Fitsense-Real/Backend REST API, branch
+// `generation` (schema V44). Fixtures copy
 // the field names and enum values of the Spring resources (records under
 // */interfaces/rest/resources) so a drift on either side fails here.
 import 'dart:convert';
@@ -17,21 +18,26 @@ import 'package:fitsense_mobile/features/authentication/data/datasource/auth_rem
 import 'package:fitsense_mobile/features/authentication/data/models/user_response.dart';
 import 'package:fitsense_mobile/features/authentication/data/repositories/auth_repository_impl.dart';
 import 'package:fitsense_mobile/features/authentication/domain/usecases/get_current_user_use_case.dart';
-import 'package:fitsense_mobile/features/authentication/presentation/pages/login_page.dart';
 import 'package:fitsense_mobile/features/catalog/data/catalog_repository.dart';
 import 'package:fitsense_mobile/features/dashboard/data/dashboard_repository.dart';
 import 'package:fitsense_mobile/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:fitsense_mobile/features/dashboard/presentation/widgets/plan_history_sheet.dart';
 import 'package:fitsense_mobile/features/onboarding/data/profile_repository.dart';
+import 'package:fitsense_mobile/features/pain/data/pain_exclusion_repository.dart';
+import 'package:fitsense_mobile/features/workouts/presentation/exercise_result_dialog.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/workouts/data/workout_repository.dart';
 import 'package:fitsense_mobile/features/workouts/domain/workout_rules.dart';
 import 'package:fitsense_mobile/features/workouts/presentation/planned_workout_page.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
 
-/// Routes declared by the backend controllers (method + path under /api/v1).
+/// Routes declared by the backend controllers (method + path under /api/v1),
+/// branch `generation`. Admin routes (Angular panel) are not used by the app.
 const backendRoutes = {
   'POST /auth/register', 'POST /auth/login',
+  'POST /auth/password-reset/request', 'POST /auth/password-reset/confirm',
+  'GET /users/me/plan/limitations', 'GET /users/me/plan/adaptations',
+  'GET /users/me/pain-exclusions', 'POST /users/me/pain-exclusions/{id}/reactivation',
   'GET /users/me', 'POST /users/me/withdraw',
   'GET /users/me/profile', 'POST /users/me/profile', 'PUT /users/me/profile',
   'GET /catalog/body-parts', 'GET /catalog/equipment-types', 'GET /catalog/exercises', 'GET /catalog/exercises/{id}',
@@ -149,7 +155,8 @@ void main() {
   group('Every mobile call exists in the backend', () {
     test('paths and methods match the Spring controllers', () async {
       final backend = FakeBackend((o) => switch (o.path) {
-        '/users/me/metrics/weekly' || '/users/me/interventions' || '/users/me/plans' || '/catalog/exercises' || '/catalog/equipment-types' => (status: 200, body: []),
+        '/users/me/metrics/weekly' || '/users/me/interventions' || '/users/me/plans' || '/catalog/exercises' || '/catalog/equipment-types' || '/users/me/plan/adaptations' || '/users/me/pain-exclusions' => (status: 200, body: []),
+        '/auth/password-reset/confirm' => (status: 204, body: null),
         '/sessions/current' => (status: 204, body: null),
         '/workouts/21/skip' => (status: 204, body: null),
         _ => (status: 200, body: {...userResource, 'planId': 3, 'sessionId': 8, 'exerciseId': 77, 'token': 't'}),
@@ -168,20 +175,48 @@ void main() {
       expect(await workouts.current(), isNull);
       await workouts.byId(8); await workouts.start(21); await workouts.record(8, 500, {}); await workouts.finish(8, {'sessionRpe': 7});
       await workouts.abandon(8); await workouts.skip(21, 'FATIGUE'); await workouts.report(21, {});
+      await plans.limitations(); await plans.adaptations();
+      final pain = PainExclusionRepository(dio);
+      await pain.list(); await pain.reactivate(76, comment: 'Ya no duele');
+      await auth.forgotPassword('ana@example.com'); await auth.resetPassword(code: 'tok', password: 'password123');
       final dashboard = DashboardRepository(dio);
       await dashboard.metrics(); await dashboard.interventions();
       expect((await dashboard.runCycle())['planId'], 3);
       for (final request in backend.requests) {
         expect(backendRoutes, contains(route(request)), reason: 'Not in backend: ${route(request)}');
-        expect(request.headers['Authorization'], 'Bearer jwt', reason: route(request));
+        final public = request.path.startsWith('/auth/');
+        expect(request.headers['Authorization'], public ? isNull : 'Bearer jwt', reason: route(request));
       }
       expect(backend.requests.map(route), containsAll(['POST /users/me/withdraw', 'GET /users/me/plans', 'GET /catalog/exercises/{id}', 'GET /sessions/{id}']));
       final search = backend.requests.firstWhere((r) => r.path == '/catalog/exercises');
       expect(search.queryParameters, {'search': 'sentadilla', 'limit': 30});
     });
-    test('password recovery is not called while the backend lacks it', () {
-      expect(ApiConstants.passwordRecoveryAvailable, isFalse);
-      expect(backendRoutes.any((r) => r.contains('password')), isFalse);
+    test('password reset uses PasswordResetController payloads', () async {
+      expect(ApiConstants.passwordRecoveryAvailable, isTrue);
+      final backend = FakeBackend((o) => o.path.endsWith('/request')
+          ? (status: 202, body: {'message': 'Si el correo corresponde a una cuenta, recibiras un codigo'})
+          : (status: 204, body: null));
+      final auth = AuthRemoteDataSource(dioWith(backend));
+      await auth.forgotPassword('ana@example.com');
+      const token = 'Zq3x9-Base64UrlTokenOf43CharactersXXXXXXXXXX';
+      await auth.resetPassword(code: token, password: 'nuevaClave1');
+      expect(backend.requests[0].data, {'email': 'ana@example.com'});
+      expect(backend.requests[1].data, {'token': token, 'newPassword': 'nuevaClave1'});
+    });
+    test('pain exclusion reactivation confirms explicitly', () async {
+      final backend = FakeBackend((o) => (status: 200, body: {'exerciseId': 76, 'exclusionesReactivadas': [3], 'candidatoHoy': true, 'nota': 'Vuelve a ser candidato.'}));
+      final result = await PainExclusionRepository(dioWith(backend)).reactivate(76, comment: '  ');
+      expect(backend.requests.single.path, '/users/me/pain-exclusions/76/reactivation');
+      expect(backend.requests.single.data, {'confirmNoPain': true});
+      expect(result['nota'], 'Vuelve a ser candidato.');
+    });
+    test('skip sends the lack-of-time context only when given', () async {
+      final backend = FakeBackend((o) => (status: 204, body: null));
+      final workouts = WorkoutRepository(dioWith(backend));
+      await workouts.skip(21, 'FATIGUE');
+      await workouts.skip(21, 'LACK_OF_TIME', lackOfTimeContext: 'MENOS_TIEMPO_HABITUAL', availableMinutes: 30);
+      expect(backend.requests[0].data, {'reason': 'FATIGUE'});
+      expect(backend.requests[1].data, {'reason': 'LACK_OF_TIME', 'lackOfTimeContext': 'MENOS_TIEMPO_HABITUAL', 'availableMinutes': 30});
     });
   });
 
@@ -190,7 +225,8 @@ void main() {
       'birthDate': '1990-05-04', 'biologicalSex': null, 'heightCm': 170, 'currentWeightKg': 70, 'targetWeightKg': null,
       'fitnessLevel': 'BEGINNER', 'goalType': 'GENERAL_FITNESS', 'goalText': 'Moverme', 'trainingLocation': 'HOME',
       'daysPerWeek': 3, 'availableDays': [1, 3, 5], 'sessionMinutes': 45, 'equipmentCodes': <String>[],
-      'blockedExerciseIds': [76], 'healthNotes': null, 'allowHighImpact': false,
+      'blockedExerciseIds': [76], 'healthNotes': null, 'allowHighImpact': false, 'allowFloorExercises': true,
+      'allowKneelingExercises': true, 'allowHangingExercises': true, 'allowOverheadExercises': true, 'unknownField': 1,
     };
     test('create sends exactly CreateUserProfileResource fields', () async {
       final backend = FakeBackend((o) => (status: 201, body: o.data));
@@ -199,6 +235,8 @@ void main() {
       expect(sent.method, 'POST');
       expect((sent.data as Map).keys.toSet(), createProfileFields);
       expect(sent.data['blockedExerciseIds'], [76]);
+      expect(sent.data['allowHighImpact'], false, reason: 'V25 movement permission');
+      expect((sent.data as Map).containsKey('unknownField'), isFalse);
     });
     test('update omits birthDate, which UpdateUserProfileResource does not accept', () async {
       final backend = FakeBackend((o) => (status: 200, body: o.data));
@@ -206,8 +244,8 @@ void main() {
       final sent = backend.requests.single;
       expect(sent.method, 'PUT');
       expect((sent.data as Map).containsKey('birthDate'), isFalse);
-      expect((sent.data as Map).containsKey('allowHighImpact'), isFalse);
       expect((sent.data as Map).keys.toSet(), updateProfileFields);
+      expect(sent.data['allowHighImpact'], false);
     });
   });
 
@@ -261,6 +299,11 @@ void main() {
       for (final focus in ['FULL_BODY', 'UPPER_BODY', 'LOWER_BODY', 'PUSH', 'PULL', 'LEGS', 'CORE']) {
         expect(workoutFocusLabels[focus], isNotNull, reason: focus);
       }
+    });
+    test('a safety-blocked workout cannot start', () {
+      expect(canStartWorkout({'status': 'SCHEDULED', 'expiresAt': '2026-11-06T23:59:00-05:00', 'safetyBlocked': true}, now: now), isFalse);
+      expect(isUnsafeExercise({'safetyBlockReason': 'suelo'}), isTrue);
+      expect(isUnsafeExercise(squatExercise), isFalse);
     });
     test('start needs an open workout before expiresAt', () {
       Map<String, dynamic> w(String status, String expires) => {'status': status, 'expiresAt': expires};
@@ -395,11 +438,87 @@ void main() {
       ]));
       expect((await PlanRepository(dioWith(backend)).history()).map((p) => p['planId']), [3, 2, 1]);
     });
-    testWidgets('forgot password explains it is unavailable instead of calling the API', (tester) async {
-      await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: LoginPage())));
+    testWidgets('a safety-blocked workout shows the backend notice and cannot start', (tester) async {
+      tester.view.physicalSize = const Size(500, 1600); tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
+      final backend = FakeBackend((o) => (status: 204, body: null));
+      final workout = {
+        ...plannedWorkout(id: 25, date: DateTime.now().add(const Duration(days: 1))),
+        'safetyBlocked': true,
+        'safetyBlockMessage': 'Esta sesión tiene un ejercicio que ya no es seguro para ti.',
+        'exercises': [{...plankExercise, 'safetyBlockReason': 'suelo'}, squatExercise],
+      };
+      await tester.pumpWidget(app(PlannedWorkoutPage(workout: workout), overrides: [workoutRepositoryProvider.overrideWithValue(WorkoutRepository(dioWith(backend)))]));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('¿Olvidaste la clave?')); await tester.pumpAndSettle();
-      expect(find.textContaining('todavía no está disponible'), findsOneWidget);
+      expect(find.text('Esta sesión tiene un ejercicio que ya no es seguro para ti.'), findsOneWidget);
+      expect(find.textContaining('No es seguro para ti: suelo'), findsOneWidget);
+      expect(find.text('Comenzar entrenamiento'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+    testWidgets('an unsafe exercise can only be recorded as not done', (tester) async {
+      Json? result;
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (context) => TextButton(onPressed: () async { result = await showDialog<Json>(context: context, builder: (_) => ExerciseResultDialog(exercise: {...plankExercise, 'safetyBlockReason': 'suelo'})); }, child: const Text('Open'))))));
+      await tester.tap(find.text('Open')); await tester.pumpAndSettle();
+      expect(find.text('Lo completé'), findsNothing);
+      expect(find.text('Lo hice parcialmente'), findsNothing);
+      expect(find.text('No lo hice'), findsOneWidget);
+      await tester.tap(find.byType(DropdownButtonFormField<String>)); await tester.pumpAndSettle();
+      await tester.tap(find.text('Dolor o molestias').last); await tester.pumpAndSettle();
+      await tester.tap(find.text('Guardar')); await tester.pumpAndSettle();
+      expect(result, {'actualSets': 0, 'actualRepsTotal': 0, 'actualDurationSeconds': 0, 'actualLoadKg': 0, 'skipReason': 'PAIN_OR_DISCOMFORT'});
+    });
+    testWidgets('lack of time asks for the optional context before skipping', (tester) async {
+      tester.view.physicalSize = const Size(500, 1600); tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
+      final backend = FakeBackend((o) => (status: 204, body: null));
+      final workout = plannedWorkout(id: 26, date: DateTime.now().add(const Duration(days: 1)));
+      await tester.pumpWidget(app(PlannedWorkoutPage(workout: workout), overrides: [workoutRepositoryProvider.overrideWithValue(WorkoutRepository(dioWith(backend)))]));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Omitir entrenamiento'), 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.text('Omitir entrenamiento')); await tester.pumpAndSettle();
+      await tester.tap(find.text('Falta de tiempo')); await tester.pumpAndSettle();
+      await tester.tap(find.text('Suelo tener menos tiempo para este entrenamiento')); await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar')); await tester.pumpAndSettle();
+      expect(find.text('Indica entre 15 y 180 minutos'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '25');
+      await tester.tap(find.text('Continuar')); await tester.pumpAndSettle();
+      final skip = backend.requests.lastWhere((r) => r.path.endsWith('/skip'));
+      expect(skip.data, {'reason': 'LACK_OF_TIME', 'lackOfTimeContext': 'MENOS_TIEMPO_HABITUAL', 'availableMinutes': 25});
+      expect(find.text('Entrenamiento omitido.'), findsOneWidget);
+    });
+    testWidgets('progress shows registration coverage and adaptation results (V30, V32)', (tester) async {
+      tester.view.physicalSize = const Size(420, 1400); tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(app(const DashboardPage(initialTab: 2), overrides: [
+        currentPlanProvider.overrideWith((ref) async => null),
+        weeklyMetricsProvider.overrideWith((ref) async => [{'planId': 9, 'weekStartDate': '2026-10-26', 'weightedAdherencePct': 40, 'observedAdherencePct': 60, 'registrationCoveragePct': 66.67, 'recordedWorkouts': 2, 'completedWorkouts': 1, 'scheduledWorkouts': 3}]),
+        // The intervention says REDUCE_VOLUME but the adaptation produced no valid change.
+        interventionsProvider.overrideWith((ref) async => [{'resultingPlanId': 9, 'adjustmentTypes': ['REDUCE_VOLUME'], 'appliedAt': '2026-10-26', 'messageShown': 'Ajuste'}]),
+        planAdaptationsProvider.overrideWith((ref) async => [{'resultingPlanId': 9, 'resultado': 'SIN_CAMBIOS_VALIDOS', 'motivoTexto': 'No hubo cambios válidos que aplicar.'}]),
+        planLimitationsProvider.overrideWith((ref) async => {'limitations': []}),
+        dashboardProfileProvider.overrideWith((ref) async => null),
+      ]));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Registraste 2 de 3 entrenamientos (66.7%)'), findsOneWidget);
+      expect(find.textContaining('Cumplimiento en lo registrado: 60%'), findsOneWidget);
+      expect(find.text('Sin ajustes registrados'), findsOneWidget);
+      expect(find.text('No hubo cambios válidos que aplicar.'), findsOneWidget);
+    });
+    testWidgets('routines list what the plan cannot cover (GET /users/me/plan/limitations)', (tester) async {
+      tester.view.physicalSize = const Size(420, 1400); tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(app(const DashboardPage(initialTab: 1), overrides: [
+        currentPlanProvider.overrideWith((ref) async => weeklyPlan([plannedWorkout(id: 1, date: DateTime.now().add(const Duration(days: 1)))])),
+        weeklyMetricsProvider.overrideWith((ref) async => []),
+        interventionsProvider.overrideWith((ref) async => []),
+        planAdaptationsProvider.overrideWith((ref) async => []),
+        planLimitationsProvider.overrideWith((ref) async => {'weekStartDate': '2026-11-02', 'limitations': [{'type': 'CAPABILITY', 'code': 'TRACCION', 'title': 'Sin ejercicios de tracción', 'message': 'Con tu equipamiento no hay tracción en casa. Una banda lo resolvería.', 'optionalEquipmentCodes': ['band']}]}),
+        dashboardProfileProvider.overrideWith((ref) async => null),
+      ]));
+      await tester.pumpAndSettle();
+      expect(find.text('LO QUE TU PLAN NO PUEDE CUBRIR'), findsOneWidget);
+      expect(find.text('Sin ejercicios de tracción'), findsOneWidget);
+      expect(find.textContaining('Una banda lo resolvería'), findsOneWidget);
     });
   });
 

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Endpoints of the Fitsense backend (`/api/v1`). Keep in sync with the
-/// Spring controllers in Fitsense-Real/Backend.
+/// Spring controllers in Fitsense-Real/Backend, branch `generation`.
 class ApiConstants {
   ApiConstants._();
 
@@ -17,11 +17,10 @@ class ApiConstants {
   static const register = '/auth/register';
   static const publicPaths = {login, register, forgotPassword, resetPassword};
 
-  /// The backend (AuthenticationController) has no password recovery yet.
-  /// While false, the app explains it instead of calling missing endpoints.
-  static const passwordRecoveryAvailable = false;
-  static const forgotPassword = '/auth/forgot-password';
-  static const resetPassword = '/auth/reset-password';
+  /// PasswordResetController: request a code by email, then confirm it.
+  static const passwordRecoveryAvailable = true;
+  static const forgotPassword = '/auth/password-reset/request';
+  static const resetPassword = '/auth/password-reset/confirm';
 
   // Usuario
   static const me = '/users/me';
@@ -39,6 +38,12 @@ class ApiConstants {
   static const generatePlan = '/users/me/plan/generate';
   static const planHistory = '/users/me/plans';
   static String plan(Object id) => '/users/me/plan/$id';
+  static const planLimitations = '/users/me/plan/limitations';
+  static const planAdaptations = '/users/me/plan/adaptations';
+
+  // Exclusiones por dolor
+  static const painExclusions = '/users/me/pain-exclusions';
+  static String reactivatePainExclusion(Object exerciseId) => '/users/me/pain-exclusions/$exerciseId/reactivation';
 
   // Ejecución
   static String startWorkout(Object id) => '/workouts/$id/start';
