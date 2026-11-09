@@ -9,6 +9,7 @@ import '../data/workout_repository.dart';
 
 import 'exercise_media.dart';
 import 'exercise_result_dialog.dart';
+import 'session_timer.dart';
 
 class PlannedWorkoutPage extends ConsumerStatefulWidget {
   const PlannedWorkoutPage({super.key, required this.workout});
@@ -72,9 +73,12 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (jsonRows(widget.workout['exercises'] ?? []).any((e) => resultLabel(records.where((r) => r['plannedExerciseId'] == e['plannedExerciseId']).firstOrNull) == 'Sin registrar')) {
       setState(() => error = 'Indica si realizaste o no cada ejercicio antes de finalizar.'); return;
     }
-    final body = await showDialog<Json>(context: context, builder: (_) => const FinishDialog());
+    final clock = sessionClock;
+    final body = await showDialog<Json>(context: context, builder: (_) => FinishDialog(suggestedMinutes: clock?.suggestedActiveMinutes(DateTime.now())));
     if (body == null || !mounted) return;
-    await act(() async { session = await repository.finish(session!['sessionId'], body); closed = true; });
+    final sessionId = session!['sessionId'];
+    await act(() async { session = await repository.finish(sessionId, body); closed = true; });
+    if (closed) SessionClocks.clear(sessionId);
   }
   Future<void> skip() async {
     final reason = await showDialog<String>(context: context, builder: (context) => SimpleDialog(title: const Text('¿Por qué omites este entrenamiento?'), children: [
@@ -92,8 +96,16 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   Future<void> abandon() async {
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(title: const Text('Abandonar sesión'), content: const Text('La sesión no contará como intento y el entrenamiento seguirá pendiente.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Continuar entrenando')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Abandonar'))]));
     if (confirmed != true || !mounted) return;
-    await act(() async { await repository.abandon(session!['sessionId']); session = null; });
+    final sessionId = session!['sessionId'];
+    await act(() async { await repository.abandon(sessionId); session = null; });
+    if (session == null) SessionClocks.clear(sessionId);
   }
+  /// Clock of the live session, from the backend's `startedAt`.
+  SessionClock? get sessionClock {
+    final started = DateTime.tryParse('${session?['startedAt']}');
+    return ownSession && !closed && started != null ? SessionClocks.of(session!['sessionId'], started) : null;
+  }
+
   Json? resultFor(Json exercise) => (reporting ? drafts.values : jsonRows(session?['exercises'] ?? []))
       .where((e) => e['plannedExerciseId'] == exercise['plannedExerciseId']).firstOrNull;
 
@@ -121,6 +133,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       if (busy) const LinearProgressIndicator(),
       if (error != null) KoraCard(child: Column(children: [Text(error!), TextButton(onPressed: busy ? null : () => act(() async { session = await repository.current(); }), child: const Text('Consultar estado de sesión'))])),
       if (session != null && !ownSession) const KoraCard(child: Text('Tienes otra sesión en curso. Regresa a esa rutina para terminarla o abandonarla.')),
+      if (sessionClock case final clock?) SessionTimerBar(clock: clock),
       if (isSafetyBlocked(workout)) KoraCard(child: Text('${workout['safetyBlockMessage'] ?? 'Este entrenamiento contiene ejercicios que ya no son seguros para ti y espera una versión corregida del plan.'}')),
       if (!closed && status == 'REPLACED') const KoraCard(child: Text('Este entrenamiento pertenece a una versión anterior del plan y fue reemplazado.')),
       if (!closed && (status == 'COMPLETED' || status == 'PARTIAL')) KoraCard(child: Text('Este entrenamiento ya está registrado como ${workoutStatusLabel(status).toLowerCase()}.')),
@@ -136,6 +149,20 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         if (exercise['restSeconds'] != null) Text('Descanso: ${exercise['restSeconds']} s'),
         if (exercise['notes'] != null) Text('${exercise['notes']}'),
         if (isUnsafeExercise(exercise)) Text('No es seguro para ti: ${exercise['safetyBlockReason']}. Solo puede registrarse como no realizado.', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+        if (sessionClock != null && !isUnsafeExercise(exercise)) Wrap(spacing: 8, children: [
+          if (isDurationBased(exercise) && (exercise['plannedDurationSeconds'] as num? ?? 0) > 0)
+            OutlinedButton.icon(
+              onPressed: () => showCountdown(context, seconds: (exercise['plannedDurationSeconds'] as num).toInt(), title: '${exercise['exerciseName'] ?? 'Ejercicio'}', subtitle: 'Serie por tiempo'),
+              icon: const Icon(Icons.timer_outlined, size: 18),
+              label: Text('Serie de ${exercise['plannedDurationSeconds']} s'),
+            ),
+          if ((exercise['restSeconds'] as num? ?? 0) > 0)
+            OutlinedButton.icon(
+              onPressed: () => showCountdown(context, seconds: (exercise['restSeconds'] as num).toInt(), title: 'Descanso', subtitle: '${exercise['exerciseName'] ?? 'Ejercicio'}'),
+              icon: const Icon(Icons.hourglass_bottom, size: 18),
+              label: Text('Descanso ${exercise['restSeconds']} s'),
+            ),
+        ]),
         if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => showInstructions(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
         Text(resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
         if (resultFor(exercise) case final result?) Text('Guardado: ${result['actualSets'] ?? '—'} series · ${result['actualRepsTotal'] ?? '—'} reps · ${result['actualDurationSeconds'] ?? '—'} s', style: const TextStyle(color: Kora.muted)),
@@ -240,14 +267,17 @@ class ExerciseInstructions extends ConsumerWidget {
 }
 
 class FinishDialog extends StatefulWidget {
-  const FinishDialog({super.key, this.reporting = false});
+  const FinishDialog({super.key, this.reporting = false, this.suggestedMinutes});
   final bool reporting;
+
+  /// Active minutes measured by the session clock (pauses excluded).
+  final int? suggestedMinutes;
   @override
   State<FinishDialog> createState() => _FinishDialogState();
 }
 class _FinishDialogState extends State<FinishDialog> {
   final form = GlobalKey<FormState>();
-  final minutes = TextEditingController();
+  late final minutes = TextEditingController(text: widget.suggestedMinutes?.toString() ?? '');
   int? rpe, satisfaction;
   DateTime? performedAt;
   Future<void> chooseDate() async {
@@ -266,7 +296,7 @@ class _FinishDialogState extends State<FinishDialog> {
     if (widget.reporting) FormField<DateTime>(validator: (_) => performedAt == null ? 'Selecciona cuándo entrenaste' : performedAt!.isAfter(DateTime.now()) ? 'La fecha no puede ser futura' : null, builder: (field) => Column(children: [TextButton(onPressed: chooseDate, child: Text(performedAt == null ? 'Elegir fecha y hora del entrenamiento' : '${performedAt!.day}/${performedAt!.month}/${performedAt!.year} ${TimeOfDay.fromDateTime(performedAt!).format(context)}')), if (field.hasError) Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error))])),
     DropdownButtonFormField<int>(value: rpe, decoration: const InputDecoration(labelText: 'Esfuerzo percibido (1–10)'), items: [for (var i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => rpe = value), validator: (value) => value == null ? 'Selecciona el esfuerzo percibido' : null),
     DropdownButtonFormField<int>(value: satisfaction, decoration: const InputDecoration(labelText: 'Satisfacción (opcional, 1–5)'), items: [for (var i = 1; i <= 5; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => satisfaction = value)),
-    TextFormField(controller: minutes, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Minutos activos (opcional)'), validator: (v) => (v ?? '').isEmpty || (int.tryParse(v!) != null && int.parse(v) >= 0) ? null : 'Escribe minutos válidos'),
+    TextFormField(controller: minutes, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Minutos activos (opcional)', helperText: widget.suggestedMinutes == null ? null : 'Según el cronómetro, sin pausas'), validator: (v) => (v ?? '').isEmpty || (int.tryParse(v!) != null && int.parse(v) >= 0) ? null : 'Escribe minutos válidos'),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: () {
     if (!form.currentState!.validate()) return;
     Navigator.pop(context, <String, dynamic>{if (widget.reporting) 'performedAt': performedAt!.toUtc().toIso8601String(), 'sessionRpe': rpe, if (satisfaction != null) 'satisfaction': satisfaction, if (minutes.text.isNotEmpty) 'activeMinutes': int.parse(minutes.text)});

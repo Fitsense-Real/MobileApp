@@ -188,3 +188,21 @@ No dependen del backend: la app los calcula a partir del plan vigente con
   reprograma tras reiniciar el teléfono. «Forzar detención» desde Ajustes o
   el ahorro de batería de algunos fabricantes pueden cancelar o retrasar los
   avisos hasta que se abra la app. En web y escritorio no hacen nada.
+
+## Sesión expirada (401)
+
+Si el backend responde 401 a una petición que llevaba JWT (token vencido o
+inválido), el interceptor borra el token una sola vez aunque fallen varias
+peticiones a la vez, y la app cierra la sesión: limpia el estado, cancela los
+recordatorios, va al inicio de sesión y muestra «Tu sesión expiró. Vuelve a
+iniciar sesión.». Un 401 del login (credenciales incorrectas) o de una
+petición sin token no cuenta como sesión expirada.
+
+## Cronómetro de la sesión en vivo
+
+Durante una sesión iniciada en la app se muestra el tiempo activo, medido
+desde `startedAt` del backend, con botón de pausa. El backend no tiene
+pausas, así que se reflejan en `activeMinutes`: al finalizar, el campo viene
+relleno con los minutos activos sin pausas (editable). Cada ejercicio ofrece
+la cuenta regresiva de su descanso (`restSeconds`) y, si es por tiempo, la de
+una serie (`plannedDurationSeconds`), con vibración y sonido al terminar.

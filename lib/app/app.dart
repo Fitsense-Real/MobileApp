@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/network/auth_interceptor.dart';
+import '../features/authentication/presentation/providers/auth_provider.dart';
 
 import '../shared/theme/app_theme.dart';
 import 'router/app_router.dart';
+import 'session_expiry.dart';
 
-class FitSenseApp extends StatefulWidget {
+class FitSenseApp extends ConsumerStatefulWidget {
   const FitSenseApp({
     super.key,
   });
 
   @override
-  State<FitSenseApp> createState() =>
+  ConsumerState<FitSenseApp> createState() =>
       _FitSenseAppState();
 }
 
 class _FitSenseAppState
-    extends State<FitSenseApp> {
+    extends ConsumerState<FitSenseApp> {
 
   ThemeMode _themeMode =
       ThemeMode.light;
@@ -23,6 +27,22 @@ class _FitSenseAppState
   // ============================================================
   // CAMBIAR TEMA
   // ============================================================
+
+  @override
+  void initState() {
+    super.initState();
+    // Any request rejected with 401 (expired JWT) ends the session here.
+    AuthInterceptor.onSessionExpired = () => handleSessionExpired(
+      auth: ref.read(authViewModelProvider.notifier),
+      router: AppRouter.router,
+    );
+  }
+
+  @override
+  void dispose() {
+    AuthInterceptor.onSessionExpired = null;
+    super.dispose();
+  }
 
   void _setThemeMode(
       ThemeMode mode) {
@@ -42,6 +62,7 @@ class _FitSenseAppState
       false,
 
       title: 'Kora',
+      scaffoldMessengerKey: rootMessengerKey,
       locale: const Locale('es'),
       supportedLocales: const [Locale('es')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

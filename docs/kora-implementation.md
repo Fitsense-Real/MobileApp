@@ -12,7 +12,9 @@ se incluye localmente con su licencia OFL, sin descargas en tiempo de ejecución
 - Inicia sesión → autenticación → inicio si el perfil existe, o perfil inicial.
 - Rutinas: filtros, favoritos y apertura de sesión; Fuerza Total permite
   registrar cuatro series con peso y repeticiones.
-- Entrenamiento: temporizador, pausa, reanudar y cambio de ejercicio.
+- Entrenamiento: en una sesión en vivo, tiempo activo desde `startedAt` con pausa,
+  cuenta regresiva de descanso y de series por tiempo, y minutos activos sugeridos
+  al finalizar (sin las pausas).
 - Perfil: favoritos, preferencias, cuenta, ayuda y cierre de sesión existente.
 
 ## Alcance de datos
