@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.example.fitsense_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "26.3.11579264"
+    // flutter_local_notifications, flutter_secure_storage and path_provider_android
+    // require NDK 27 (backward compatible).
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         // Required by flutter_local_notifications for scheduled notifications.
