@@ -35,7 +35,7 @@ Pruebas nuevas en esta orden (6):
 Además, el widget test del repaso comprueba ahora los textos neutros.
 
 Desglose de las pruebas de bienvenida: `welcome_tour_test.dart` 18, `first_plan_generation_test.dart`
-10, `kapi_precache_test.dart` 1, `kora_mascot_test.dart` 3. A ellas se suman `account_setup_test` y
+10, `kapi_precache_test.dart` 1, `kora_mascot_test.dart` 4. A ellas se suman `account_setup_test` y
 `onboarding_flow_test`, adaptadas en la PR #2, que siguen pasando.
 
 ## Extremo a extremo (app real + backend real)
