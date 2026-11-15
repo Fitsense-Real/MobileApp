@@ -11,6 +11,7 @@ import '../../dashboard/presentation/pages/dashboard_page.dart' show displayDate
 import '../../plans/data/plan_repository.dart';
 import '../domain/generation_operation.dart';
 import 'first_plan_generation_controller.dart';
+import 'kapi_precache.dart';
 
 /// After the tour: shows the real state of the first-plan generation.
 /// Never shows percentages or promised times, and always offers a way out.
@@ -28,6 +29,7 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
   @override
   void initState() {
     super.initState();
+    precacheKapi();
     Future.microtask(() => ref.read(firstPlanGenerationProvider.notifier).start());
   }
 

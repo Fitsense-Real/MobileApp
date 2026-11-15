@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../../../../shared/widgets/kora_ui.dart';
@@ -22,6 +23,12 @@ class TourSpotlight extends StatelessWidget {
       final target = hole;
       // Card opposite to the highlighted element; centred low when there is none.
       final cardOnTop = target != null && target.center.dy > size.height * .55;
+      // With large text the card can be taller than the screen: it gets the space
+      // away from the highlight (at least half the screen) and its message scrolls,
+      // so progress and buttons are always reachable.
+      final safe = MediaQuery.paddingOf(context);
+      final away = target == null ? size.height : cardOnTop ? target.top - 8 : size.height - target.bottom - 8;
+      final maxCard = math.max(math.max(away, size.height * .5) - 24 - (cardOnTop ? safe.top : safe.bottom), 120.0);
       return Stack(children: [
         Positioned.fill(
           child: _HoleBarrier(
@@ -60,7 +67,10 @@ class TourSpotlight extends StatelessWidget {
           top: cardOnTop ? 0 : null,
           bottom: cardOnTop ? null : 0,
           child: SafeArea(
-            child: Padding(padding: const EdgeInsets.all(12), child: card),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: ConstrainedBox(constraints: BoxConstraints(maxHeight: maxCard), child: card),
+            ),
           ),
         ),
       ]);

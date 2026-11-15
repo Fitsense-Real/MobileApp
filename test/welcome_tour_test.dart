@@ -158,6 +158,43 @@ void main() {
     await disposeTree(tester);
   });
 
+  // Accesibilidad (ORDEN 2, fase 3).
+  for (final (name, size, scale) in const [
+    ('large text 2.0 on a 360 px phone', Size(360, 740), 2.0),
+    ('landscape phone 740×360', Size(740, 360), 1.0),
+    ('landscape with large text 1.5', Size(800, 380), 1.5),
+  ]) {
+    testWidgets('a11y · every step fits: $name', (tester) async {
+      await pumpWelcome(tester, FakeGeneration(), size: size, textScale: scale);
+      for (var i = 0; i < welcomeTourSteps.length; i++) {
+        expect(tester.takeException(), isNull, reason: 'step ${i + 1}');
+        final next = find.byType(FilledButton).last;
+        final box = tester.getRect(next);
+        expect(box.bottom <= size.height && box.top >= 0, isTrue, reason: 'step ${i + 1}: next button on screen ($box)');
+        if (i < welcomeTourSteps.length - 1) await tapNext(tester);
+      }
+      await disposeTree(tester);
+    });
+  }
+
+  testWidgets('a11y · tap targets, labels and text contrast at every step', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpWelcome(tester, FakeGeneration(), size: const Size(390, 844));
+    for (var i = 0; i < welcomeTourSteps.length; i++) {
+      final card = find.byType(TourCard);
+      for (final button in [...tester.widgetList(find.descendant(of: card, matching: find.byType(ButtonStyleButton)))]) {
+        final size = tester.getSize(find.byWidget(button));
+        expect(size.height >= 44 && size.width >= 44, isTrue, reason: 'step ${i + 1}: $size');
+      }
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline), reason: 'step ${i + 1}');
+      await expectLater(tester, meetsGuideline(iOSTapTargetGuideline), reason: 'step ${i + 1}');
+      await expectLater(tester, meetsGuideline(textContrastGuideline), reason: 'step ${i + 1}');
+      if (i < welcomeTourSteps.length - 1) await tapNext(tester);
+    }
+    handle.dispose();
+    await disposeTree(tester);
+  });
+
   testWidgets('15 · replay from Perfil: no generation and progress untouched', (tester) async {
     FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': jsonEncode({'tourStatus': 'completed', 'tourStep': 9})});
     final generation = FakeGeneration();

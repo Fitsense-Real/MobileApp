@@ -8,6 +8,7 @@ import '../../dashboard/presentation/dashboard_tour_targets.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
 import '../data/welcome_store.dart';
 import 'first_plan_generation_controller.dart';
+import 'kapi_precache.dart';
 import 'welcome_routes.dart';
 import 'tour/tour_spotlight.dart';
 import 'tour/tour_steps.dart';
@@ -43,6 +44,8 @@ class _WelcomeTourPageState extends ConsumerState<WelcomeTourPage> {
   void initState() {
     super.initState();
     tab.addListener(_onTabChanged);
+    // Before any connection problem: the result screens must show Kapi offline too.
+    precacheKapi();
     Future.microtask(_load);
   }
 
@@ -213,11 +216,18 @@ class TourCard extends StatelessWidget {
             child: LinearProgressIndicator(value: (step + 1) / total, minHeight: 5, color: Kora.forest, backgroundColor: Colors.white),
           ),
           const SizedBox(height: 10),
-          MascotMessage(mood: data.mood, title: data.title, message: data.message, mascotSize: 76),
-          if (data.showsResultChoices) ...[
-            const SizedBox(height: 10),
-            const ResultChoicesDemo(),
-          ],
+          // Only the message scrolls when the card is limited (large text, small screen).
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                MascotMessage(mood: data.mood, title: data.title, message: data.message, mascotSize: 76),
+                if (data.showsResultChoices) ...[
+                  const SizedBox(height: 10),
+                  const ResultChoicesDemo(),
+                ],
+              ]),
+            ),
+          ),
           const SizedBox(height: 10),
           // Side by side when they fit; stacked on narrow screens or large text.
           OverflowBar(
