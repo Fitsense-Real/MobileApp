@@ -159,7 +159,10 @@ class _WelcomeTourPageState extends ConsumerState<WelcomeTourPage> {
         },
         child: SizeChangedLayoutNotifier(
           child: Stack(key: _stackKey, children: [
-            DashboardPage(tourTargets: targets, tabController: tab),
+            // Keyboard and screen readers act on the card only: the real screen behind
+            // the scrim cannot take focus or semantic actions (they bypass the touch
+            // barrier). The card's button does what tapping the highlight does.
+            ExcludeFocus(child: ExcludeSemantics(child: DashboardPage(tourTargets: targets, tabController: tab, tourReplay: widget.replay))),
             if (loaded)
               TourSpotlight(
                 hole: hole,
@@ -168,6 +171,7 @@ class _WelcomeTourPageState extends ConsumerState<WelcomeTourPage> {
                   step: step,
                   total: widget.steps.length,
                   data: current,
+                  replay: widget.replay,
                   onBack: step > 0 ? () => _go(step - 1) : null,
                   onNext: _next,
                 ),
@@ -183,9 +187,10 @@ class _WelcomeTourPageState extends ConsumerState<WelcomeTourPage> {
 
 /// Kapi's message for a step, with progress and navigation.
 class TourCard extends StatelessWidget {
-  const TourCard({super.key, required this.step, required this.total, required this.data, required this.onNext, this.onBack});
+  const TourCard({super.key, required this.step, required this.total, required this.data, required this.onNext, this.onBack, this.replay = false});
   final int step, total;
   final TourStep data;
+  final bool replay;
   final VoidCallback onNext;
   final VoidCallback? onBack;
 
@@ -220,7 +225,7 @@ class TourCard extends StatelessWidget {
           Flexible(
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                MascotMessage(mood: data.mood, title: data.title, message: data.message, mascotSize: 76),
+                MascotMessage(mood: data.mood, title: data.title, message: replay ? data.replayMessage ?? data.message : data.message, mascotSize: 76),
                 if (data.showsResultChoices) ...[
                   const SizedBox(height: 10),
                   const ResultChoicesDemo(),

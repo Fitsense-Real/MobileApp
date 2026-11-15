@@ -13,6 +13,7 @@ class TourStep {
     this.goesToTab,
     this.nextLabel,
     this.showsResultChoices = false,
+    this.replayMessage,
   });
 
   /// Dashboard tab shown during the step.
@@ -27,6 +28,10 @@ class TourStep {
   final MascotMood mood;
   final String title;
   final String message;
+
+  /// Text for the replay from Perfil, when the first plan already exists and
+  /// [message] would describe a false state; null when [message] fits both.
+  final String? replayMessage;
   final String? nextLabel;
 
   /// Small demonstration of the three real result options; no workout is
@@ -45,6 +50,7 @@ const welcomeTourSteps = <TourStep>[
     mood: MascotMood.welcome,
     title: '¡Hola! Soy Kapi',
     message: 'Mientras Kora prepara tu primera rutina, te muestro lo esencial de la app. Son solo unos pasos.',
+    replayMessage: 'Te muestro de nuevo lo esencial de Kora. Son solo unos pasos.',
     nextLabel: 'Empezar',
   ),
   TourStep(
@@ -53,6 +59,7 @@ const welcomeTourSteps = <TourStep>[
     mood: MascotMood.explain,
     title: 'Tu plan de la semana',
     message: 'Aquí verás tu plan semanal y los días que te quedan. Tu primera rutina aparecerá aquí cuando esté lista.',
+    replayMessage: 'Aquí verás tu plan semanal y los días que te quedan.',
   ),
   TourStep(
     tab: 0,

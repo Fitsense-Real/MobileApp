@@ -68,7 +68,7 @@ String avoidedMovements(Json profile) {
 const riskLevelLabels = {'LOW': 'Bajo', 'MODERATE': 'Moderado', 'HIGH': 'Alto', 'CRITICAL': 'Crítico'};
 
 class DashboardPage extends ConsumerStatefulWidget {
-  const DashboardPage({super.key, this.initialTab = 0, this.tourTargets, this.tabController});
+  const DashboardPage({super.key, this.initialTab = 0, this.tourTargets, this.tabController, this.tourReplay = false});
   final int initialTab;
 
   /// Inside the welcome tour: the real screen, with these keys on the
@@ -78,6 +78,10 @@ class DashboardPage extends ConsumerStatefulWidget {
 
   /// Lets the tour drive and observe the selected tab.
   final ValueNotifier<int>? tabController;
+
+  /// Tour replayed from Perfil: the first plan already exists, so the sample
+  /// screen must not say it is being prepared.
+  final bool tourReplay;
 
   bool get tourMode => tourTargets != null;
   @override
@@ -425,7 +429,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   );
   Widget emptyPlan() => surface(
     widget.tourMode
-        ? const Text('Tu primera rutina se está preparando. Aquí aparecerá cuando esté lista.')
+        ? Text(widget.tourReplay
+            ? 'Aquí verás tu plan de la semana.'
+            : 'Tu primera rutina se está preparando. Aquí aparecerá cuando esté lista.')
         : Column(
             children: [
               const Text('No tienes un plan disponible.'),

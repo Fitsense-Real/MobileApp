@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,12 +196,40 @@ void main() {
     await disposeTree(tester);
   });
 
+  testWidgets('a11y · keyboard and screen readers: only the tour card, Enter advances', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpWelcome(tester, FakeGeneration(), size: const Size(390, 844));
+    expect(find.bySemanticsLabel('Paso 1 de ${welcomeTourSteps.length}'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Notificaciones|Inicio')), findsNothing,
+        reason: 'the real screen behind the scrim takes no semantic actions');
+    for (var i = 0; i < 12; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final focused = FocusManager.instance.primaryFocus?.context;
+      expect(focused?.findAncestorWidgetOfExactType<TourCard>(), isNotNull,
+          reason: 'Tab #${i + 1} focused ${focused?.widget} outside the tour card');
+    }
+    // Focus on "Empezar" (the only enabled button of step 1) and activate it.
+    while (FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<FilledButton>() == null) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await settle(tester);
+    expect(find.text('PASO 2 DE ${welcomeTourSteps.length}'), findsOneWidget);
+    semantics.dispose();
+    await disposeTree(tester);
+  });
+
   testWidgets('15 · replay from Perfil: no generation and progress untouched', (tester) async {
     FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': jsonEncode({'tourStatus': 'completed', 'tourStep': 9})});
     final generation = FakeGeneration();
     await pumpWelcome(tester, generation, location: welcomeReplayRoute);
     expect(find.text('PASO 1 DE ${welcomeTourSteps.length}'), findsOneWidget);
+    // The plan already exists: no step and no sample says it is being prepared.
+    expect(find.textContaining('prepara'), findsNothing);
     await tapNext(tester);
+    expect(find.textContaining('primera rutina'), findsNothing);
     expect(generation.startCalls, 0);
     expect((await stored()).tourStatus, TourStatus.completed);
     expect((await stored()).tourStep, 9);
