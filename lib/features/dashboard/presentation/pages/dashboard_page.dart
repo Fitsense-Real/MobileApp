@@ -12,6 +12,8 @@ import '../../../workouts/presentation/planned_workout_page.dart';
 import '../../../pain/presentation/pain_exclusions_sheet.dart';
 import '../../../reminders/presentation/reminders_controller.dart';
 import '../../../reminders/presentation/reminders_sheet.dart';
+import '../../../welcome/presentation/welcome_routes.dart';
+import '../dashboard_tour_targets.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
@@ -66,14 +68,48 @@ String avoidedMovements(Json profile) {
 const riskLevelLabels = {'LOW': 'Bajo', 'MODERATE': 'Moderado', 'HIGH': 'Alto', 'CRITICAL': 'Crítico'};
 
 class DashboardPage extends ConsumerStatefulWidget {
-  const DashboardPage({super.key, this.initialTab = 0});
+  const DashboardPage({super.key, this.initialTab = 0, this.tourTargets, this.tabController});
   final int initialTab;
+
+  /// Inside the welcome tour: the real screen, with these keys on the
+  /// highlighted elements and without the user's data (the first plan is
+  /// still being prepared and is presented only after the tour).
+  final DashboardTourTargets? tourTargets;
+
+  /// Lets the tour drive and observe the selected tab.
+  final ValueNotifier<int>? tabController;
+
+  bool get tourMode => tourTargets != null;
   @override
   ConsumerState<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-  late int tab = widget.initialTab.clamp(0, 3);
+  late int _tab = widget.initialTab.clamp(0, 3);
+  int get tab => widget.tabController?.value ?? _tab;
+  set tab(int value) {
+    if (widget.tabController != null) {
+      widget.tabController!.value = value;
+    } else {
+      _tab = value;
+    }
+  }
+
+  void _onExternalTab() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.tabController?.addListener(_onExternalTab);
+  }
+
+  @override
+  void dispose() {
+    widget.tabController?.removeListener(_onExternalTab);
+    super.dispose();
+  }
   bool searching = false, favoritesOnly = false;
   String category = 'Todos', query = '';
   String? selectedWeek;
@@ -388,15 +424,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ),
   );
   Widget emptyPlan() => surface(
-    Column(
-      children: [
-        const Text('No tienes un plan disponible.'),
-        TextButton(
-          onPressed: () => context.go('/account-setup'),
-          child: const Text('Preparar mi plan'),
-        ),
-      ],
-    ),
+    widget.tourMode
+        ? const Text('Tu primera rutina se está preparando. Aquí aparecerá cuando esté lista.')
+        : Column(
+            children: [
+              const Text('No tienes un plan disponible.'),
+              TextButton(
+                onPressed: () => context.go('/account-setup'),
+                child: const Text('Preparar mi plan'),
+              ),
+            ],
+          ),
   );
   Widget heroPlan(Json? plan) {
     if (plan == null) return emptyPlan();
@@ -1089,7 +1127,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     String text,
     VoidCallback action, {
     bool danger = false,
+    Key? key,
   }) => ListTile(
+    key: key,
     contentPadding: const EdgeInsets.symmetric(horizontal: 18),
     leading: Icon(icon, color: danger ? Colors.redAccent : Kora.sage, size: 20),
     title: Text(
@@ -1249,7 +1289,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             const Divider(height: 1),
             menuRow(Icons.notifications_none, 'Notificaciones', notifications),
             const Divider(height: 1),
-            menuRow(Icons.alarm, 'Recordatorios', reminders),
+            menuRow(Icons.alarm, 'Recordatorios', reminders, key: widget.tourTargets?.reminders),
             const Divider(height: 1),
             menuRow(Icons.history, 'Historial de planes', planHistory),
             const Divider(height: 1),
@@ -1310,6 +1350,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
             ),
             const Divider(height: 1),
+            menuRow(
+              Icons.pets_outlined,
+              'Ver recorrido de Kora',
+              () => context.push(welcomeReplayRoute),
+              key: widget.tourTargets?.tourReplay,
+            ),
+            const Divider(height: 1),
             menuRow(Icons.logout, 'Cerrar sesión', logout, danger: true),
           ],
         ),
@@ -1338,12 +1385,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     if (!favoritesLoaded || favoritesUser != user?.id) {
       Future.microtask(() => loadFavorites(user?.id));
     }
-    final plan = ref.watch(currentPlanProvider);
-    final metrics = ref.watch(weeklyMetricsProvider);
-    final interventions = ref.watch(interventionsProvider);
-    final profile = ref.watch(dashboardProfileProvider);
+    // In the tour the first plan is not shown yet and nothing is fetched.
+    final tour = widget.tourMode;
+    final plan = tour ? const AsyncData<Json?>(null) : ref.watch(currentPlanProvider);
+    final metrics = tour ? const AsyncData<List<Json>>([]) : ref.watch(weeklyMetricsProvider);
+    final interventions = tour ? const AsyncData<List<Json>>([]) : ref.watch(interventionsProvider);
+    final profile = tour ? const AsyncData<Json?>(null) : ref.watch(dashboardProfileProvider);
     // Keeps workout reminders in sync with the plan (best effort, no UI).
-    ref.watch(reminderSyncProvider);
+    // Not during the tour: it would ask for the notification permission mid-way.
+    if (!tour) ref.watch(reminderSyncProvider);
     return KoraPage(
       patternColor: const Color(0x0AD9FF59),
       maxWidth: 600,
@@ -1378,21 +1428,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             tab = value;
             favoritesOnly = false;
           }),
-          destinations: const [
-            NavigationDestination(
+          destinations: [
+            const NavigationDestination(
               icon: Icon(Icons.home_outlined),
               label: 'Inicio',
             ),
             NavigationDestination(
-              icon: Icon(Icons.fitness_center),
+              key: widget.tourTargets?.navRoutines,
+              icon: const Icon(Icons.fitness_center),
               label: 'Rutinas',
             ),
             NavigationDestination(
-              icon: Icon(Icons.bar_chart),
+              key: widget.tourTargets?.navProgress,
+              icon: const Icon(Icons.bar_chart),
               label: 'Progreso',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline),
+              key: widget.tourTargets?.navProfile,
+              icon: const Icon(Icons.person_outline),
               label: 'Perfil',
             ),
           ],
@@ -1455,10 +1508,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 style: TextStyle(color: Kora.sage, fontSize: 12),
               ),
               const SizedBox(height: 26),
-              section(
-                plan,
-                heroPlan,
-                () => ref.invalidate(currentPlanProvider),
+              KeyedSubtree(
+                key: widget.tourTargets?.planCard,
+                child: section(
+                  plan,
+                  heroPlan,
+                  () => ref.invalidate(currentPlanProvider),
+                ),
               ),
               const SizedBox(height: 26),
               section(
@@ -1470,18 +1526,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               if (plan.hasValue) todayRoutines(plan.value),
             ],
             if (tab == 1) ...[
-              planLimitations(),
-              section(
-                plan,
-                routines,
-                () => ref.invalidate(currentPlanProvider),
+              if (!tour) planLimitations(),
+              KeyedSubtree(
+                key: widget.tourTargets?.routines,
+                child: section(
+                  plan,
+                  routines,
+                  () => ref.invalidate(currentPlanProvider),
+                ),
               ),
             ],
             if (tab == 2) ...[
-              section(
-                metrics,
-                (rows) => progress(rows, interventions.asData?.value ?? [], ref.watch(planAdaptationsProvider).asData?.value),
-                () => ref.invalidate(weeklyMetricsProvider),
+              KeyedSubtree(
+                key: widget.tourTargets?.progress,
+                child: section(
+                  metrics,
+                  (rows) => progress(rows, interventions.asData?.value ?? [], tour ? null : ref.watch(planAdaptationsProvider).asData?.value),
+                  () => ref.invalidate(weeklyMetricsProvider),
+                ),
               ),
               const SizedBox(height: 24),
               section(

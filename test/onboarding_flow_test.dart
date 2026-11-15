@@ -9,6 +9,11 @@ import 'package:fitsense_mobile/features/onboarding/data/profile_repository.dart
 import 'package:fitsense_mobile/features/onboarding/presentation/onboarding_page.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/providers/auth_provider.dart';
+import 'package:fitsense_mobile/features/welcome/data/plan_generation_repository.dart';
+import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'support/welcome_fakes.dart';
 
 class ProfileFake extends ProfileRepository {
   ProfileFake() : super(Dio());
@@ -35,13 +40,16 @@ void main() {
   testWidgets('Spanish calendar, weekly selection and generation waits/retries', (tester) async {
     tester.view.physicalSize = const Size(420,900); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
+    FlutterSecureStorage.setMockInitialValues({});
     final profile = ProfileFake(); final plans = PlansFake();
+    final generation = FakeGeneration(starts: [httpError(422, 'Servicio temporalmente no disponible'), operation('PENDING')]);
     final router = GoRouter(initialLocation: '/onboarding', routes: [
       GoRoute(path:'/onboarding', builder: (_,__) => const OnboardingPage()),
       GoRoute(path:'/dashboard', builder: (_,__) => const Scaffold(body: Text('Inicio del usuario'))),
+      GoRoute(path: welcomeTourRoute, builder: (_,__) => const Scaffold(body: Text('Recorrido del usuario'))),
     ]);
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(overrides: [profileRepositoryProvider.overrideWithValue(profile), planRepositoryProvider.overrideWithValue(plans)], child: MaterialApp.router(routerConfig: router, theme: AppTheme.light, locale: const Locale('es'), supportedLocales: const [Locale('es')], localizationsDelegates: GlobalMaterialLocalizations.delegates)));
+    await tester.pumpWidget(ProviderScope(overrides: [authViewModelProvider.overrideWith(SignedIn.new), profileRepositoryProvider.overrideWithValue(profile), planRepositoryProvider.overrideWithValue(plans), planGenerationRepositoryProvider.overrideWithValue(generation)], child: MaterialApp.router(routerConfig: router, theme: AppTheme.light, locale: const Locale('es'), supportedLocales: const [Locale('es')], localizationsDelegates: GlobalMaterialLocalizations.delegates)));
     await tester.pumpAndSettle();
     Future<void> tapButton(String text) async {
       await tester.scrollUntilVisible(find.text(text).hitTestable(),200,scrollable: find.descendant(of: find.byType(ListView).first,matching: find.byType(Scrollable)).first);
@@ -95,16 +103,17 @@ void main() {
     await tester.tap(find.text('Generar mi plan')); await tester.pump(); await tester.pump(const Duration(seconds:1));
     expect(profile.saved?['daysPerWeek'], 2); expect(profile.saved?['availableDays'], [2,4]);
     expect(profile.saved?['equipmentCodes'], ['band', 'machine']);
-    expect(find.text('Sincronizando...'), findsOneWidget);
-    expect(find.text('Inicio del usuario'), findsNothing);
-    plans.attempts.single.completeError(Exception('Servicio temporalmente no disponible'));
+    // The backend refused the first request: the profile stays saved.
+    expect(find.text('Recorrido del usuario'), findsNothing);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.textContaining('Tu perfil está guardado.').hitTestable(),200,scrollable:find.descendant(of:find.byType(ListView).first,matching:find.byType(Scrollable)).first);
     expect(find.textContaining('Tu perfil está guardado.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Reintentar generación').hitTestable(),200,scrollable:find.descendant(of:find.byType(ListView).first,matching:find.byType(Scrollable)).first);
     await tester.tap(find.text('Reintentar generación')); await tester.pump(); await tester.pump(const Duration(seconds:1));
     expect(profile.saves, 1);
-    plans.attempts.last.complete({'planId': 42,'workouts': []});
-    await tester.pumpAndSettle(); expect(find.text('Inicio del usuario'), findsOneWidget);
+    // The generation is requested and the tour opens at once: no blocking wait.
+    await tester.pumpAndSettle(); expect(find.text('Recorrido del usuario'), findsOneWidget);
+    expect(generation.startCalls, 2);
+    expect(plans.attempts, isEmpty, reason: 'the synchronous endpoint is no longer used');
   });
 }

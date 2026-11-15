@@ -96,17 +96,24 @@ todavía no hay un entrenamiento real que abrir, y no se inventan entrenamientos
 | # | Pantalla real | Elemento resaltado | Mensaje de Kapi (resumen) |
 |---|---|---|---|
 | 1 | Inicio | — | Bienvenida: mientras Kora prepara tu primera rutina, te muestro lo esencial |
-| 2 | Inicio | Tarjeta "Tu plan de la semana" | Aquí verás tu plan semanal |
-| 3 | Barra inferior | Pestaña Rutinas (interactivo) | Toca Rutinas |
-| 4 | Rutinas | Lista de entrenamientos | Cada entrenamiento: día y duración; empezar en vivo con cronómetro o registrarlo si ya lo hiciste |
-| 5 | Rutinas | Demostración de los tres resultados reales | Registra lo que realmente pudiste hacer; con tus registros Kora podrá ajustar tu plan cuando corresponda |
-| 6 | Barra inferior | Pestaña Progreso (interactivo) | Toca Progreso |
-| 7 | Progreso | Sección de adherencia | Cada semana verás qué parte de tu plan cumpliste y los ajustes |
-| 8 | Perfil (interactivo) | Recordatorios y Ayuda | Activa recordatorios; aquí puedes volver a ver este recorrido |
-| 9 | — | — | ¡Ya conoces Kora! |
+| 2 | Inicio | Tarjeta "Tu plan de la semana" | Aquí verás tu plan semanal; tu primera rutina aparecerá aquí cuando esté lista |
+| 3 | Barra inferior | Pestaña Rutinas (interactivo) | Toca «Rutinas» |
+| 4 | Rutinas | Lista de entrenamientos | Día y duración; empezar en vivo con cronómetro y descansos, o registrarlo si ya lo hiciste |
+| 5 | Rutinas | Demostración de los tres resultados reales | Registra lo que realmente hiciste; con tus registros Kora podrá ajustar tu plan cuando corresponda |
+| 6 | Barra inferior | Pestaña Progreso (interactivo) | Toca «Progreso» |
+| 7 | Progreso | Sección de adherencia | Qué parte de tu plan cumpliste cada semana y los ajustes |
+| 8 | Barra inferior | Pestaña Perfil (interactivo) | Toca «Perfil» |
+| 9 | Perfil | Recordatorios | Activa avisos para los días que tienes entrenamiento |
+| 10 | Perfil | Ver recorrido de Kora | ¡Ya conoces Kora! Desde aquí puedes volver a verlo |
+
+![Capturas del recorrido](recorrido-capturas.png)
+
+Durante el recorrido el dashboard no carga los datos del usuario: muestra el estado vacío real
+("Tu primera rutina se está preparando") para que el primer plan se presente solo al terminar,
+y no se piden permisos de notificaciones a mitad de camino.
 
 Reglas: obligatorio la primera vez, sin botón para saltarlo; atrás y siguiente; indicador
-"Paso n de 9"; el progreso se guarda por usuario en el almacenamiento seguro del
+"Paso n de 10"; el progreso se guarda por usuario en el almacenamiento seguro del
 teléfono en cada paso, y solo el último paso lo marca como completado. Se puede repetir
 desde Perfil → Ver recorrido de Kora. Las interacciones bloquean todo lo que no sea el
 elemento resaltado: nada del recorrido crea, registra ni omite entrenamientos.

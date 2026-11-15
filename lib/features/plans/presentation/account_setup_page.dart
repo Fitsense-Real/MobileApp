@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +5,10 @@ import '../../../app/router/app_routes.dart';
 import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../../onboarding/data/profile_repository.dart';
-import '../../onboarding/presentation/generating_plan.dart';
+import '../../authentication/presentation/providers/auth_provider.dart';
+import '../../welcome/data/welcome_store.dart';
+import '../../welcome/presentation/first_plan_generation_controller.dart';
+import '../../welcome/presentation/welcome_routes.dart';
 import '../data/plan_repository.dart';
 
 /// Checks server state on every login, before allowing entry to the home page.
@@ -17,7 +19,6 @@ class AccountSetupPage extends ConsumerStatefulWidget {
 }
 
 class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
-  bool generating = false;
   String? error;
 
   @override
@@ -28,7 +29,7 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
 
   Future<void> checkAccount() async {
     if (!mounted) return;
-    setState(() { error = null; generating = false; });
+    setState(() => error = null);
     try {
       final profile = await ref.read(profileRepositoryProvider).fetch();
       if (!mounted) return;
@@ -36,20 +37,23 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
         context.go('/onboarding');
         return;
       }
-      final repository = ref.read(planRepositoryProvider);
-      var plan = await repository.current();
+      final plan = await ref.read(planRepositoryProvider).current();
+      final userId = ref.read(authViewModelProvider).user?.id;
+      final progress = userId == null ? const WelcomeProgress() : await ref.read(welcomeStoreProvider).load(userId);
       if (!mounted) return;
       if (plan == null) {
-        setState(() => generating = true);
-        try {
-          plan = await repository.generate();
-        } on DioException catch (e) {
-          if (!isPlanConflict(e)) rethrow;
-          plan = await repository.current();
-          if (plan == null) rethrow;
-        }
+        // First plan: generated in the background (resumed if it was already
+        // requested) while the welcome tour runs or, if the tour is done,
+        // while the result screen waits.
+        ref.read(firstPlanGenerationProvider.notifier).start();
+        context.go(progress.tourStatus == TourStatus.completed ? welcomeResultRoute : welcomeTourRoute);
+        return;
       }
-      if (!mounted) return;
+      // The plan arrived but the mandatory tour was left half way: finish it first.
+      if (progress.tourStatus == TourStatus.inProgress) {
+        context.go(welcomeTourRoute);
+        return;
+      }
       if (plan['planId'] == null) {
         throw const FormatException('El servidor no devolvió un plan válido.');
       }
@@ -63,7 +67,6 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (error == null && generating) return const GeneratingPlan(saving: false);
     return PopScope(canPop: false, child: Scaffold(
       backgroundColor: Kora.forest,
       body: SafeArea(child: Center(child: Padding(

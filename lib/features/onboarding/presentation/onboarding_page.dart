@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
-import '../../plans/data/plan_repository.dart';
+import '../../welcome/presentation/first_plan_generation_controller.dart';
+import '../../welcome/presentation/welcome_routes.dart';
 import '../data/profile_repository.dart';
 import '../../catalog/data/catalog_repository.dart';
 import 'blocked_exercise_picker.dart';
@@ -159,22 +159,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         exists = true; profileSaved = true;
       }
       setState(() => savingProfile = false);
-      final repository = ref.read(planRepositoryProvider);
-      // Reconcile previous attempts before POST: never create duplicates on retry.
-      var plan = await repository.current();
-      if (plan == null) {
-        try { plan = await repository.generate(); }
-        on DioException catch (e) {
-          if (!isPlanConflict(e)) rethrow;
-          plan = await repository.current();
-          if (plan == null) rethrow;
-        }
-      }
+      // The first plan is requested now and generated on the server while the
+      // welcome tour runs. The request is idempotent: retrying never starts a
+      // second generation. Without connection the controller keeps retrying.
+      await ref.read(firstPlanGenerationProvider.notifier).start();
       if (!mounted) return;
-      if (plan['planId'] == null) throw const FormatException('El servidor no devolvió un plan válido.');
-      ref.read(generatedPlanProvider.notifier).setPlan(plan);
-      ref.invalidate(currentPlanProvider);
-      context.go(AppRoutes.dashboard);
+      final refused = ref.read(firstPlanGenerationProvider).error;
+      if (refused != null) throw Exception(refused);
+      context.go(welcomeTourRoute);
     } catch (e) {
       if (mounted) setState(() => error = '${profileSaved ? 'Tu perfil está guardado. ' : ''}${apiError(e)}');
     } finally { if (mounted) setState(() => busy = false); }
