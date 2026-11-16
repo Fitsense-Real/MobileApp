@@ -10,7 +10,7 @@ se desplegó.**
 | — | `generation` (Mobile) | `4291c6b` | — | rama principal actual |
 | Fitsense-Real/MobileApp#1 | `claude/kora-mascot` → `generation` | `400ee39` | ninguno; al día con `generation` | Kapi (6 expresiones), `KoraMascot`, diseño |
 | Fitsense-Real/MobileApp#2 | `claude/welcome-tour` → `claude/kora-mascot` | `f26c7ce` | ninguno; contiene #1 | Tour de 10 pasos, generación en segundo plano, informes de la ORDEN 2 |
-| **nueva** (esta validación) | `claude/mobile-final-validation` → `claude/welcome-tour` | ver la PR | ninguno; contiene #1 y #2 | «8 DÍAS», pruebas de contrato #72 y del perfil V55, CI, guía APK, informes |
+| Fitsense-Real/MobileApp#3 (esta validación) | `claude/mobile-final-validation` → `claude/welcome-tour` | ver la PR | ninguno; contiene #1 y #2 | «8 DÍAS», pruebas de contrato #72 y del perfil V55, CI, guía APK, informes |
 
 Backend, solo para comprobar contratos:
 
@@ -31,7 +31,7 @@ nueva, pequeña y apilada sobre #2 para que se integre sin conflictos en el orde
 2. MobileApp #1.
 3. MobileApp #2. Si al fusionar #1 se borra su rama, GitHub cambia la base a `generation`; si no, hay
    que cambiarla a mano.
-4. La PR nueva de esta validación (misma nota sobre la base).
+4. Fitsense-Real/MobileApp#3, de esta validación (misma nota sobre la base).
 
 La app con #2 necesita el backend con #71 desplegado: sin él, `POST /users/me/plan/generation`
 responde 404.
