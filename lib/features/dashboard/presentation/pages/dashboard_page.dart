@@ -14,6 +14,7 @@ import '../../../reminders/presentation/reminders_controller.dart';
 import '../../../reminders/presentation/reminders_sheet.dart';
 import '../../../welcome/presentation/welcome_routes.dart';
 import '../dashboard_tour_targets.dart';
+import '../../domain/plan_week_label.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
@@ -444,11 +445,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   );
   Widget heroPlan(Json? plan) {
     if (plan == null) return emptyPlan();
-    final end = DateTime.tryParse('${plan['weekEndDate']}');
-    final now = DateTime.now();
-    final remaining = end == null
-        ? null
-        : end.difference(DateTime(now.year, now.month, now.day)).inDays + 1;
+    final weekLabel = planWeekLabel(weekStartDate: plan['weekStartDate'], weekEndDate: plan['weekEndDate'], now: DateTime.now());
     return ClipRRect(
       borderRadius: BorderRadius.circular(34),
       child: ColoredBox(
@@ -479,9 +476,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         color: Kora.lime,
                       ),
                     ),
-                    if (remaining != null && remaining > 0)
+                    if (weekLabel != null)
                       Text(
-                        '$remaining DÍAS',
+                        weekLabel,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 9,
