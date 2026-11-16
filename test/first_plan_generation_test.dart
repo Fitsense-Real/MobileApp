@@ -153,4 +153,65 @@ void main() {
     await c.read(firstPlanGenerationProvider.notifier).consume();
     expect((await WelcomeStore().load(7)).operationId, isNull);
   });
+
+  // ---- Backend #71 + #72 (V59): same REST contract, operations may stay active up to 30 min ----
+
+  test('#72 · a generation that stays PROCESSING for many checks (with drops and 5xx) is never requested again', () async {
+    final finds = <Object?>[
+      for (var i = 0; i < 120; i++) fast('PROCESSING'),
+      offline(), httpError(503), offline(),
+      for (var i = 0; i < 120; i++) fast('PROCESSING'),
+      fast('COMPLETED', planId: 77),
+    ];
+    final generation = FakeGeneration(starts: [fast('PENDING')], finds: finds);
+    final c = containerWith(generation);
+    await c.read(firstPlanGenerationProvider.notifier).start();
+    for (var i = 0; i < 80 && c.read(firstPlanGenerationProvider).isWaiting; i++) {
+      await settle(20);
+    }
+    final state = c.read(firstPlanGenerationProvider);
+    expect(state.operation?.status, GenerationStatus.completed);
+    expect(state.operation?.planId, 77);
+    expect(generation.startCalls, 1, reason: 'time and connection problems never start a new generation');
+    expect(generation.findCalls, greaterThanOrEqualTo(240));
+    expect(generation.foundIds.toSet(), {operationId}, reason: 'always the same operation');
+  });
+
+  test('#72 · the documented PlanGenerationOperationResource is parsed as before', () {
+    final processing = GenerationOperation.fromJson({
+      'operationId': '3f1c9a2e-0000-4000-8000-000000000001', 'status': 'PROCESSING', 'terminal': false,
+      'weekStartDate': '2026-11-16', 'planId': null, 'reasonCode': null, 'message': null, 'retryable': false,
+      'createdAt': '2026-11-16T10:00:00Z', 'startedAt': '2026-11-16T10:00:02Z', 'finishedAt': null, 'pollAfterSeconds': 3,
+    });
+    expect(processing.isTerminal, isFalse);
+    expect(processing.pollAfterSeconds, 3);
+    final timedOut = GenerationOperation.fromJson({
+      'operationId': 'x', 'status': 'FAILED', 'terminal': true, 'reasonCode': 'TIEMPO_EXCEDIDO',
+      'message': 'La preparación de tu rutina tardó más de lo permitido. Puedes intentarlo de nuevo.', 'retryable': true,
+      'pollAfterSeconds': null,
+    });
+    expect(timedOut.isTerminal, isTrue);
+    expect(timedOut.retryable, isTrue);
+    expect(timedOut.reasonCode, 'TIEMPO_EXCEDIDO');
+    final interrupted = GenerationOperation.fromJson({'operationId': 'y', 'status': 'FAILED', 'reasonCode': 'EJECUCION_INTERRUMPIDA', 'retryable': true});
+    expect(interrupted.retryable, isTrue);
+    // A status the app does not know yet keeps it waiting instead of showing a failure.
+    expect(GenerationOperation.fromJson({'operationId': 'z', 'status': 'NUEVO_ESTADO'}).isTerminal, isFalse);
+  });
+
+  test('#72 · a manual retry after TIEMPO_EXCEDIDO is one request, accepted as a new operation', () async {
+    final generation = FakeGeneration(
+      starts: [fast('PENDING'), GenerationOperation(id: 'op-reintento', status: GenerationStatus.completed, planId: 8)],
+      finds: [operation('FAILED', reason: 'TIEMPO_EXCEDIDO', retryable: true)],
+    );
+    final c = containerWith(generation);
+    await c.read(firstPlanGenerationProvider.notifier).start();
+    await settle();
+    expect(c.read(firstPlanGenerationProvider).operation?.reasonCode, 'TIEMPO_EXCEDIDO');
+    await settle();
+    expect(generation.startCalls, 1, reason: 'no automatic retry');
+    await c.read(firstPlanGenerationProvider.notifier).retry();
+    expect(generation.startCalls, 2);
+    expect(c.read(firstPlanGenerationProvider).operation?.planId, 8);
+  });
 }
