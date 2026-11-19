@@ -191,43 +191,6 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
               ),
             ),
           ),
-          if (!widget.register) ...[
-            const SizedBox(height: 28),
-            const Row(
-              children: [
-                Expanded(child: Divider()),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: KoraLabel('O CONTINÚA CON'),
-                ),
-                Expanded(child: Divider()),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: null,
-                    child: Text('G  GOOGLE'),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: null,
-                    child: Text('●  APPLE'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Acceso social próximamente',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: Kora.muted),
-            ),
-          ],
           const SizedBox(height: 28),
           Center(
             child: KoraLabel(
