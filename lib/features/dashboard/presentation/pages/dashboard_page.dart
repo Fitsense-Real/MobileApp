@@ -14,6 +14,8 @@ import '../../../reminders/presentation/reminders_controller.dart';
 import '../../../reminders/presentation/reminders_sheet.dart';
 import '../../../welcome/presentation/welcome_routes.dart';
 import '../dashboard_tour_targets.dart';
+import '../../../../app/router/app_routes.dart';
+import '../../../../core/config/app_links.dart';
 import '../../domain/plan_week_label.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
@@ -1337,6 +1339,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         const Text('Perfil de solo lectura: se mantiene durante todo el estudio.', style: TextStyle(color: Kora.sage)),
                         const SizedBox(height: 20),
                         studyStatus(),
+                        // Deleting the account is not withdrawing from the study: it has
+                        // its own screen, and only appears when the backend service exists.
+                        if (AppLinks.accountDeletionEnabled) ...[
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              context.push(AppRoutes.deleteAccount);
+                            },
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Eliminar mi cuenta'),
+                            style: TextButton.styleFrom(foregroundColor: Colors.red.shade800, padding: EdgeInsets.zero),
+                          ),
+                        ],
                       ],
                     ),
                   ),

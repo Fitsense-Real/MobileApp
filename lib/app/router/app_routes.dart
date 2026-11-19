@@ -14,6 +14,9 @@ class AppRoutes {
   static const dashboard = "/dashboard";
   static const accountSetup = "/account-setup";
 
+  /// Perfil → Cuenta → Eliminar mi cuenta (only with ACCOUNT_DELETION_ENABLED).
+  static const deleteAccount = "/cuenta/eliminar";
+
   static const profile = "/profile";
 
   static const assessment = "/assessment";
