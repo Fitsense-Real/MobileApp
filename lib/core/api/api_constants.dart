@@ -1,16 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'api_config.dart';
 
 /// Endpoints of the Fitsense backend (`/api/v1`). Keep in sync with the
 /// Spring controllers in Fitsense-Real/Backend, branch `generation`.
 class ApiConstants {
   ApiConstants._();
 
-  /// Emulador Android: 10.0.2.2. Web/escritorio: localhost.
-  static String get baseUrl => const String.fromEnvironment('API_BASE_URL').isNotEmpty
-      ? const String.fromEnvironment('API_BASE_URL')
-      : !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-          ? 'http://10.0.2.2:8080/api/v1'
-          : 'http://localhost:8080/api/v1';
+  /// From [ApiConfig]: local backend in development, mandatory HTTPS
+  /// `API_BASE_URL` in release (empty, never a local fallback, if missing).
+  static String get baseUrl => ApiConfig.current.baseUrl;
 
   // Autenticación (públicos, sin JWT)
   static const login = '/auth/login';

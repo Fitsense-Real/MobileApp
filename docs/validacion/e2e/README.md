@@ -28,7 +28,7 @@ mvn -q package -Dmaven.test.skip=true            # en el backend
 mkdir -p $E2E_DIR/app && (cd $E2E_DIR/app && unzip -q /ruta/backend/target/fitsense-backend-0.0.1-SNAPSHOT.jar)
 javac -d $E2E_DIR/harness/classes -cp "$E2E_DIR/app/BOOT-INF/classes:$E2E_DIR/app/BOOT-INF/lib/*" EscenariosE2E.java
 E2E_DIR=... ./run-backend.sh
-flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=http://localhost:8080/api/v1
+flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=http://localhost:8080/api/v1 --dart-define=ALLOW_INSECURE_API=true  # desde la PR B, release exige HTTPS salvo esta opción
 (cd build/web && python3 -m http.server 5050)
 node e2e-main.js
 ```

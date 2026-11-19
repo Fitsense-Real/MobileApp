@@ -1,8 +1,82 @@
+import java.io.FileInputStream
+import java.net.URI
+import java.util.Base64
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// ---------------------------------------------------------------------------
+// Release configuration for Google Play (docs/preparacion_google_play/).
+//
+// - Signing: android/key.properties (never versioned; see FIRMA_Y_AAB.md).
+//   Without it, release builds fall back to the debug key, and the Play
+//   bundle (bundleRelease) is refused.
+// - Application ID: Gradle property kora.applicationId (pending the owner's
+//   approval; IDENTIFICADOR_APLICACION.md). The Play bundle refuses
+//   com.example.*.
+// - Backend: every release build needs --dart-define=API_BASE_URL with a
+//   public https:// URL (CONFIGURACION_BACKEND_HTTPS.md).
+// ---------------------------------------------------------------------------
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
+}
+val hasReleaseKey = keystorePropertiesFile.exists()
+val exampleApplicationId = "com.example.fitsense_mobile"
+val koraApplicationId = (findProperty("kora.applicationId") as String?)?.trim()?.takeIf { it.isNotEmpty() } ?: exampleApplicationId
+
+/** Values passed with --dart-define (Flutter hands them to Gradle base64-encoded). */
+fun dartDefines(): Map<String, String> =
+    (findProperty("dart-defines") as String?).orEmpty().split(",").filter { it.isNotBlank() }.mapNotNull {
+        val decoded = String(Base64.getDecoder().decode(it))
+        val i = decoded.indexOf('=')
+        if (i <= 0) null else decoded.substring(0, i) to decoded.substring(i + 1)
+    }.toMap()
+
+fun isLocalHost(host: String): Boolean {
+    val h = host.lowercase()
+    if (h == "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h == "0.0.0.0" || h == "::1" || h == "[::1]") return true
+    val ip = Regex("""^(\d+)\.(\d+)\.(\d+)\.(\d+)$""").matchEntire(h) ?: return false
+    val a = ip.groupValues[1].toInt()
+    val b = ip.groupValues[2].toInt()
+    return a == 127 || a == 10 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254) || a == 0
+}
+
+/** Reserved test names: only with -Pkora.testBackendUrl=true, never for Play. */
+fun isTestHost(host: String): Boolean = host.lowercase().let { it.endsWith(".invalid") || it.endsWith(".test") || it.endsWith(".example") }
+
+gradle.taskGraph.whenReady {
+    val names = allTasks.map { it.name }
+    val release = names.any { it == "assembleRelease" || it == "bundleRelease" }
+    val playBundle = names.contains("bundleRelease")
+    if (!release) return@whenReady
+    val problems = mutableListOf<String>()
+    val defines = dartDefines()
+    val testUrlAllowed = (findProperty("kora.testBackendUrl") as String?) == "true"
+    val url = defines["API_BASE_URL"].orEmpty().trim()
+    val uri = runCatching { URI(url) }.getOrNull()
+    when {
+        url.isEmpty() -> problems += "Falta --dart-define=API_BASE_URL=https://... (URL HTTPS del backend de produccion)."
+        uri == null || uri.host.isNullOrEmpty() -> problems += "API_BASE_URL no es una URL valida: $url"
+        uri.scheme != "https" -> problems += "API_BASE_URL debe usar https:// en release: $url"
+        isLocalHost(uri.host) -> problems += "API_BASE_URL no puede ser una direccion local o del emulador en release: ${uri.host}"
+        isTestHost(uri.host) && !testUrlAllowed -> problems += "API_BASE_URL usa un dominio reservado de prueba (${uri.host}); solo se admite con -Pkora.testBackendUrl=true y nunca para Play."
+    }
+    if (playBundle) {
+        if (!hasReleaseKey) problems += "Falta android/key.properties: el AAB para Google Play no se firma con la clave debug."
+        if (koraApplicationId.startsWith("com.example")) problems += "applicationId de ejemplo ($koraApplicationId): define kora.applicationId con el identificador aprobado."
+        if (testUrlAllowed) logger.warn("AVISO: AAB con URL de prueba (kora.testBackendUrl=true). Es solo para verificar el empaquetado: NO es publicable.")
+    }
+    if (problems.isNotEmpty()) {
+        throw GradleException(
+            "Compilacion release bloqueada (docs/preparacion_google_play/):\n - " + problems.joinToString("\n - ")
+        )
+    }
 }
 
 android {
@@ -26,8 +100,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.fitsense_mobile"
+        // Pending the owner's approval: set kora.applicationId (IDENTIFICADOR_APLICACION.md).
+        applicationId = koraApplicationId
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -36,11 +110,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Own upload key from android/key.properties. The debug key is only a
+            // fallback for local evaluation APKs; bundleRelease refuses it.
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 }
