@@ -7,7 +7,9 @@ plugins {
 
 android {
     namespace = "com.example.fitsense_mobile"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play requires targetSdk 36 (Android 16) for new apps and updates since
+    // 31/08/2026. Flutter 3.32 still defaults to 35, so both are set explicitly.
+    compileSdk = 36
     // flutter_local_notifications, flutter_secure_storage and path_provider_android
     // require NDK 27 (backward compatible).
     ndkVersion = "27.0.12077973"
@@ -29,7 +31,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

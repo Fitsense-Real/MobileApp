@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
@@ -69,6 +70,11 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
     final view = _view(state);
     return PopScope(
       canPop: false,
+      // Back leaves the app instead of doing nothing: the generation keeps
+      // running on the server and this screen comes back on the next start.
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) SystemNavigator.pop();
+      },
       child: KoraPage(
         maxWidth: 560,
         child: Center(

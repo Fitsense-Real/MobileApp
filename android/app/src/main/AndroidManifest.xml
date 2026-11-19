@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app talks to the Kora backend in every build type. Without this in the
+         main manifest only debug/profile had it, and the release could not connect. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Workout reminders: reschedule after a reboot. Inexact alarms are used,
          so SCHEDULE_EXACT_ALARM is not needed. POST_NOTIFICATIONS comes from
          flutter_local_notifications' own manifest. -->
@@ -6,7 +9,8 @@
     <application
         android:label="Kora"
         android:name="${applicationName}"
-        android:icon="@drawable/kora_icon">
+        android:icon="@drawable/kora_icon"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
