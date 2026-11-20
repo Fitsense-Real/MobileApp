@@ -1,3 +1,4 @@
+import 'package:fitsense_mobile/features/authentication/domain/email_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -130,9 +131,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     validator: (v) =>
-                        (v ?? '').length <= 254 && RegExp(
-                          r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-                        ).hasMatch((v ?? '').trim())
+looksLikeEmail(v)
                         ? null
                         : 'Ingresa un correo válido',
                   ),
