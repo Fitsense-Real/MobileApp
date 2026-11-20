@@ -105,7 +105,7 @@ CrossAxisAlignment.stretch,
 children: [                   const PageHeader(
 title: "Restablecer contraseña",
 subtitle:
-"Ingresa el código recibido y crea una nueva contraseña segura.",
+"Si el correo corresponde a una cuenta de Kora, te llegará un código. Ingrésalo y crea una nueva contraseña. Caduca en 30 minutos y sirve una sola vez.",
 )
 .animate()
 .fade(duration: 500.ms)

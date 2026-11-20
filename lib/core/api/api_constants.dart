@@ -15,7 +15,11 @@ class ApiConstants {
   static const publicPaths = {login, register, forgotPassword, resetPassword};
 
   /// PasswordResetController: request a code by email, then confirm it.
-  static const passwordRecoveryAvailable = true;
+  /// Backend 5977d28 sends the recovery code by email, but production has no
+  /// mail provider yet: the option is shown as working only in builds made with
+  /// --dart-define=PASSWORD_RECOVERY_ENABLED=true. Otherwise the login says it
+  /// is not available yet and points to the study team.
+  static const passwordRecoveryAvailable = bool.fromEnvironment('PASSWORD_RECOVERY_ENABLED');
   static const forgotPassword = '/auth/password-reset/request';
   static const resetPassword = '/auth/password-reset/confirm';
 

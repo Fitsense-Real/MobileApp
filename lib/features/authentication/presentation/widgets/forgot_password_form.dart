@@ -264,7 +264,7 @@ class _ForgotPasswordFormState
 
                       FSButton(
                         text:
-                        "Enviar enlace",
+                        "Enviar código",
                         isLoading:
                         state.isLoading,
                         onPressed:
