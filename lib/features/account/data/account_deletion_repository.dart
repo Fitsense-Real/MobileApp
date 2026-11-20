@@ -24,6 +24,9 @@ class DeletionResult {
 }
 
 /// Why the deletion was not done. Nothing was deleted in any case.
+/// Pause after a 429 that does not say how long to wait.
+const minimumRetryPause = Duration(minutes: 1);
+
 class DeletionFailure implements Exception {
   const DeletionFailure(this.kind, this.message, {this.retryAfter});
   final DeletionFailureKind kind;
@@ -79,8 +82,11 @@ class AccountDeletionRepository {
         return const DeletionFailure(DeletionFailureKind.wrongPassword, 'La contraseña no es correcta. No se eliminó nada; revísala e inténtalo de nuevo.');
       case 429:
         final seconds = int.tryParse(e.response?.headers.value('retry-after') ?? '');
-        final wait = seconds == null ? null : Duration(seconds: seconds);
-        final minutes = wait == null ? null : (wait.inSeconds / 60).ceil();
+        // Without Retry-After (in a browser the backend does not expose it through
+        // CORS) the button still pauses for a minute: the backend keeps the real
+        // block, and the person is not invited to send attempts that will fail.
+        final wait = seconds == null ? minimumRetryPause : Duration(seconds: seconds);
+        final minutes = seconds == null ? null : (wait.inSeconds / 60).ceil();
         return DeletionFailure(
           DeletionFailureKind.tooManyAttempts,
           'Demasiados intentos con una contraseña incorrecta. Por seguridad, espera'

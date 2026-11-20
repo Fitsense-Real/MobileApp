@@ -25,9 +25,11 @@ import 'support/welcome_fakes.dart';
 /// `{password, confirm: true}`; 200 DELETED, 202 PENDING, 400, 403, 429 +
 /// Retry-After, 401, 404, 503.
 class AccountBackend implements HttpClientAdapter {
-  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false});
+  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false, this.retryAfterVisible = true});
   int deleteStatus;
   bool offline, alreadyRequested;
+  /// false: like a browser, where the backend does not expose Retry-After (CORS).
+  bool retryAfterVisible;
   final calls = <String>[];
   final bodies = <Object?>[];
 
@@ -57,7 +59,7 @@ class AccountBackend implements HttpClientAdapter {
       case 202:
         return (202, {'status': 'PENDING', 'deletionId': 'b29c96e1-1449-44a0-8806-f1451b2b79a1', 'requestedAt': '2026-11-20T03:19:02Z', if (alreadyRequested) 'alreadyRequested': true});
       case 429:
-        addHeaders({'retry-after': ['899']});
+        if (retryAfterVisible) addHeaders({'retry-after': ['899']});
         return (429, {'status': 429, 'message': 'Demasiados intentos con una contrasena incorrecta. Espera antes de volver a intentarlo.', 'details': ['DEMASIADOS_INTENTOS']});
       default:
         return (deleteStatus, {'status': deleteStatus, 'message': 'Error $deleteStatus'});
@@ -228,6 +230,17 @@ void main() {
     await tester.runAsync(() => r.container.read(accountDeletionProvider.notifier).delete(password: 'Kora12345'));
     expect(r.backend.calls.where((c) => c.startsWith('DELETE')).length, 1, reason: 'no automatic or repeated request');
     expect(r.container.read(authViewModelProvider).user, isNotNull);
+  });
+
+  // Found in the web E2E against backend 5977d28: without Access-Control-Expose-Headers
+  // the browser hides Retry-After, and the button allowed another attempt right away.
+  testWidgets('429 without a readable Retry-After still pauses the button', (tester) async {
+    final r = await pumpDeletion(tester, backend: AccountBackend(deleteStatus: 429, retryAfterVisible: false));
+    await fillAndConfirm(tester);
+    expect(find.textContaining('espera unos minutos'), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Eliminar mi cuenta')).onPressed, isNull);
+    await tester.runAsync(() => r.container.read(accountDeletionProvider.notifier).delete(password: 'Kora12345'));
+    expect(r.backend.calls.where((c) => c.startsWith('DELETE')).length, 1);
   });
 
   for (final (name, backend, message) in [
