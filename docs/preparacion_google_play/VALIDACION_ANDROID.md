@@ -1,5 +1,8 @@
 # Validación Android (integración con 5977d28)
 
+> **Actualización (Flutter 3.50.1):** las herramientas pasan a Gradle 9.5.0, AGP 9.3.1, Kotlin 2.4.20, NDK 28.2 y
+> minSdk 24, manteniendo todas las protecciones de abajo. Ver `MIGRACION_FLUTTER_3_50.md`.
+
 **No hubo teléfono físico ni emulador.** Todo lo de abajo son compilaciones e inspección de artefactos.
 Que un APK compile no prueba que funcione en un teléfono.
 
