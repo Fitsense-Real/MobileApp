@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import '../../../core/api/api_error.dart';
+import '../domain/minimum_age.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
@@ -53,10 +55,18 @@ class ProfileRepository {
   Future<Json?> save(Json body, {required bool exists}) async {
     final allowed = exists ? updateProfileFields : createProfileFields;
     final payload = {for (final e in body.entries) if (allowed.contains(e.key)) e.key: e.value};
-    final response = exists
-        ? await dio.put(ApiConstants.profile, data: payload)
-        : await dio.post(ApiConstants.profile, data: payload);
-    return response.data is Map ? jsonMap(response.data) : null;
+    try {
+      final response = exists
+          ? await dio.put(ApiConstants.profile, data: payload)
+          : await dio.post(ApiConstants.profile, data: payload);
+      return response.data is Map ? jsonMap(response.data) : null;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (isMinimumAgeRejection(e.response?.statusCode, data is Map ? data['message'] : null)) {
+        throw ApiException(minimumAgeMessage, statusCode: 422, cause: e);
+      }
+      rethrow;
+    }
   }
 }
 
