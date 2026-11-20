@@ -1,5 +1,8 @@
 # Pendientes y dependencias para publicar Kora
 
+> **Actualización (20/11/2026):** con el backend 5977d28, `DELETE /users/me` ya existe y está integrado (bloqueante 2), la app
+> valida la edad mínima y la recuperación funciona con correo. El estado vigente está en `PENDIENTES_INTEGRACION.md`.
+
 `flutter build appbundle` los enumera y se niega a compilar mientras falte alguno:
 
 ```

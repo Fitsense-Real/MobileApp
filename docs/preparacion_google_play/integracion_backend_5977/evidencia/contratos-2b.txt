@@ -1,0 +1,12 @@
+### Recuperacion: cambio, reutilizacion, sesiones
+GET /users/me  -> 200 {"userId":6,"email
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["newPassword: size must be between 8 and 72"]}
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"El codigo de recuperacion no es valido o ha caducado.","details":[]}
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 204 
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"El codigo de recuperacion no es valido o ha caducado.","details":[]}
+-- JWT anterior al cambio:
+GET /users/me  -> 401 {"status":401,"error":"Unauthorized","message":"Se requiere un token
+POST /auth/login {"email":"rec2@e2e.local","password":"***"} -> 401 {"status":401,"error":"Unauthorized","message":"Correo o contrasena incorrectos.","details":[]}
+POST /auth/login {"email":"rec2@e2e.local","password":"***"} -> 200 {"userId":6,"email":"r
+### Recuperacion: codigo vencido (expiracion adelantada en la base de pruebas)
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"El codigo de recuperacion no es valido o ha caducado.","details":[]}

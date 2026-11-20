@@ -1,0 +1,30 @@
+[
+ {
+  "attemptId": 1,
+  "weekStartDate": "2026-11-16",
+  "resultingPlanId": 3,
+  "resultado": "RESPALDO_SIN_IA",
+  "estado": "RESPALDO",
+  "decision": "ADAPT_EXPANDED",
+  "llamadasIa": 0,
+  "motivos": [],
+  "sesiones": [
+   {
+    "origenPlannedWorkoutId": 6,
+    "intervencion": "CONSERVAR",
+    "resultado": "SIN_EFECTO"
+   },
+   {
+    "origenPlannedWorkoutId": 5,
+    "intervencion": "REVISAR_CARGA_Y_RECUPERACION",
+    "resultado": "SIN_EFECTO"
+   }
+  ],
+  "estadoPublicacion": "PUBLICADO",
+  "motivoCodigo": null,
+  "motivoTexto": null,
+  "codigos": [],
+  "sesionAfectada": null,
+  "restricciones": []
+ }
+]

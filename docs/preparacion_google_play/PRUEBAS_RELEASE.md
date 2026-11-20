@@ -1,5 +1,9 @@
 # Pruebas de release (19/11/2026)
 
+> **Actualización (20/11/2026):** esta prueba se hizo con el backend `a1ccf53`, cuando `DELETE /users/me` daba 405. La
+> repetición con 5977d28 (200 pruebas, eliminación real, recuperación, edad y consentimientos) está en
+> `REGRESION_FLUTTER.md` y `E2E_KORA_BACKEND_ACTUALIZADO.md`.
+
 Rama final: `claude/play-c-account-deletion` (contiene #1, #2, #3 y las PR D, A, B y C).
 
 ## Suites

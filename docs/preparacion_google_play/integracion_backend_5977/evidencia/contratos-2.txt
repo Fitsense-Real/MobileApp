@@ -1,0 +1,34 @@
+### Recuperacion: cambio, reutilizacion, sesiones
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    print(re.search(r'\n\n([A-Za-z0-9_-]{30,})\n',t).group(1))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'group'
+GET /users/me  -> 200 {"userId":3,"email
+POST /auth/password-reset/confirm {"token":"","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["newPassword: size must be between 8 and 72","token: must not be blank"]}
+POST /auth/password-reset/confirm {"token":"<codigo-real-43-caracteres-redactado>","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"El codigo de recuperacion no es valido o ha caducado.","details":[]}
+POST /auth/password-reset/confirm {"token":"","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["token: must not be blank"]}
+POST /auth/password-reset/confirm {"token":"","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["token: must not be blank"]}
+-- JWT anterior al cambio:
+GET /users/me  -> 200 {"userId":3,"email":"rec1@e2e.local","firstName":"Sintetico","lastNa
+POST /auth/login {"email":"rec1@e2e.local","password":"***"} -> 200 {"userId":3,"email":"rec1@e2e.local","fullName":"Sintetico","token":"<jwt>","role":"USER"}
+POST /auth/login {"email":"rec1@e2e.local","password":"***"} -> 401 {"status":401,"error":
+### Recuperacion: codigo vencido (expiracion adelantada en la base de pruebas)
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    print(re.search(r'\n\n([A-Za-z0-9_-]{30,})\n',t).group(1))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'group'
+ERROR:  new row for relation "password_reset_tokens" violates check constraint "ck_prt_caducidad"
+DETAIL:  Failing row contains (1, 3, <hash-redactado>, 2026-11-20 03:19:03.600021+00, 2026-11-20 03:18:40.010323+00, null).
+POST /auth/password-reset/confirm {"token":"","newPassword":"***"} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["token: must not be blank"]}
+### Consentimientos (exigencia apagada, sin versiones aprobadas)
+GET /users/me/consents  -> 200 {"currentVersions":{"STUDY_PARTICIPATION":"MVP-1.0","TERMS_OF_SERVICE":null,"PRIVACY_POLICY":null},"enforcedOnSignup":false,"history":[{"type":"STUDY_PARTICIPATION","documentVersion":"MVP-1.0","grantedAt":"2026-11-20T03:19:40.1210
+POST /users/me/consents {"type":"TERMS_OF_SERVICE","documentVersion":"v-prueba"} -> 422 {"status":422,"error":"Unprocessable Entity","message":"Todavia no hay una version aprobada de TERMS_OF_SERVICE: no se puede aceptar.","details":[]}
+POST /auth/register {"email":"con2@e2e.local","password":"***","firstName":"S","timezone":"America/Lima","acceptsStudyParticipation":false,"acceptedTermsVersion":"v-prueba"} -> 422 {"status":422,"error":"Unprocessable Entity","message":"Todavia no hay una version aprobada de TERMS_OF_SERVICE: no se puede aceptar.","details":[]}
+### Edad minima en el perfil
+POST /users/me/profile {"birthDate":"2009-11-20","biologicalSex":"FEMALE","heightCm":165,"currentWeightKg":60,"fitnessLevel":"INTERMEDIATE","goalType":"GENERAL_FITNESS","goalText":"Moverme","trainingLocation":"GYM","daysPerWeek":3,"availableDays":[1,3,5],"sessionMinutes":45,"equipmentCodes":["dumbbell"],"blockedExerciseIds":[]} -> 422 {"status":422,"error":"Unprocessable Entity","message":"Debes tener al menos 18 anos para usar la aplicacion.","details":[]}
+POST /users/me/profile {"birthDate":"2008-11-21","biologicalSex":"FEMALE","heightCm":165,"currentWeightKg":60,"fitnessLevel":"INTERMEDIATE","goalType":"GENERAL_FITNESS","goalText":"Moverme","trainingLocation":"GYM","daysPerWeek":3,"availableDays":[1,3,5],"sessionMinutes":45,"equipmentCodes":["dumbbell"],"blockedExerciseIds":[]} -> 422 {"status":422,"error":"Unprocessable Entity","message":"Debes tener al menos 18 anos para usar la aplicacion.","details":[]}
+POST /users/me/profile {"birthDate":"2099-01-01","biologicalSex":"FEMALE","heightCm":165,"currentWeightKg":60,"fitnessLevel":"INTERMEDIATE","goalType":"GENERAL_FITNESS","goalText":"Moverme","trainingLocation":"GYM","daysPerWeek":3,"availableDays":[1,3,5],"sessionMinutes":45,"equipmentCodes":["dumbbell"],"blockedExerciseIds":[]} -> 400 {"status":400,"error":"Bad Request","message":"La solicitud tiene campos invalidos.","details":["birthDate: must be a past date"]}
+POST /users/me/profile {"birthDate":"2008-11-20","biologicalSex":"FEMALE","heightCm":165,"currentWeightKg":60,"fitnessLe
+-- perfiles de edad1: 1

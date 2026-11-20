@@ -1,0 +1,12 @@
+SELECT 'users', count(*) FROM users WHERE user_id = :uid UNION ALL
+SELECT 'user_profiles', count(*) FROM user_profiles WHERE user_id = :uid UNION ALL
+SELECT 'user_consents', count(*) FROM user_consents WHERE user_id = :uid UNION ALL
+SELECT 'weekly_training_plans', count(*) FROM weekly_training_plans WHERE user_id = :uid UNION ALL
+SELECT 'planned_workouts', count(*) FROM planned_workouts pw WHERE plan_id IN (SELECT plan_id FROM weekly_training_plans WHERE user_id = :uid) UNION ALL
+SELECT 'workout_sessions', count(*) FROM workout_sessions WHERE user_id = :uid UNION ALL
+SELECT 'workout_session_exercises', count(*) FROM workout_session_exercises WHERE session_id IN (SELECT session_id FROM workout_sessions WHERE user_id = :uid) UNION ALL
+SELECT 'weekly_user_metrics', count(*) FROM weekly_user_metrics WHERE user_id = :uid UNION ALL
+SELECT 'user_interventions', count(*) FROM user_interventions WHERE user_id = :uid UNION ALL
+SELECT 'plan_adaptation_attempts', count(*) FROM plan_adaptation_attempts WHERE user_id = :uid UNION ALL
+SELECT 'plan_generation_operations', count(*) FROM plan_generation_operations WHERE user_id = :uid UNION ALL
+SELECT 'password_reset_tokens', count(*) FROM password_reset_tokens WHERE user_id = :uid;
