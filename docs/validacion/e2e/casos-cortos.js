@@ -1,3 +1,4 @@
+const { E2E_PASSWORD } = require('./credenciales');
 const { k, db, nuevo, avanzar, pasoActual, terminarTour, log } = require('./lib');
 const perfil = require('./profile'); const registrar = require('./register');
 const casos = {
@@ -101,7 +102,7 @@ const casos = {
   // 15 · ya tiene rutina publicada: otro dispositivo (navegador limpio) entra directo al inicio
   async c15() {
     const e = 'lucia+d45@e2e.local'; const { ctx, p } = await k.open('c15-otro-dispositivo');
-    await k.tap(p, 'INICIA SESIÓN'); await k.fill(p, 'Correo', e); await k.fill(p, 'Contraseña', 'Kora12345'); await k.tap(p, 'INICIAR SESIÓN');
+    await k.tap(p, 'INICIA SESIÓN'); await k.fill(p, 'Correo', e); await k.fill(p, 'Contraseña', E2E_PASSWORD); await k.tap(p, 'INICIAR SESIÓN');
     await p.waitForTimeout(5000);
     const tour = await k.waitText(p, 'Soy Kapi', 1000), inicio = await k.waitText(p, 'Hola, Lucía', 5000);
     log('c15 tour mostrado:', tour, '| inicio con plan:', inicio, '|', db.counts(e)); await k.shot(p, 'c15-inicio'); await ctx.close();

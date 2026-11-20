@@ -42,12 +42,34 @@ Fuera del código, Play Console sigue pidiendo:
 - ficha;
 - prueba cerrada de 12 testers durante 14 días.
 
+## Hallazgos del backend, por prioridad (documentados, no implementados)
+
+Reproducción mínima de cada uno en `CONTRATOS_BACKEND_ACTUALIZADOS.md`.
+
+| Prioridad | # | Hallazgo | Cuándo debe resolverse | Mitigación actual en Mobile |
+|---|---|---|---|---|
+| **Alta** | S-1 | Los logs incluyen correos | Antes de producción o de tener participantes reales | Ninguna posible desde la app; los logs no se tocaron por orden expresa |
+| **Media** | B-4 | No hay endpoint público de versiones de consentimiento | Antes de activar `enforce-on-signup` | La app pide los documentos justo después del primer login |
+| **Media** | B-5 | `report` acepta un entrenamiento de fecha futura (afecta la adherencia de semanas no vividas) | Decisión de producto antes de la prueba cerrada | Ninguna; la app ofrece «Ya lo hice» en entrenamientos programados |
+| **Baja** | B-1 | `Retry-After` no expuesto por CORS | Solo si hay cliente web | Pausa de 1 min en el botón (`d96f4ab`); Android lee la cabecera |
+| **Baja** | B-2 | Mensaje de edad sin «ñ» («anos») | Con B-3 | La app muestra su propio texto |
+| **Baja** | B-3 | Mensajes sin tildes en general | Pulido antes de publicar | La app usa sus textos para los casos conocidos |
+
 ## Decisiones de producto abiertas
 
 - **B-5**: ¿se permite «Ya lo hice» para un entrenamiento de una fecha futura? Hoy lo permiten el backend y
   la app.
 - **Cambiar la contraseña con sesión iniciada**: no existe ni en el backend ni en la app. Solo por
   recuperación.
+
+## Higiene de credenciales en la documentación
+
+Los arneses de #2 (`docs/validacion/e2e/run-backend.sh`) y #3 (`run-backend-71-72.sh`) llevaban escritos un
+secreto JWT y la clave de una PostgreSQL local desechable. Los arneses de esta PR, contraseñas de cuentas
+sintéticas. **Ninguno corresponde a un entorno real.** Desde #8, todos se leen de variables de entorno
+(`evidencia/arnes/LEEME.md`). Los valores anteriores siguen en el historial de git de #2 y #3. Como son
+solo locales, no hace falta reescribir el historial, pero **ningún despliegue debe reutilizarlos**: el
+backend desplegado necesita su propio `JWT_SECRET`.
 
 ## Sin cambios, por orden expresa
 

@@ -1,16 +1,17 @@
+const { E2E_PASSWORD } = require('./credenciales');
 const { k, db, log } = require('./lib'); const { abrir, intentar, texto } = require('./eliminar-lib');
 (async () => {
   const { ctx, p } = await k.open('lucas');
   let deletes = 0; p.on('request', r => { if (r.method() === 'DELETE') deletes++; });
   await k.waitText(p, 'Hola, Lucas', 20000);
   await abrir(p);
-  await intentar(p, 'NoEsMiClave1');
+  await intentar(p, 'incorrecta-1');
   log('403 →', ((await texto(p)).match(/La contraseña no es correcta[^|]*/) || ['(no visible)'])[0], '· DELETE', deletes);
   await k.shot(p, 'F-eliminar-403');
   await k.tap(p, 'Entiendo que esta acción no se puede deshacer').catch(() => {});
   const marcado = await p.$$eval('flt-semantics[role=checkbox]', ns => ns.map(n => n.getAttribute('aria-checked')));
   if (marcado[0] !== 'true') await k.tap(p, 'Entiendo que esta acción no se puede deshacer');
-  await k.fill(p, 'Tu contraseña', 'Kora12345');
+  await k.fill(p, 'Tu contraseña', E2E_PASSWORD);
   await k.tap(p, 'Eliminar mi cuenta', { role: 'button' }); await p.waitForTimeout(800);
   const b = await p.$$eval('flt-semantics[role=button]', ns => ns.filter(n => (n.textContent || '').trim() === 'Eliminar').map(n => { const r = n.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
   const [x, y] = b[b.length - 1]; await p.mouse.click(x, y); await p.mouse.click(x, y); await p.mouse.click(x, y);
@@ -21,7 +22,7 @@ const { k, db, log } = require('./lib'); const { abrir, intentar, texto } = requ
   log('claves locales que quedan:', JSON.stringify(ls));
   await k.tap(p, 'Salir', { role: 'button' }).catch(() => {}); await p.waitForTimeout(1500);
   await k.tap(p, 'INICIA SESIÓN', { role: 'button' }).catch(() => {}); await p.waitForTimeout(1200);
-  await k.fill(p, 'Correo', 'lucas@e2e.local'); await k.fill(p, 'Contraseña', 'Kora12345');
+  await k.fill(p, 'Correo', 'lucas@e2e.local'); await k.fill(p, 'Contraseña', E2E_PASSWORD);
   await k.tap(p, 'INICIAR SESIÓN', { role: 'button' }); await p.waitForTimeout(2500);
   log('login tras eliminar → sigue en login:', !(await k.waitText(p, 'Hola, Lucas', 2000)));
   await k.shot(p, 'F-login-tras-eliminar');

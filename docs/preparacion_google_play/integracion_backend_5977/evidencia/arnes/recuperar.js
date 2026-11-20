@@ -1,3 +1,4 @@
+const { E2E_PASSWORD, E2E_NEW_PASSWORD } = require('./credenciales');
 // Recuperación en Flutter con el correo simulado (servidor SMTP local que guarda los .eml).
 const { k, db, log } = require('./lib'); const registrar = require('./register');
 const { execFileSync } = require('child_process'); const fs = require('fs');
@@ -21,7 +22,7 @@ const e = 'rec3@e2e.local';
   log('código leído del .eml, longitud', code.length);
   // primero un código inválido
   await k.fill(B.p, 'Código de recuperación', 'codigo-invalido-123');
-  await k.fill(B.p, 'Nueva contraseña', 'Nueva12345'); await k.fill(B.p, 'Confirmar contraseña', 'Nueva12345');
+  await k.fill(B.p, 'Nueva contraseña', E2E_NEW_PASSWORD); await k.fill(B.p, 'Confirmar contraseña', E2E_NEW_PASSWORD);
   await k.tap(B.p, 'Actualizar contraseña', { role: 'button' }); await B.p.waitForTimeout(1500);
   log('código inválido → aviso:', await k.waitText(B.p, 'no es válido', 2000)); await k.shot(B.p, 'E-recuperar-invalido');
   await B.p.waitForTimeout(4000);
@@ -31,10 +32,10 @@ const e = 'rec3@e2e.local';
   log('BD token:', db.q(`SELECT count(*)||' tokens, usados='||count(used_at) FROM password_reset_tokens t JOIN users u USING(user_id) WHERE u.email='${e}'`));
   // contraseña antigua y nueva
   await B.p.waitForTimeout(3000);
-  await k.fill(B.p, 'Correo', e); await k.fill(B.p, 'Contraseña', 'Kora12345'); await k.tap(B.p, 'INICIAR SESIÓN'); await B.p.waitForTimeout(2000);
+  await k.fill(B.p, 'Correo', e); await k.fill(B.p, 'Contraseña', E2E_PASSWORD); await k.tap(B.p, 'INICIAR SESIÓN'); await B.p.waitForTimeout(2000);
   log('contraseña antigua sigue en login:', !(await k.waitText(B.p, 'Paso 1 de 5', 1500))); await k.shot(B.p, 'E-login-antigua');
   await B.p.waitForTimeout(3500);
-  await k.fill(B.p, 'Contraseña', 'Nueva12345'); await k.tap(B.p, 'INICIAR SESIÓN');
+  await k.fill(B.p, 'Contraseña', E2E_NEW_PASSWORD); await k.tap(B.p, 'INICIAR SESIÓN');
   log('contraseña nueva entra:', await k.waitText(B.p, 'Paso 1 de 5', 15000));
   // A: su JWT anterior ya no vale.
   await A.p.reload(); await k.semantics(A.p); await A.p.waitForTimeout(3000);

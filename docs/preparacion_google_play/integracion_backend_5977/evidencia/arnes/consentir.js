@@ -1,3 +1,4 @@
+const { E2E_PASSWORD } = require('./credenciales');
 // Versiones de PRUEBA publicadas en el backend local (exigencia en el registro desactivada).
 const { k, db, log } = require('./lib');
 const e = 'con2@e2e.local';
@@ -6,7 +7,7 @@ const e = 'con2@e2e.local';
   let posts = []; p.on('request', r => { if (r.url().includes('/consents') && r.method() === 'POST') posts.push(r.postData()); });
   await k.waitText(p, 'COMENZAR AHORA', 15000); await k.tap(p, 'INICIA SESIÓN', { role: 'button' }); await p.waitForTimeout(1000);
   await k.waitText(p, 'INICIAR SESIÓN', 15000);
-  await k.fill(p, 'Correo', e); await k.fill(p, 'Contraseña', 'Kora12345'); await k.tap(p, 'INICIAR SESIÓN');
+  await k.fill(p, 'Correo', e); await k.fill(p, 'Contraseña', E2E_PASSWORD); await k.tap(p, 'INICIAR SESIÓN');
   await p.waitForTimeout(4000);
   await k.dump(p, 'tras login'); await k.shot(p, 'G-consentimientos');
   const cbs = await p.$$eval('flt-semantics[role=checkbox]', ns => ns.map(n => (n.textContent || n.getAttribute('aria-label') || '').trim().slice(0, 60) + ' = ' + n.getAttribute('aria-checked')));
