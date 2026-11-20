@@ -26,10 +26,12 @@ import 'support/welcome_fakes.dart';
 /// `{password, confirm: true}`; 200 DELETED, 202 PENDING, 400, 403, 429 +
 /// Retry-After, 401, 404, 503.
 class AccountBackend implements HttpClientAdapter {
-  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false, this.retryAfterVisible = true, this.timeouts = 0});
+  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false, this.retryAfterVisible = true, this.timeouts = 0, this.connectTimeout = false});
   int deleteStatus;
   /// The first N DELETEs get no answer (receive timeout) although they left the phone.
   int timeouts;
+  /// Could not even connect: the request never left the phone.
+  bool connectTimeout;
   bool offline, alreadyRequested;
   /// false: like a browser, where the backend does not expose Retry-After (CORS).
   bool retryAfterVisible;
@@ -42,6 +44,9 @@ class AccountBackend implements HttpClientAdapter {
     bodies.add(o.data);
     if (offline && o.method == 'DELETE') {
       throw DioException(requestOptions: o, type: DioExceptionType.connectionError);
+    }
+    if (connectTimeout && o.method == 'DELETE') {
+      throw DioException(requestOptions: o, type: DioExceptionType.connectionTimeout);
     }
     if (timeouts > 0 && o.method == 'DELETE') {
       timeouts--;
@@ -281,6 +286,22 @@ void main() {
     expect(left['kora_welcome_8'], '{"tourStep":3}', reason: 'other accounts are kept');
   });
 
+  // A connection error is also what a cut after sending looks like: the app
+  // cannot tell it from being offline, so it must not say nothing was deleted.
+  testWidgets('connection error: honest about both cases, keeps the session, and a retry confirms', (tester) async {
+    final backend = AccountBackend(offline: true);
+    final r = await pumpDeletion(tester, backend: backend);
+    await fillAndConfirm(tester);
+    expect(find.textContaining('es posible que la eliminación se haya registrado'), findsOneWidget);
+    expect(find.textContaining('No se eliminó nada'), findsNothing);
+    expect(r.container.read(authViewModelProvider).user, isNotNull);
+    expect(await stored(), userKeys);
+    backend.offline = false; // back online: the request had not arrived
+    await tester.runAsync(() => r.container.read(accountDeletionProvider.notifier).delete(password: 'Kora12345'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tu cuenta fue eliminada'), findsOneWidget);
+  });
+
   testWidgets('a plain 401 (no earlier unanswered request) keeps the local data', (tester) async {
     final r = await pumpDeletion(tester, backend: AccountBackend(deleteStatus: 401));
     await fillAndConfirm(tester);
@@ -309,7 +330,7 @@ void main() {
     ('500', AccountBackend(deleteStatus: 500), 'El servidor no pudo registrar la solicitud'),
     ('401 (revoked token)', AccountBackend(deleteStatus: 401), 'Tu sesión ya no es válida'),
     ('405 (old backend without the endpoint)', AccountBackend(deleteStatus: 405), 'todavía no está disponible'),
-    ('without connection', AccountBackend(offline: true), 'No hay conexión'),
+    ('connection timeout (never sent)', AccountBackend(connectTimeout: true), 'No hay conexión'),
     ('unexpected 200 without DELETED', AccountBackend(deleteStatus: 299), 'No se eliminó nada'),
   ]) {
     testWidgets('$name: nothing is deleted locally, the session stays', (tester) async {

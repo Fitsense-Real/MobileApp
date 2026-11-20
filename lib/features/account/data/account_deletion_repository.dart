@@ -78,12 +78,19 @@ class AccountDeletionRepository {
   DeletionFailure _failure(DioException e) {
     final status = e.response?.statusCode;
     if (status == null) {
-      // Could not even connect: the request never reached the backend.
-      if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
+      // Only a connection timeout proves the request never left the phone.
+      if (e.type == DioExceptionType.connectionTimeout) {
         return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
       }
-      // The request may have been processed (the backend deactivates the
-      // account at once): never claim that nothing was deleted.
+      // A connection error is also what a cut after sending looks like
+      // ("Connection closed before full header was received" on Android, any
+      // XHR error on the web), and the backend deactivates the account as soon
+      // as it accepts the request: never claim that nothing was deleted.
+      if (e.type == DioExceptionType.connectionError) {
+        return const DeletionFailure(DeletionFailureKind.uncertain,
+            'No pudimos comunicarnos con el servidor. Si no tenías conexión, no se envió nada; si se cortó durante la solicitud, '
+            'es posible que la eliminación se haya registrado. Inténtalo de nuevo cuando tengas conexión: lo confirmaremos.');
+      }
       return const DeletionFailure(DeletionFailureKind.uncertain,
           'No recibimos la respuesta del servidor y no sabemos si la eliminación se registró. Vuelve a intentarlo: si ya se registró, lo confirmaremos.');
     }

@@ -25,8 +25,9 @@ En `14c7241`, sobre la rama de #7:
 | 401 | «Tu sesión ya no es válida…» | se conservan |
 | 405 / 501 | «todavía no está disponible en este servidor» | se conservan |
 | 5xx / 503 | «El servidor no pudo registrar la solicitud. No se eliminó nada…» | se conservan |
-| sin red (no conecta) | «No hay conexión…» | se conservan |
-| sin respuesta tras enviar (timeout, corte) | «No recibimos la respuesta… no sabemos si la eliminación se registró» (nunca «No se eliminó nada») | se conservan |
+| no llega a conectar (`connectionTimeout`) | «No hay conexión… No se eliminó nada» | se conservan |
+| error de conexión (`connectionError`): puede ser falta de red **o un corte después de enviar** | «Si no tenías conexión, no se envió nada; si se cortó durante la solicitud, es posible que la eliminación se haya registrado…» (nunca «No se eliminó nada») | se conservan |
+| sin respuesta tras enviar (timeout de respuesta) | «No recibimos la respuesta… no sabemos si la eliminación se registró» (nunca «No se eliminó nada») | se conservan |
 | 401 después de un intento sin respuesta | «Tu cuenta probablemente ya se eliminó» | se borran |
 | 403 que no es `REAUTENTICACION_FALLIDA` | «El servidor rechazó la solicitud…» | se conservan |
 | 200 inesperado (sin `DELETED`) | error, «No se eliminó nada» | se conservan |

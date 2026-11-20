@@ -16,6 +16,16 @@ hallazgo se verificó después en el código antes de actuar.
 
 Pruebas: `account_deletion_test.dart` (+4) y `password_rules_test.dart` (2). La suite pasa de 200 a **206**.
 
+**Ampliación durante la integración en `generation`.** Al preparar la prueba de la respuesta incierta se
+comprobó en el código de Dio que un corte después de enviar también llega como `connectionError`:
+
+- en Android, «Connection closed before full header was received»;
+- en web, cualquier error de XHR.
+
+Es el mismo tipo que la falta de red. Ahora solo `connectionTimeout`, que prueba que la petición no salió,
+dice «No se eliminó nada». Un `connectionError` explica los dos casos posibles y un reintento lo confirma.
+Se añadió 1 prueba (207 en total) y se sustituyó el caso «sin conexión» por «no llega a conectar».
+
 ## Documentado, sin cambiar
 
 | Sev. | Hallazgo | Responsable | Motivo |
