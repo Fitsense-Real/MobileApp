@@ -16,6 +16,7 @@ import '../../../welcome/presentation/welcome_routes.dart';
 import '../dashboard_tour_targets.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/config/app_links.dart';
+import '../../../consents/data/consents_repository.dart';
 import '../../domain/plan_week_label.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
@@ -1223,6 +1224,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ]);
   });
 
+  /// Terms and privacy (backend V63): what this person accepted, or that no
+  /// version is published yet. Nothing is shown if the check fails.
+  Widget consentsSummary() => Consumer(builder: (context, ref, _) {
+    final status = ref.watch(consentStatusProvider).asData?.value;
+    if (status == null) return const SizedBox.shrink();
+    String line(ConsentType type) {
+      final current = status.currentVersions[type];
+      final accepted = status.acceptedVersion(type);
+      if (current == null) return '${type.label}: todavía sin versión publicada.';
+      return accepted == current ? '${type.label}: aceptada (versión $current).' : '${type.label}: pendiente de aceptar (versión $current).';
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text('${line(ConsentType.termsOfService)}\n${line(ConsentType.privacyPolicy)}', style: const TextStyle(color: Kora.sage, height: 1.5)),
+    );
+  });
+
   Future<void> withdraw(BuildContext sheetContext) async {
     final confirmed = await showDialog<bool>(
       context: sheetContext,
@@ -1339,6 +1357,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         const Text('Perfil de solo lectura: se mantiene durante todo el estudio.', style: TextStyle(color: Kora.sage)),
                         const SizedBox(height: 20),
                         studyStatus(),
+                        consentsSummary(),
                         // Deleting the account is not withdrawing from the study: it has
                         // its own screen, and only appears when the backend service exists.
                         if (AppLinks.accountDeletionEnabled) ...[

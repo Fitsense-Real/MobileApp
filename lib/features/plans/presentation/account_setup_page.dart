@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
+import '../../consents/data/consents_repository.dart';
 import '../../onboarding/data/profile_repository.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../welcome/data/welcome_store.dart';
@@ -31,6 +32,17 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
     if (!mounted) return;
     setState(() => error = null);
     try {
+      // Newly published terms / privacy policy (V63) are accepted first. While no
+      // document is approved there is nothing pending; an older backend without
+      // the endpoint, or a failed check, never blocks the account.
+      try {
+        final consents = await ref.read(consentsRepositoryProvider).status();
+        if (!mounted) return;
+        if (consents.pendingDocuments.isNotEmpty) {
+          context.go(AppRoutes.consents);
+          return;
+        }
+      } catch (_) {}
       final profile = await ref.read(profileRepositoryProvider).fetch();
       if (!mounted) return;
       if (profile == null) {

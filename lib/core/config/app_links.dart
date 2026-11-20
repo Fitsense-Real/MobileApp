@@ -12,6 +12,9 @@ class AppLinks {
   /// requirement). Built in the web stage; empty until it exists.
   static const accountDeletionWebUrl = String.fromEnvironment('ACCOUNT_DELETION_WEB_URL');
 
+  /// Terms of use. Empty until an approved version is published.
+  static const termsUrl = String.fromEnvironment('TERMS_URL');
+
   /// Privacy policy of Kora and the study. Empty until it is published.
   static const privacyPolicyUrl = String.fromEnvironment('PRIVACY_POLICY_URL');
 }

@@ -12,6 +12,8 @@ import 'package:fitsense_mobile/features/welcome/data/plan_generation_repository
 import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
+import 'package:fitsense_mobile/features/consents/data/consents_repository.dart';
+import 'support/consents_fakes.dart';
 import 'support/welcome_fakes.dart';
 
 class ProfileStub extends ProfileRepository {
@@ -39,13 +41,14 @@ class PlanStub extends PlanRepository {
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
-  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans, {FakeGeneration? generation}) async {
+  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans, {FakeGeneration? generation, ConsentsStub? consents}) async {
     final router = GoRouter(initialLocation: '/account-setup', routes: [
       GoRoute(path: '/account-setup', builder: (_, __) => const AccountSetupPage()),
       GoRoute(path: '/onboarding', builder: (_, __) => const Scaffold(body: Text('Crear perfil'))),
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('Inicio'))),
       GoRoute(path: welcomeTourRoute, builder: (_, __) => const Scaffold(body: Text('Recorrido'))),
       GoRoute(path: welcomeResultRoute, builder: (_, __) => const Scaffold(body: Text('Resultado'))),
+      GoRoute(path: '/consentimientos', builder: (_, __) => const Scaffold(body: Text('Consentimientos'))),
     ]);
     addTearDown(router.dispose);
     await tester.pumpWidget(ProviderScope(overrides: [
@@ -53,6 +56,7 @@ void main() {
       profileRepositoryProvider.overrideWithValue(ProfileStub(profile)),
       planRepositoryProvider.overrideWithValue(plans),
       planGenerationRepositoryProvider.overrideWithValue(generation ?? FakeGeneration()),
+      consentsRepositoryProvider.overrideWithValue(consents ?? ConsentsStub(consentsJson())),
     ], child: MaterialApp.router(routerConfig: router)));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -101,5 +105,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Recorrido'), findsOneWidget);
     expect(find.text('Inicio'), findsNothing);
+  });
+
+  // Consents (backend V63): only a published version not accepted yet stops the account.
+  testWidgets('a newly published terms/privacy version is accepted before entering', (tester) async {
+    await open(tester, {'userId': 7}, PlanStub({'planId': 1}), consents: ConsentsStub(consentsJson(terms: 'prueba-terminos-1')));
+    expect(find.text('Consentimientos'), findsOneWidget);
+  });
+
+  testWidgets('without approved documents (current study state) nothing is asked', (tester) async {
+    await open(tester, {'userId': 7}, PlanStub({'planId': 1}), consents: ConsentsStub(consentsJson()));
+    expect(find.text('Inicio'), findsOneWidget);
+  });
+
+  testWidgets('a failed consents check (older backend, no network) never blocks the account', (tester) async {
+    await open(tester, {'userId': 7}, PlanStub({'planId': 1}), consents: ConsentsStub(consentsJson(), fails: true));
+    expect(find.text('Inicio'), findsOneWidget);
   });
 }
