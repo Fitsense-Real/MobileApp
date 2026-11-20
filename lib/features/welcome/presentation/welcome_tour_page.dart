@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/kora_ui.dart';
@@ -149,8 +150,19 @@ class _WelcomeTourPageState extends ConsumerState<WelcomeTourPage> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
+      // System back / predictive back gesture (Android 16): one step back.
+      // On the first step the user is never trapped: the replay returns to
+      // Perfil, and the mandatory first tour leaves the app with its progress
+      // saved (it resumes on the same step when Kora is opened again).
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && step > 0) _go(step - 1);
+        if (didPop) return;
+        if (step > 0) {
+          _go(step - 1);
+        } else if (widget.replay) {
+          _finish();
+        } else {
+          SystemNavigator.pop();
+        }
       },
       child: NotificationListener<SizeChangedLayoutNotification>(
         onNotification: (_) {

@@ -16,6 +16,7 @@ import 'package:fitsense_mobile/features/welcome/presentation/tour/tour_steps.da
 import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
 import 'package:fitsense_mobile/features/welcome/presentation/welcome_tour_page.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+import 'support/system_bars.dart';
 import 'support/welcome_fakes.dart';
 
 class PlansById extends PlanRepository {
@@ -30,7 +31,7 @@ class PlansById extends PlanRepository {
 
 int realDataReads = 0;
 
-Future<GoRouter> pumpWelcome(WidgetTester tester, FakeGeneration generation, {String location = welcomeTourRoute, PlansById? plans, Size size = const Size(420, 900), double textScale = 1}) async {
+Future<GoRouter> pumpWelcome(WidgetTester tester, FakeGeneration generation, {String location = welcomeTourRoute, PlansById? plans, Size size = const Size(420, 900), double textScale = 1, EdgeInsets bars = EdgeInsets.zero}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -54,7 +55,7 @@ Future<GoRouter> pumpWelcome(WidgetTester tester, FakeGeneration generation, {St
       interventionsProvider.overrideWith((ref) async { realDataReads++; return []; }),
     ],
     child: MediaQuery(
-      data: MediaQueryData(size: size, textScaler: TextScaler.linear(textScale), disableAnimations: true),
+      data: edgeToEdge(size, textScale: textScale, bars: bars),
       child: MaterialApp.router(routerConfig: router, theme: AppTheme.light),
     ),
   ));
@@ -218,6 +219,86 @@ void main() {
     await settle(tester);
     expect(find.text('PASO 2 DE ${welcomeTourSteps.length}'), findsOneWidget);
     semantics.dispose();
+    await disposeTree(tester);
+  });
+
+  // ---- Android 16 (targetSdk 36): predictive back and edge to edge ----
+
+  group('system back (predictive back gesture)', () {
+    late List<String> platformCalls;
+    setUp(() {
+      platformCalls = [];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        platformCalls.add(call.method);
+        return null;
+      });
+    });
+    tearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    Future<void> systemBack(WidgetTester tester) async {
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+    }
+
+    testWidgets('first tour: back goes one step back; on step 1 it leaves the app with the progress saved', (tester) async {
+      final generation = FakeGeneration();
+      await pumpWelcome(tester, generation);
+      await tapNext(tester);
+      await tapNext(tester);
+      expect(find.text('PASO 3 DE ${welcomeTourSteps.length}'), findsOneWidget);
+      await systemBack(tester);
+      expect(find.text('PASO 2 DE ${welcomeTourSteps.length}'), findsOneWidget);
+      expect((await stored()).tourStep, 1);
+      await systemBack(tester);
+      expect(find.text('PASO 1 DE ${welcomeTourSteps.length}'), findsOneWidget);
+      expect(platformCalls, isNot(contains('SystemNavigator.pop')));
+      await systemBack(tester);
+      expect(platformCalls, contains('SystemNavigator.pop'), reason: 'never trapped: the app goes to the background');
+      expect((await stored()).tourStatus, TourStatus.inProgress, reason: 'not skipped: it resumes on the next start');
+      expect(find.text('PASO 1 DE ${welcomeTourSteps.length}'), findsOneWidget);
+      expect(generation.startCalls, 1, reason: 'back never restarts the generation');
+      await disposeTree(tester);
+    });
+
+    testWidgets('replay from Perfil: back on step 1 returns to the app, nothing is saved', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': jsonEncode({'tourStatus': 'completed', 'tourStep': 9})});
+      await pumpWelcome(tester, FakeGeneration(), location: welcomeReplayRoute);
+      await systemBack(tester);
+      expect(find.text('Mi plan'), findsOneWidget);
+      expect(platformCalls, isNot(contains('SystemNavigator.pop')));
+      expect((await stored()).tourStatus, TourStatus.completed);
+      await disposeTree(tester);
+    });
+
+    testWidgets('result screen: back leaves the app and the generation is not requested again', (tester) async {
+      final generation = FakeGeneration(starts: [operation('PROCESSING')], finds: [operation('PROCESSING')]);
+      await pumpWelcome(tester, generation, location: welcomeResultRoute);
+      await systemBack(tester);
+      expect(platformCalls, contains('SystemNavigator.pop'));
+      expect(generation.startCalls, 1);
+      await disposeTree(tester);
+    });
+  });
+
+  testWidgets('edge to edge: no tour control under the status or navigation bar, in any step', (tester) async {
+    for (final (size, scale) in const [(Size(390, 844), 1.0), (Size(360, 740), 2.0), (Size(844, 390), 1.0)]) {
+      FlutterSecureStorage.setMockInitialValues({});
+      await pumpWelcome(tester, FakeGeneration(), size: size, textScale: scale, bars: androidBars);
+      for (var i = 0; i < welcomeTourSteps.length; i++) {
+        expect(tester.takeException(), isNull);
+        expectNothingUnderSystemBars(tester, where: 'step ${i + 1} at $size x$scale');
+        if (i < welcomeTourSteps.length - 1) await tapNext(tester);
+      }
+      await disposeTree(tester);
+    }
+  });
+
+  testWidgets('edge to edge: the result screen keeps its actions above the navigation bar', (tester) async {
+    final generation = FakeGeneration(starts: [operation('FAILED', reason: 'ERROR_TECNICO', message: 'Problema técnico', retryable: true)]);
+    await pumpWelcome(tester, generation, location: welcomeResultRoute, size: const Size(360, 640), textScale: 1.5, bars: androidBars);
+    expect(find.text('Intentar de nuevo'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expectNothingUnderSystemBars(tester, where: 'result');
     await disposeTree(tester);
   });
 
