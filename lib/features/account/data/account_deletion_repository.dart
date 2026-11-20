@@ -3,66 +3,67 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_constants.dart';
 import '../../../core/api/api_error.dart';
 import '../../../core/providers/dio_provider.dart';
-import '../../../core/storage/token_storage.dart';
 
-/// What the backend answered to the deletion request.
+/// What the backend answered to `DELETE /users/me` (`AccountDeletionResource`).
 enum DeletionOutcome {
-  /// 200/204: the account no longer exists.
+  /// 200 `DELETED`: no row of the person is left.
   completed,
 
-  /// 202: the request was accepted and will be processed later. The account
-  /// is NOT deleted yet, and the app must not say it is.
-  accepted,
+  /// 202 `PENDING`: the account is already deactivated (no sign-in, every
+  /// token revoked) and the backend finishes the deletion automatically. The
+  /// data are NOT gone yet, and the app must not say they are.
+  pending,
 }
 
-/// Why the deletion could not be requested. Nothing was deleted in any case.
+class DeletionResult {
+  const DeletionResult(this.outcome, {this.alreadyRequested = false});
+  final DeletionOutcome outcome;
+
+  /// 202 with `alreadyRequested: true`: an earlier request was already registered.
+  final bool alreadyRequested;
+}
+
+/// Why the deletion was not done. Nothing was deleted in any case.
 class DeletionFailure implements Exception {
-  const DeletionFailure(this.kind, this.message);
+  const DeletionFailure(this.kind, this.message, {this.retryAfter});
   final DeletionFailureKind kind;
   final String message;
+
+  /// 429: how long the backend asks to wait (`Retry-After`).
+  final Duration? retryAfter;
   @override
   String toString() => message;
 }
 
-enum DeletionFailureKind { wrongPassword, otherAccount, unavailable, offline, server, rejected }
+enum DeletionFailureKind { wrongPassword, tooManyAttempts, sessionExpired, alreadyGone, unavailable, offline, server, rejected }
 
-/// `DELETE /users/me` of Fitsense-Real/Backend. The contract is being prepared
-/// in the backend; the codes handled here are the standard REST ones and are
-/// reviewed against the real contract before enabling the option
-/// (`ACCOUNT_DELETION_ENABLED`, docs/preparacion_google_play/ELIMINACION_CUENTA_FLUTTER.md).
+/// `DELETE /api/v1/users/me` of Fitsense-Real/Backend (`generation` 5977d28):
+/// body `{password, confirm: true}` (`DeleteAccountResource`). The backend
+/// re-authenticates with that password itself, so the app sends it once and
+/// only here.
+///
+/// | Answer | Meaning |
+/// |---|---|
+/// | 200 `DELETED` | deleted |
+/// | 202 `PENDING` | account deactivated, deletion completes automatically |
+/// | 400 `CONFIRMACION_REQUERIDA` | missing `confirm=true` (never sent by the app) |
+/// | 403 `REAUTENTICACION_FALLIDA` | wrong password |
+/// | 429 `DEMASIADOS_INTENTOS` + `Retry-After` | too many wrong passwords |
+/// | 401 | token no longer valid (revoked, expired) |
+/// | 404 `CUENTA_INEXISTENTE` | the account no longer exists |
+/// | 503 `ELIMINACION_NO_REGISTRADA` | the request could not be registered |
 class AccountDeletionRepository {
   AccountDeletionRepository(this._dio);
   final Dio _dio;
 
-  /// Re-authentication with the existing login (`POST /auth/login`): proves
-  /// it is the owner and gets a fresh JWT for the deletion. The account
-  /// signed in must be the one being deleted.
-  Future<void> reauthenticate({required int userId, required String email, required String password}) async {
+  Future<DeletionResult> requestDeletion({required String password}) async {
     try {
-      final response = await _dio.post(ApiConstants.login, data: {'email': email, 'password': password});
-      final data = response.data is Map ? Map<String, dynamic>.from(response.data as Map) : const <String, dynamic>{};
-      final token = data['token'] as String?;
-      final id = (data['userId'] as num?)?.toInt() ?? ((data['user'] as Map?)?['userId'] as num?)?.toInt();
-      if (token == null || token.isEmpty) throw const DeletionFailure(DeletionFailureKind.server, 'No pudimos confirmar tu identidad. Inténtalo de nuevo.');
-      if (id != null && id != userId) {
-        throw const DeletionFailure(DeletionFailureKind.otherAccount, 'Esa contraseña corresponde a otra cuenta.');
-      }
-      await TokenStorage.saveToken(token);
-    } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      if (status == 401) throw const DeletionFailure(DeletionFailureKind.wrongPassword, 'La contraseña no es correcta. No se eliminó nada.');
-      throw _failure(e);
-    }
-  }
-
-  Future<DeletionOutcome> requestDeletion() async {
-    try {
-      final response = await _dio.delete(ApiConstants.deleteAccount);
-      return switch (response.statusCode) {
-        202 => DeletionOutcome.accepted,
-        200 || 204 => DeletionOutcome.completed,
-        _ => throw DeletionFailure(DeletionFailureKind.server, 'Respuesta inesperada del servidor (${response.statusCode}). No se eliminó nada.'),
-      };
+      final response = await _dio.delete(ApiConstants.deleteAccount, data: {'password': password, 'confirm': true});
+      final body = response.data is Map ? Map<String, dynamic>.from(response.data as Map) : const <String, dynamic>{};
+      final status = '${body['status'] ?? ''}';
+      if (response.statusCode == 200 && status == 'DELETED') return const DeletionResult(DeletionOutcome.completed);
+      if (response.statusCode == 202) return DeletionResult(DeletionOutcome.pending, alreadyRequested: body['alreadyRequested'] == true);
+      throw DeletionFailure(DeletionFailureKind.server, 'Respuesta inesperada del servidor (${response.statusCode} $status). No se eliminó nada.');
     } on DioException catch (e) {
       throw _failure(e);
     }
@@ -73,11 +74,28 @@ class AccountDeletionRepository {
     if (status == null) {
       return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
     }
-    if (status == 404 || status == 405 || status == 501) {
-      return const DeletionFailure(DeletionFailureKind.unavailable, 'La eliminación de cuentas todavía no está disponible en el servidor. No se eliminó nada.');
+    switch (status) {
+      case 403:
+        return const DeletionFailure(DeletionFailureKind.wrongPassword, 'La contraseña no es correcta. No se eliminó nada; revísala e inténtalo de nuevo.');
+      case 429:
+        final seconds = int.tryParse(e.response?.headers.value('retry-after') ?? '');
+        final wait = seconds == null ? null : Duration(seconds: seconds);
+        final minutes = wait == null ? null : (wait.inSeconds / 60).ceil();
+        return DeletionFailure(
+          DeletionFailureKind.tooManyAttempts,
+          'Demasiados intentos con una contraseña incorrecta. Por seguridad, espera'
+          '${minutes == null ? ' unos minutos' : ' $minutes ${minutes == 1 ? 'minuto' : 'minutos'}'} antes de volver a intentarlo. No se eliminó nada.',
+          retryAfter: wait,
+        );
+      case 401:
+        return const DeletionFailure(DeletionFailureKind.sessionExpired, 'Tu sesión ya no es válida. Vuelve a iniciar sesión. No se eliminó nada.');
+      case 404:
+        return const DeletionFailure(DeletionFailureKind.alreadyGone, 'Esta cuenta ya no existe en el servidor.');
+      case 405 || 501:
+        return const DeletionFailure(DeletionFailureKind.unavailable, 'La eliminación de cuentas todavía no está disponible en este servidor. No se eliminó nada.');
     }
     if (status >= 500) {
-      return const DeletionFailure(DeletionFailureKind.server, 'El servidor no pudo procesar la solicitud. No se eliminó nada; inténtalo más tarde.');
+      return const DeletionFailure(DeletionFailureKind.server, 'El servidor no pudo registrar la solicitud. No se eliminó nada; inténtalo más tarde.');
     }
     return DeletionFailure(DeletionFailureKind.rejected, apiError(e));
   }

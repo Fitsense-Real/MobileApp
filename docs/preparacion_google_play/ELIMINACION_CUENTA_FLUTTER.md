@@ -1,5 +1,11 @@
 # Eliminación de cuenta desde Flutter (PR C)
 
+> **Actualización (20/11/2026):** el backend ya implementa `DELETE /users/me` (`generation` `5977d28`, #77).
+> El cliente se ajustó a su contrato real: cuerpo `{password, confirm: true}`, sin login aparte, 200
+> `DELETED`, 202 `PENDING`, 403, 429 con `Retry-After`, 401, 404 y 503. Las secciones de abajo describen la
+> versión inicial, escrita sin el contrato; el estado vigente y las pruebas contra el backend real están en
+> `INTEGRACION_ELIMINACION_CUENTA.md`.
+
 ## Problema
 
 Solo existía «Retirarme del estudio» (`POST /users/me/withdraw`): deja de participar, **conserva la

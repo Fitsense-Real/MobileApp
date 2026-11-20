@@ -39,7 +39,7 @@ class _AccountDeletionPageState extends ConsumerState<AccountDeletionPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Eliminar tu cuenta?'),
-        content: const Text('Se enviará la solicitud al servidor y se cerrará tu sesión. No se puede deshacer.'),
+        content: const Text('Se eliminará tu cuenta y se cerrará tu sesión. No se puede deshacer.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(
@@ -76,8 +76,15 @@ class _AccountDeletionPageState extends ConsumerState<AccountDeletionPage> {
             ),
           DeletionStatus.pending => _done(
               'Solicitud recibida',
-              'El servidor recibió tu solicitud de eliminación y la procesará. Todavía no está completada. '
+              '${state.alreadyRequested ? 'Ya habías solicitado la eliminación. ' : ''}'
+                  'Tu cuenta quedó desactivada: ya no se puede iniciar sesión con ella. '
+                  'El servidor completará la eliminación automáticamente; todavía no está terminada y no necesitas hacer nada más. '
+                  'Si quieres confirmar que terminó, escribe al equipo del estudio. '
                   'Se cerró tu sesión y se borraron de este teléfono tus datos de Kora.',
+            ),
+          DeletionStatus.gone => _done(
+              'Tu cuenta ya no existe',
+              '${state.message ?? ''} Se cerró tu sesión y se borraron de este teléfono tus datos de Kora.',
             ),
           _ when user == null => _signedOut(),
           _ => _form(state),
@@ -105,11 +112,12 @@ class _AccountDeletionPageState extends ConsumerState<AccountDeletionPage> {
 
   List<Widget> _form(AccountDeletionState state) {
     final busy = state.status == DeletionStatus.inProgress;
+    final blocked = state.blockedAt(ref.read(deletionClockProvider)());
     return [
       Semantics(header: true, child: Text('Eliminar mi cuenta', style: _title)),
       const SizedBox(height: 16),
-      _point('Se pedirá al servidor de Kora que elimine tu cuenta y se cerrará tu sesión en este teléfono.'),
-      _point('Cuando la eliminación se complete, no podrás volver a entrar con esta cuenta.'),
+      _point('Se eliminará tu cuenta de Kora en el servidor y se cerrará tu sesión en este teléfono.'),
+      _point('Desde ese momento no podrás volver a entrar con esta cuenta.'),
       _point('No se puede deshacer.'),
       const SizedBox(height: 12),
       Container(
@@ -160,7 +168,7 @@ class _AccountDeletionPageState extends ConsumerState<AccountDeletionPage> {
       ],
       const SizedBox(height: 16),
       FilledButton(
-        onPressed: busy || !understood || password.text.isEmpty ? null : _confirm,
+        onPressed: busy || blocked || !understood || password.text.isEmpty ? null : _confirm,
         style: FilledButton.styleFrom(backgroundColor: Colors.red.shade800, foregroundColor: Colors.white, minimumSize: const Size.fromHeight(52)),
         child: busy
             ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
