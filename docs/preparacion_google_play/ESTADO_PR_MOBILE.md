@@ -1,4 +1,32 @@
-# Estado de las PR de Mobile (20/11/2026)
+# Estado de las PR de Mobile
+
+## Estado final (20/11/2026): las ocho PR están fusionadas en `generation`
+
+Fusión autorizada por el propietario y hecha en orden, con commit de fusión (no squash, para conservar la
+pila). Antes de cada paso se verificó que la siguiente PR apuntaba a `generation`, que su diff contenía solo
+sus propios commits y que el CI estaba en verde.
+
+| Orden | PR | Commit fusionado | Commit de fusión en `generation` | CI de `generation` tras la fusión |
+|---|---|---|---|---|
+| 1 | #1 Kapi | `400ee39` | `a83b00c` | — (el flujo llega con #3; 97 pruebas en local) |
+| 2 | #2 Tour y generación asíncrona | `f26c7ce` | `a4526c2` | — (127 pruebas en local) |
+| 3 | #3 Validación final y CI | `17ef213` | `6279338` | ✓ |
+| 4 | #4 Botones sociales retirados | `363cc70` | `5951a48` | ✓ |
+| 5 | #5 Android 16, INTERNET, gesto atrás | `5723437` | `4179375` | ✓ |
+| 6 | #6 HTTPS, guardián de release, firma | `4f14397` | `ee7f01a` | ✓ |
+| 7 | #7 Eliminar mi cuenta | `14c7241` | `1f60311` | ✓ |
+| 8 | #8 Integración con el backend 5977d28 | `99b02b8` | **`aa1a0d2`** | ✓ (run 44778879192) |
+
+- **SHA final de `generation`: `aa1a0d2`** (árbol `877fe4a`). Es idéntico al árbol de la cabeza de #8, que se validó contra el backend.
+- No hubo conflictos.
+- No se fusionó ninguna otra PR.
+
+Durante la integración se añadió a #8, antes de fusionarla, `99b02b8`. Un `connectionError` al eliminar
+la cuenta ya no afirma «No se eliminó nada»; ver `REVISION_SEGURIDAD_COMPATIBILIDAD.md`.
+
+---
+
+## Estado previo a la fusión
 
 Integración con el backend `Fitsense-Real/Backend` `generation` = `5977d28` (incluye #77–#81). No se hizo
 ningún merge.

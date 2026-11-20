@@ -1,6 +1,9 @@
 # Pendientes tras la integración con el backend 5977d28
 
-## Para fusionar Mobile
+## Para fusionar Mobile: **hecho** (20/11/2026)
+
+Las ocho PR están en `generation` (`aa1a0d2`); ver `ESTADO_PR_MOBILE.md`. Lo que sigue es histórico.
+
 
 1. Revisar y aprobar #1 → #8 (`ESTADO_PR_MOBILE.md`). #7 lleva su commit correctivo y #8 es la PR de
    integración.

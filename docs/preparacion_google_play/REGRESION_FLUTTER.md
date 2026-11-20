@@ -4,7 +4,22 @@ Rama `claude/play-e-backend-5977`. Flutter 3.32.8. Se ejecutó en `d96f4ab` (200
 las correcciones de la revisión final (**206**) y de la integración (**207**, ver
 `REVISION_SEGURIDAD_COMPATIBILIDAD.md`).
 
-## Resultados
+## Sobre `generation` integrada (`aa1a0d2`)
+
+| Comprobación | Resultado |
+|---|---|
+| `flutter analyze` | No issues found |
+| `flutter test` | **207 pasan, 0 fallan** |
+| `flutter build web --release --no-web-resources-cdn` | ✓ |
+| `flutter build apk --debug --target-platform android-arm64` | ✓, SHA-256 `ffce77058d5bdadb951a5b27ef16f98e714ea88773bdf36ca0f84b17d8486f22` |
+| APK release de evaluación | INTERNET, targetSdk 36, sin tráfico en claro, no depurable, gesto atrás, 0 cadenas sensibles |
+| Release con HTTP / con `10.0.2.2` / AAB sin configuración | **bloqueados** |
+| CI de `generation` | en verde tras cada fusión desde #3 |
+| Prueba de humo (login, tour, dashboard, cerrar sesión) con el build de `aa1a0d2` | ✓ |
+
+Evidencia: `integracion_backend_5977/evidencia/generation-aa1a0d2/release-final.log`.
+
+## Resultados de la campaña previa
 
 | Comprobación | Resultado |
 |---|---|

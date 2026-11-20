@@ -1,0 +1,11 @@
+registro edadf1@e2e.local 201
+registro edadf2@e2e.local 201
+registro edadf3@e2e.local 201
+### Edad
+cumple 18 mañana (2008-11-21): Debes tener al menos 18 anos para usar la aplicacion. → HTTP 422
+exactamente 18 hoy (2008-11-20): (perfil creado) → HTTP 201
+fecha futura: La solicitud tiene campos invalidos. → HTTP 400
+### Consentimientos
+currentVersions {'STUDY_PARTICIPATION': 'MVP-1.0', 'TERMS_OF_SERVICE': None, 'PRIVACY_POLICY': None} enforcedOnSignup False historial [('STUDY_PARTICIPATION', 'MVP-1.0')]
+Todavia no hay una version aprobada de TERMS_OF_SERVICE: no se puede aceptar. → HTTP 422
+consentimientos sin token → HTTP 401

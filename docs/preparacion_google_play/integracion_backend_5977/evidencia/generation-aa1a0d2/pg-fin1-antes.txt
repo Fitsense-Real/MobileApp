@@ -1,0 +1,12 @@
+users = 1
+user_profiles = 1
+user_consents = 1
+weekly_training_plans = 2
+planned_workouts = 4
+workout_sessions = 2
+workout_session_exercises = 14
+weekly_user_metrics = 1
+user_interventions = 1
+plan_adaptation_attempts = 1
+plan_generation_operations = 1
+password_reset_tokens = 0

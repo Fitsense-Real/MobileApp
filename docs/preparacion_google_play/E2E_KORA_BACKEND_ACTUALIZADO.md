@@ -112,6 +112,43 @@ No se modificó la fórmula de adherencia, la progresión ni la reincorporación
 | 202 | Eliminación pendiente |
 | Defectos del arnés | No de la app: etiquetas de fechas de 2008, perfil persistente que ya tenía sesión, caché del service worker con CanvasKit del CDN. Se corrigieron en el arnés |
 
+## Revalidación sobre el código integrado (árbol `877fe4a` = `generation` `aa1a0d2`)
+
+Se repitió con una base PostgreSQL nueva (`fitsense_final`, V1–V63) y el mismo backend 5977d28, con IA
+apagada, correo simulado y usuarios sintéticos (`fin*`, `edadf*`). Arnés:
+`evidencia/arnes/fin-*.js`, `alta-con-plan.sh` y `smoke-final.js`, con credenciales tomadas del entorno.
+
+| Área | Resultado | Evidencia |
+|---|---|---|
+| Registro, login, perfil | 201 / 200 / 201 | API |
+| Generación asíncrona y tour de Kapi | 202 → `COMPLETED`; el tour se retoma donde quedó tras cerrar la app | — |
+| Sesión de hoy | 1 completo, 1 parcial (`PARTIAL/FATIGUE` 22,22 %), 1 no realizado (`SKIPPED/LACK_OF_TIME`), 4 completos; esfuerzo 7, satisfacción 4, 30 min → sesión `PARTIAL` 74,60 % | `X-sesion-finalizada` |
+| Parcial sin repeticiones | La app lo rechaza y pide las repeticiones; no se guarda como omitido | `X-parcial-sin-repeticiones-rechazado` |
+| Omitir | `SKIPPED/FATIGUE` | — |
+| Adherencia | Backend 37,30 %, riesgo `MODERATE`, 0/2 completos, 30 min; **Progreso muestra 37,3 %** | `X-progreso` |
+| Adaptación | `ADAPT_EXPANDED`, `CONSERVED`, plan nuevo con el mensaje de la intervención | `X-progreso-ajuste` |
+| Registro retroactivo | 201 `USER_REPORTED` 100 %, esfuerzo 6 | `X-reporte-guardado` |
+| Recuperación | 202 neutro, código de 43 caracteres leído del `.eml`, código inválido 400, cambio 204, token usado, contraseña antigua 401 y nueva 200, la sesión antigua vuelve al login | `X-rec-*` |
+| Eliminación 403 → 200 | Triple toque = un solo `DELETE`; 0 filas en 12 tablas; registro anónimo `COMPLETADA` | `evidencia/generation-aa1a0d2/pg-fin1-*` |
+| **Respuesta perdida** (el servidor respondió 200, la conexión se cortó) | La app **no** dice «No se eliminó nada»: explica los dos casos. Al reintentar, 401: se borran los datos locales de la cuenta y la app vuelve al login | `X-del-corte`, `X-del-corte-reintento` |
+| 202 | «Solicitud recibida», `PENDIENTE` con `users.status=DELETED`; el reintento del backend la completó a los 5 min | `X-del-202` |
+| 429 | Botón desactivado y la cuenta sigue `ACTIVE` | `X-del-429` |
+| Edad | HTTP: 422 / 201 / 400. App: aviso y no avanza / pasa al paso 3 | `final-edad-consent.txt`, `X-edad-*` |
+| Consentimientos | Sin versiones aprobadas y exigencia apagada; una versión inventada → 422; la app no pide nada | `final-edad-consent.txt` |
+| Cerrar sesión | ✓ | `X-smoke-final` |
+
+**Observación menor** (Mobile, no bloquea): tras una respuesta perdida, el reintento recibe 401 y el aviso
+global de sesión caducada («Tu sesión expiró») lleva al login antes de que la pantalla de eliminación
+muestre «Tu cuenta probablemente ya se eliminó». Los datos locales sí se borran. Se puede mejorar el texto
+en una PR futura.
+
+Fallos del arnés corregidos durante la revalidación, que no eran de la app:
+
+- carrera entre el registro y el login;
+- confundir «repeticiones por serie» con un ejercicio por tiempo;
+- desmarcar la casilla en el segundo intento;
+- consultas SQL con nombres de columna equivocados.
+
 ## No implementado en Flutter
 
 - Cambio de contraseña con sesión iniciada (tampoco existe en el backend).

@@ -1,0 +1,1 @@
+COMPLETADA | t | {"users": 1, "user_consents": 1, "workout_sessions": 2, "user_interventions": 1, "weekly_user_metrics": 1, "password_reset_tokens": 0, "weekly_training_plans": 2, "user_safety_exclusions": 0, "account_deletion_tokens": 0, "plan_adaptation_attempts": 1, "plan_generation_operations": 1, "safe_regeneration_attempts": 0, "plan_generation_predictions": 0}

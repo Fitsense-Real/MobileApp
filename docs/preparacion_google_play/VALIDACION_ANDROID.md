@@ -22,7 +22,7 @@ Que un APK compile no prueba que funcione en un teléfono.
 
 ## APK debug para el teléfono por USB
 
-Compilado con el código final de #8 (tras la revisión de seguridad); el primero, de `d96f4ab`, queda sustituido:
+Compilado desde `generation` `aa1a0d2` (las ocho PR integradas):
 
 ```
 flutter build apk --debug --target-platform android-arm64 \
@@ -32,8 +32,8 @@ flutter build apk --debug --target-platform android-arm64 \
 
 | Dato | Valor |
 |---|---|
-| Archivo | `app-debug.apk`, entregado como `kora-debug-usb-arm64-5977.apk` (57 MB) |
-| SHA-256 | `53b67931ed73d73830aff08d7a6ca8825fd4e6df92d16581b58e0bab10cb4cef` |
+| Archivo | `app-debug.apk` de `generation` **`aa1a0d2`**, entregado como `kora-debug-usb-arm64-aa1a0d2.apk` (57 MB). Sustituye a los anteriores |
+| SHA-256 | `ffce77058d5bdadb951a5b27ef16f98e714ea88773bdf36ca0f84b17d8486f22` |
 | Paquete | `com.example.fitsense_mobile`, `minSdk 21`, `targetSdk 36`, `arm64-v8a`, etiqueta «Kora» |
 | Uso | solo pruebas; tráfico en claro únicamente hacia `localhost` por `adb reverse` |
 
@@ -61,7 +61,7 @@ No se versiona en el repositorio. Se entrega aparte, junto con este informe.
 5. Instala el APK:
 
    ```
-   adb install -r kora-debug-usb-arm64-5977.apk
+   adb install -r kora-debug-usb-arm64-aa1a0d2.apk
    ```
 
 6. Si algo falla, guarda la evidencia:
