@@ -7,6 +7,12 @@ import 'package:go_router/go_router.dart';
 import 'package:fitsense_mobile/features/onboarding/data/profile_repository.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/plans/presentation/account_setup_page.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/providers/auth_provider.dart';
+import 'package:fitsense_mobile/features/welcome/data/plan_generation_repository.dart';
+import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:convert';
+import 'support/welcome_fakes.dart';
 
 class ProfileStub extends ProfileRepository {
   ProfileStub(this.profile) : super(Dio());
@@ -31,16 +37,22 @@ class PlanStub extends PlanRepository {
 }
 
 void main() {
-  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans) async {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans, {FakeGeneration? generation}) async {
     final router = GoRouter(initialLocation: '/account-setup', routes: [
       GoRoute(path: '/account-setup', builder: (_, __) => const AccountSetupPage()),
       GoRoute(path: '/onboarding', builder: (_, __) => const Scaffold(body: Text('Crear perfil'))),
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('Inicio'))),
+      GoRoute(path: welcomeTourRoute, builder: (_, __) => const Scaffold(body: Text('Recorrido'))),
+      GoRoute(path: welcomeResultRoute, builder: (_, __) => const Scaffold(body: Text('Resultado'))),
     ]);
     addTearDown(router.dispose);
     await tester.pumpWidget(ProviderScope(overrides: [
+      authViewModelProvider.overrideWith(SignedIn.new),
       profileRepositoryProvider.overrideWithValue(ProfileStub(profile)),
       planRepositoryProvider.overrideWithValue(plans),
+      planGenerationRepositoryProvider.overrideWithValue(generation ?? FakeGeneration()),
     ], child: MaterialApp.router(routerConfig: router)));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -63,28 +75,31 @@ void main() {
     expect(plans.attempts, isEmpty);
   });
 
-  testWidgets('Missing plan waits for generation, handles errors and reconciles retry', (tester) async {
+  testWidgets('Missing plan starts the background generation and opens the tour at once', (tester) async {
     final plans = PlanStub(null);
-    await open(tester, {'birthDate': '1995-05-20'}, plans);
-    expect(find.text('Sincronizando...'), findsOneWidget);
-    expect(find.text('Inicio'), findsNothing);
-    plans.attempts.single.completeError(Exception('Connection lost'));
+    final generation = FakeGeneration();
+    await open(tester, {'birthDate': '1995-05-20'}, plans, generation: generation);
     await tester.pumpAndSettle();
-    expect(find.text('Reintentar'), findsOneWidget);
-    expect(find.text('Inicio'), findsNothing);
-    plans.plan = {'planId': 9};
-    await tester.tap(find.text('Reintentar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Inicio'), findsOneWidget);
-    expect(plans.attempts.length, 1);
+    expect(find.text('Recorrido'), findsOneWidget);
+    expect(generation.startCalls, 1, reason: 'requested before the tour, not after it');
+    expect(plans.attempts, isEmpty, reason: 'the synchronous endpoint is no longer used');
   });
 
-  testWidgets('Generation success opens home only after response', (tester) async {
-    final plans = PlanStub(null);
-    await open(tester, {}, plans);
-    expect(find.text('Inicio'), findsNothing);
-    plans.attempts.single.complete({'planId': 10});
+  testWidgets('Tour already completed and plan still missing: result screen', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': jsonEncode({'tourStatus': 'completed', 'tourStep': 9, 'operationId': operationId})});
+    final generation = FakeGeneration(finds: [operation('PROCESSING')]);
+    await open(tester, {'birthDate': '1995-05-20'}, PlanStub(null), generation: generation);
     await tester.pumpAndSettle();
-    expect(find.text('Inicio'), findsOneWidget);
+    expect(find.text('Resultado'), findsOneWidget);
+    expect(generation.foundIds, [operationId], reason: 'resumes the stored operation');
+    expect(generation.startCalls, 0, reason: 'no second generation');
+  });
+
+  testWidgets('Plan ready but the tour was left half way: the tour is finished first', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': jsonEncode({'tourStatus': 'inProgress', 'tourStep': 4})});
+    await open(tester, {'birthDate': '1995-05-20'}, PlanStub({'planId': 9}), generation: FakeGeneration());
+    await tester.pumpAndSettle();
+    expect(find.text('Recorrido'), findsOneWidget);
+    expect(find.text('Inicio'), findsNothing);
   });
 }

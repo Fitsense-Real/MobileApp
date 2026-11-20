@@ -206,3 +206,19 @@ pausas, así que se reflejan en `activeMinutes`: al finalizar, el campo viene
 relleno con los minutos activos sin pausas (editable). Cada ejercicio ofrece
 la cuenta regresiva de su descanso (`restSeconds`) y, si es por tiempo, la de
 una serie (`plannedDurationSeconds`), con vibración y sonido al terminar.
+
+## Bienvenida: recorrido y primera rutina en segundo plano
+
+Requiere el backend con V58 (PR "generación inicial asíncrona"). Diseño completo en
+`docs/onboarding/kora-bienvenida.md`.
+
+- Al guardar el perfil, la app llama `POST /users/me/plan/generation`, guarda el
+  `operationId` por usuario y abre `/bienvenida` de inmediato: el recorrido de 10 pasos
+  sobre el dashboard real, con Kapi.
+- Mientras tanto consulta `GET /users/me/plan/generation/{id}` cada `pollAfterSeconds`;
+  sin conexión o con 5xx sigue intentando con espera creciente y lo distingue en pantalla.
+- Al terminar el recorrido, `/bienvenida/listo` muestra el estado real: rutina lista (A),
+  espera sin porcentajes (B), o no factible / error con reintento seguro (C).
+- Si se cierra la app, `/account-setup` retoma: recorrido en el paso guardado o la pantalla
+  de resultado, y la misma operación (no se pide otra generación).
+- Se repite desde Perfil → Ver recorrido de Kora, sin generar nada ni tocar el progreso.
