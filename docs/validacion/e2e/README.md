@@ -36,3 +36,13 @@ node e2e-main.js
 Ninguna respuesta del backend se simula en Flutter: todas las llamadas van al
 backend real; lo único simulado es la duración o el fallo de la IA, del lado
 del servidor.
+
+## Ronda con el backend #71 + #72 (16/11/2026)
+
+`run-backend-71-72.sh` arranca el head de Fitsense-Real/Backend#72 (`93549d5`, V59) contra
+`fitsense_e2e72` con lease de 15 s, latido de 5 s, tiempo máximo de 300 s y 4 generaciones en
+paralelo. Los scripts leen la base de `E2E_DB` (por defecto `fitsense_e2e`).
+
+- `main72.js`: flujo principal hasta abrir una sesión generada;
+- `sesion.js`: abre una sesión desde Rutinas;
+- `casos-cortos.js cEspera`: cerrar Flutter durante la espera.

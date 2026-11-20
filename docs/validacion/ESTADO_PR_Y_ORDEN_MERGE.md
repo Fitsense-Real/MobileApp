@@ -1,5 +1,7 @@
 # Estado de las PR y orden de merge (ORDEN 2, fase 7)
 
+> Para el Mobile, este documento queda sustituido por `ESTADO_PR_MOBILE.md` (validación final, 16/11/2026).
+
 **Ninguna PR se fusionó ni se desplegó.** Quedan listas para su revisión y aprobación.
 
 | Orden | PR | Rama → base | Head | CI | Estado |

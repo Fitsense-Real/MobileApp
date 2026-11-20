@@ -71,6 +71,21 @@ const casos = {
     const ok = await k.waitText(p, 'Tu primera rutina está lista', 120000); await p.waitForTimeout(1500);
     log('c06 final:', ok, '| BD:', db.op(e), db.counts(e)); await ctx.close();
   },
+  // cerrar Flutter durante la espera (pantalla de resultado) y volver a abrir
+  async cEspera() {
+    const e = 'espera+d60@e2e.local'; let { ctx, p } = await nuevo('cEspera', 'Espera', e);
+    await terminarTour(p);
+    log('cEspera en la espera; BD:', db.op(e)); await k.shot(p, 'cEspera-antes');
+    await ctx.close(); await new Promise(r => setTimeout(r, 20000));
+    log('cEspera app cerrada 20 s; BD:', db.op(e));
+    ({ ctx, p } = await k.open('cEspera'));
+    await p.waitForTimeout(4000);
+    const enTour = await k.waitText(p, 'Paso 1 de 10', 500);
+    const espera = await k.waitText(p, 'Ya conoces Kora', 3000) || await k.waitText(p, 'Tu primera rutina está lista', 1000);
+    log('cEspera reabierta: tour otra vez:', enTour, '| pantalla de resultado:', espera, '| BD:', db.op(e), db.counts(e)); await k.shot(p, 'cEspera-reabierta');
+    const ok = await k.waitText(p, 'Tu primera rutina está lista', 90000); await p.waitForTimeout(1500);
+    log('cEspera final:', ok, '| BD:', db.op(e), db.counts(e)); await ctx.close();
+  },
   // 12 · dos usuarios a la vez
   async c12() {
     const ea = 'c12a+d25@e2e.local', eb = 'c12b+d25@e2e.local';
@@ -85,10 +100,10 @@ const casos = {
   },
   // 15 · ya tiene rutina publicada: otro dispositivo (navegador limpio) entra directo al inicio
   async c15() {
-    const e = 'ana+d45@e2e.local'; const { ctx, p } = await k.open('c15-otro-dispositivo');
+    const e = 'lucia+d45@e2e.local'; const { ctx, p } = await k.open('c15-otro-dispositivo');
     await k.tap(p, 'INICIA SESIÓN'); await k.fill(p, 'Correo', e); await k.fill(p, 'Contraseña', 'Kora12345'); await k.tap(p, 'INICIAR SESIÓN');
     await p.waitForTimeout(5000);
-    const tour = await k.waitText(p, 'Soy Kapi', 1000), inicio = await k.waitText(p, 'Hola, Ana', 5000);
+    const tour = await k.waitText(p, 'Soy Kapi', 1000), inicio = await k.waitText(p, 'Hola, Lucía', 5000);
     log('c15 tour mostrado:', tour, '| inicio con plan:', inicio, '|', db.counts(e)); await k.shot(p, 'c15-inicio'); await ctx.close();
   },
 };

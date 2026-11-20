@@ -1,55 +1,48 @@
-# Pruebas Android (ORDEN 2, fase 5)
+# Pruebas Android (fase 6)
 
-## Qué se hizo y qué no
+## Resultado: compilado, NO ejecutado en Android
+
+**Kora no se instaló ni se ejecutó en un teléfono ni en un emulador.** No hay dispositivo físico
+accesible desde este entorno, y el emulador ya falló en la ORDEN 2: sin `/dev/kvm`, en emulación por
+software, Android se cerró cuatro veces durante el arranque (`DeadSystemException`). Por indicación
+de la orden **no se volvió a intentar**. La ejecución en Android real queda **pendiente de
+validación** con la guía `GUIA_INSTALACION_APK.md`.
+
+## Comprobaciones de compilación (16/11/2026, rama `claude/mobile-final-validation`)
 
 | Comprobación | Resultado |
 |---|---|
-| Android SDK | Instalado en este entorno (plataforma 35, build-tools 35.0.0, NDK 27.0.12077973, CMake 3.22.1) |
-| `flutter doctor` | Android toolchain ✓ (SDK 35.0.0) |
-| `flutter build apk --debug` | **Compila** (5 min). `aapt`: paquete `com.example.fitsense_mobile`, minSdk 21, targetSdk 35, etiqueta «Kora», permisos INTERNET, POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, VIBRATE; los 6 SVG de Kapi dentro del APK |
-| `flutter build apk --release` | **Compila** (29,3 MB, R8 sin errores). Firmado con la clave debug de la plantilla: no sirve para Play |
-| Emulador | **No se pudo ejecutar.** El entorno no tiene `/dev/kvm`. Se intentó un emulador API 30 x86_64 sin aceleración (`-accel off`, emulación por software): el sistema llegó a arrancar `system_server` y `systemui`, pero el watchdog de Android lo mató por lentitud (`DeadSystemException: The system died`) y no completó el arranque (`sys.boot_completed` nunca llegó a 1) |
-| Dispositivo físico | No hay ninguno conectado |
-| iOS | **No compilado ni probado**: requiere macOS y Xcode |
+| Toolchain | `flutter doctor`: Android toolchain ✓ (SDK 35.0.0, build-tools 35, NDK 27.0.12077973, CMake 3.22.1) |
+| Gradle / AGP / Kotlin | Gradle 8.12, AGP 8.7.3, Kotlin 2.1.0: compila sin errores. Solo aviso de terceros `source value 8 is obsolete` |
+| Dependencias | `flutter pub get` sin conflictos; los plugins nativos (`flutter_secure_storage`, notificaciones locales, etc.) compilan con NDK 27 |
+| `flutter build apk --debug` | ✓ |
+| `flutter build apk --debug --split-per-abi --target-platform android-arm64` | ✓ 57 MB |
+| `flutter build apk --release` | ✓ 29,3 MB, R8 sin errores. Firmado con la clave debug de la plantilla: no apto para Play |
+| Manifiesto (`aapt dump badging`) | `com.example.fitsense_mobile`, versión 1.0.0 (1), minSdk 21, targetSdk 35, etiqueta «Kora» |
+| Permisos | `INTERNET`, `POST_NOTIFICATIONS` (Android 13+), `RECEIVE_BOOT_COMPLETED` y `VIBRATE` (recordatorios locales). No hay permisos de más |
+| Recursos | los 6 SVG de Kapi están dentro del APK |
+| Tráfico HTTP | `usesCleartextTraffic=true` **solo en el manifiesto de debug** (backend local); el release solo admite HTTPS |
+| Dirección del backend | `API_BASE_URL` en compilación; por defecto `10.0.2.2:8080` en Android (emulador) y `localhost:8080` en web y escritorio |
 
-**La app NO se probó en Android.** Lo verificado es que compila (debug y release) con el SDK y el
-NDK que exige el proyecto. El comportamiento se validó en web contra el backend real; el código
-del tour y de la generación es el mismo en Android, pero no está comprobado en un dispositivo.
+## Artefactos
 
-## Cómo probarlo en Android Studio (pasos exactos)
+| Archivo | Uso |
+|---|---|
+| `kora-debug-telefono-usb-arm64.apk` | teléfono físico con `adb reverse` (entregado en el chat) |
+| `kora-debug-telefono-usb.apk` | ídem, todas las arquitecturas |
+| `kora-debug-emulador.apk` | emulador de Android Studio |
+| `kora-release-sin-firma-definitiva.apk` | solo comprobación de compilación |
 
-1. **Backend local** (rama `claude/async-first-plan-generation`), con PostgreSQL local y sin
-   Replicate:
-   ```powershell
-   $env:DB_PASSWORD="<clave local>"; $env:JWT_SECRET="<32+ caracteres>"; $env:FITSENSE_AI_ENABLED="false"
-   .\mvnw spring-boot:run "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:postgresql://localhost:5432/fitsense_local --spring.datasource.username=postgres"
-   ```
-   Nunca contra la base de producción.
-2. **Emulador**: Android Studio → Device Manager → *Create device* → Pixel 6 → imagen **API 34
-   x86_64** (Google APIs) → Finish → ▶. En Windows, habilitar la virtualización (Hyper-V/WHPX)
-   para que tenga aceleración.
-3. **App**: abrir la carpeta `MobileApp`, rama `claude/welcome-tour`, y ejecutar:
-   ```powershell
-   .\tmp\flutter-sdk\bin\flutter.bat run
-   ```
-   En el emulador, la app usa `http://10.0.2.2:8080/api/v1` (el `localhost` del PC). Con un teléfono
-   físico, añadir `--dart-define=API_BASE_URL=http://IP_DEL_PC:8080/api/v1`.
-4. **Recorrido a comprobar** (cada punto corresponde a un caso de PRUEBAS_GENERACION_ASINCRONA.md):
-   1. Crear una cuenta, completar el perfil y pulsar «Generar mi plan»: el tour aparece de
-      inmediato.
-   2. Recorrer los 10 pasos; en el paso 3, tocar la pestaña «Rutinas» real.
-   3. En el paso 5, cerrar la app desde Recientes y volver a abrirla: continúa en el paso 5.
-   4. Activar el modo avión en la pantalla de resultado: «Seguimos intentando», con Kapi. Al
-      quitarlo, aparece el plan.
-   5. «Ver mi plan» lleva al inicio con el plan real; abrir un entreno desde Rutinas.
-   6. Perfil → «Ver recorrido de Kora»: repaso sin textos de rutina en preparación.
-   7. Accesibilidad: Ajustes → Pantalla → Tamaño de fuente al máximo; TalkBack activado (solo
-      debe leer la tarjeta de Kapi); «Quitar animaciones».
-5. **Generación lenta o fallida sin Replicate**: el arnés `docs/validacion/e2e/EscenariosE2E.java`
-   permite simular demoras y fallos del lado del servidor según el correo (`+d90`, `+fallo1`,
-   `+nofactible`). Ver `docs/validacion/e2e/README.md`.
+Los APK no se versionan ni se publicaron en ningún canal externo. Sus SHA-256 están en
+`GUIA_INSTALACION_APK.md`. El CI propuesto compila el APK debug en cada PR.
 
-## Avisos de compilación (no bloquean)
+## Pendiente en un teléfono real
 
-- `source value 8 is obsolete` de un plugin de terceros al compilar Java; no afecta.
-- La compilación descarga CMake 3.22.1 la primera vez.
+1. Instalar y abrir.
+2. Registro, perfil, tour, espera y plan contra el backend local.
+3. Cerrar y reabrir durante el tour y durante la espera.
+4. Modo avión.
+5. TalkBack, fuente máxima y «Quitar animaciones».
+6. Permiso de notificaciones de Android 13+ al activar recordatorios.
+
+iOS: sin macOS no se puede compilar ni probar.
