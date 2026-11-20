@@ -1,0 +1,12 @@
+users = 0
+user_profiles = 0
+user_consents = 0
+weekly_training_plans = 0
+planned_workouts = 0
+workout_sessions = 0
+workout_session_exercises = 0
+weekly_user_metrics = 0
+user_interventions = 0
+plan_adaptation_attempts = 0
+plan_generation_operations = 0
+password_reset_tokens = 0

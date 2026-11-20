@@ -15,3 +15,20 @@
 | [GUIA_PUBLICACION_ANDROID.md](GUIA_PUBLICACION_ANDROID.md) | Pasos de publicación y prueba física | C |
 | [PENDIENTES_Y_DEPENDENCIAS.md](PENDIENTES_Y_DEPENDENCIAS.md) | Lo que todavía impide publicar | C |
 | [capturas/](capturas) | Evidencias | D, C |
+
+## Integración con el backend actualizado (`generation` 5977d28, 20/11/2026)
+
+| Documento | Contenido | PR |
+|---|---|---|
+| [ESTADO_PR_MOBILE.md](ESTADO_PR_MOBILE.md) | Pila #1–#8, commits y qué necesita cada PR | — |
+| [CONTRATOS_BACKEND_ACTUALIZADOS.md](CONTRATOS_BACKEND_ACTUALIZADOS.md) | Contratos comprobados por HTTP y defectos del backend (B-1…B-5, S-1) | — |
+| [INTEGRACION_ELIMINACION_CUENTA.md](INTEGRACION_ELIMINACION_CUENTA.md) | 200, 202, 403, 429 y PostgreSQL tras eliminar | #7, #8 |
+| [INTEGRACION_RECUPERACION.md](INTEGRACION_RECUPERACION.md) | Recuperación con el correo simulado | #8 |
+| [VALIDACION_EDAD_CONSENTIMIENTO.md](VALIDACION_EDAD_CONSENTIMIENTO.md) | 18 años y consentimientos versionados | #8 |
+| [PRUEBAS_AUTENTICACION_JWT.md](PRUEBAS_AUTENTICACION_JWT.md) | JWT, 401 e invalidación de sesiones | #8 |
+| [E2E_KORA_BACKEND_ACTUALIZADO.md](E2E_KORA_BACKEND_ACTUALIZADO.md) | Recorrido completo A–E con el backend real | #8 |
+| [VALIDACION_ANDROID.md](VALIDACION_ANDROID.md) | Protecciones, APK debug para USB e instalación en Windows | #8 |
+| [REGRESION_FLUTTER.md](REGRESION_FLUTTER.md) | 200 pruebas, compilaciones y clasificación de fallos | #8 |
+| [REVISION_SEGURIDAD_COMPATIBILIDAD.md](REVISION_SEGURIDAD_COMPATIBILIDAD.md) | Revisión independiente final: corregido y pendiente | #8 |
+| [PENDIENTES_INTEGRACION.md](PENDIENTES_INTEGRACION.md) | Lo que falta para fusionar, desplegar y publicar | #8 |
+| [integracion_backend_5977/](integracion_backend_5977) | Evidencia: respuestas HTTP, PostgreSQL, capturas y arnés | #8 |

@@ -79,6 +79,28 @@ void main() {
     await tester.tap(find.text('Guardar')); await tester.pumpAndSettle();
     expect(result, {'actualSets': 0, 'actualRepsTotal': 0, 'actualDurationSeconds': 0, 'actualLoadKg': 0, 'skipReason': 'FATIGUE'});
   });
+  // Found in the E2E against backend 5977d28: "1 set" without repetitions was
+  // stored as SKIPPED (the backend measures volume), although the person chose "partial".
+  testWidgets('Partial needs the executed volume (repetitions), not only sets', (tester) async {
+    Json? result;
+    await open(tester, (value) => result = value);
+    await tester.tap(find.text('Lo hice parcialmente')); await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Series realizadas'), '1');
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<String>)); await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>)); await tester.pumpAndSettle();
+    await tester.tap(find.text('Fatiga').last); await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Guardar')); await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar')); await tester.pumpAndSettle();
+    expect(result, isNull);
+    expect(find.textContaining('cuántas repeticiones hiciste en total'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Repeticiones totales (todas las series)'), '8');
+    await tester.ensureVisible(find.text('Guardar')); await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar')); await tester.pumpAndSettle();
+    expect(result?['actualSets'], 1);
+    expect(result?['actualRepsTotal'], 8);
+    expect(result?['skipReason'], 'FATIGUE');
+  });
+
   testWidgets('Expired workout report submits explicit results with selected date and effort', (tester) async {
     tester.view.physicalSize = const Size(600, 1100); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);

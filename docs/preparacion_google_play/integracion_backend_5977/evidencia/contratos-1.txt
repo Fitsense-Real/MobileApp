@@ -1,0 +1,21 @@
+### Eliminacion de cuenta
+DELETE /users/me  -> 400 {"status":400,"error":"Bad Request","message":"El cuerpo de la solicitud no es valido.","details":[]}
+DELETE /users/me {"password":"***"} -> 400 {"status":400,"error":"Bad Request","message":"Falta la confirmacion: envia confirm=true para eliminar la cuenta de forma irreversible.","details":["CONFIRMACION_REQUERIDA"]}
+DELETE /users/me {"password":"***","confirm":false} -> 400 {"status":400,"error":"Bad Request","message":"Falta la confirmacion: envia confirm=true para eliminar la cuenta de forma irreversible.","details":["CONFIRMACION_REQUERIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 200 {"status":"DELETED","deletionId":"b29c96e1-1449-44a0-8806-f1451b2b79a1","requestedAt":"2026-11-20T03:19:02.580515Z","completedAt":"2026-11-20T03:19:02.591139772Z"}
+-- despues de eliminar:
+GET /users/me  -> 401 {"status":401,"error":"Unauthorized","message":"Se requiere un token valido.",}
+POST /auth/login {"email":"del1@e2e.local","password":"***"} -> 401 {"status":401,"error":"Unauthorized","message":"Correo o contrasena incorrectos.","details":[]}
+### 429 por intentos de reautenticacion fallidos
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 403 {"status":403,"error":"Forbidden","message":"La contrasena no es correcta. La cuenta no se ha eliminado.","details":["REAUTENTICACION_FALLIDA"]}
+DELETE /users/me {"password":"***","confirm":true} -> 429 [Retry-After: 899] {"status":429,"error":"Too Many Requests","message":"Demasiados intentos con una contrasena incorrecta. Espera antes de volver a intentarlo.","details":["DEMASIADOS_INTENTOS"]}
+DELETE /users/me {"password":"***","confirm":true} -> 429 [Retry-After: 899] {"status":429,"error":"Too Many Requests","message":"Demasiados intentos con una contrasena incorrecta. Espera antes de volver a intentarlo.","details":["DEMASIADOS_INTENTOS"]}
+### Recuperacion de contrasena
+POST /auth/password-reset/request {"email":"rec1@e2e.local"} -> 202 {"message":"Si el correo corresponde a una cuenta, recibiras un codigo para restablecer tu contrasena."}
+POST /auth/password-reset/request {"email":"noexiste@e2e.local"} -> 202 {"message":"Si el correo corresponde a una cuenta, recibiras un codigo para restablecer tu contrasena."}
+031903-650-rec1@e2e.local.eml

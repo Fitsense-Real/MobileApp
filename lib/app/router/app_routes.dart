@@ -17,6 +17,9 @@ class AppRoutes {
   /// Perfil → Cuenta → Eliminar mi cuenta (only with ACCOUNT_DELETION_ENABLED).
   static const deleteAccount = "/cuenta/eliminar";
 
+  /// Acceptance of newly published terms / privacy policy (backend V63).
+  static const consents = "/consentimientos";
+
   static const profile = "/profile";
 
   static const assessment = "/assessment";

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import 'api_constants.dart';
@@ -69,7 +70,7 @@ String apiError(Object error) {
   switch (error.type) {
     case DioExceptionType.connectionError:
     case DioExceptionType.connectionTimeout:
-      return 'No se pudo conectar al backend. Comprueba que esté encendido y accesible en el puerto 8080.';
+      return connectionErrorMessage();
     case DioExceptionType.receiveTimeout:
     case DioExceptionType.sendTimeout:
       return 'El servidor tardó demasiado en responder. Inténtalo nuevamente.';
@@ -82,3 +83,9 @@ String apiError(Object error) {
   }
   return 'No se pudo completar la operación (${status ?? 'sin conexión'}). Inténtalo nuevamente.';
 }
+
+/// The port hint only helps a developer with a local backend; a participant
+/// using a release build just needs to check their connection.
+String connectionErrorMessage({bool debug = kDebugMode}) => debug
+    ? 'No se pudo conectar al backend. Comprueba que esté encendido y accesible en el puerto 8080.'
+    : 'No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.';

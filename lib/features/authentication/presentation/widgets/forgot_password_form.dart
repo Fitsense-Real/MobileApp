@@ -1,3 +1,4 @@
+import 'package:fitsense_mobile/features/authentication/domain/email_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -225,11 +226,7 @@ class _ForgotPasswordFormState
                               "Ingrese su correo electrónico";
                           }
 
-                          if (!RegExp(
-                            r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                          ).hasMatch(
-                            value.trim(),
-                          )) {
+                          if (!looksLikeEmail(value)) {
                             return
                               "Ingrese un correo válido";
                           }
@@ -264,7 +261,7 @@ class _ForgotPasswordFormState
 
                       FSButton(
                         text:
-                        "Enviar enlace",
+                        "Enviar código",
                         isLoading:
                         state.isLoading,
                         onPressed:

@@ -24,6 +24,9 @@ class DeletionResult {
 }
 
 /// Why the deletion was not done. Nothing was deleted in any case.
+/// Pause after a 429 that does not say how long to wait.
+const minimumRetryPause = Duration(minutes: 1);
+
 class DeletionFailure implements Exception {
   const DeletionFailure(this.kind, this.message, {this.retryAfter});
   final DeletionFailureKind kind;
@@ -35,7 +38,10 @@ class DeletionFailure implements Exception {
   String toString() => message;
 }
 
-enum DeletionFailureKind { wrongPassword, tooManyAttempts, sessionExpired, alreadyGone, unavailable, offline, server, rejected }
+enum DeletionFailureKind {
+  /// No answer after the request left the phone (timeout, cut connection):
+  /// the backend may have registered the deletion.
+  uncertain, wrongPassword, tooManyAttempts, sessionExpired, alreadyGone, unavailable, offline, server, rejected }
 
 /// `DELETE /api/v1/users/me` of Fitsense-Real/Backend (`generation` 5977d28):
 /// body `{password, confirm: true}` (`DeleteAccountResource`). The backend
@@ -72,15 +78,37 @@ class AccountDeletionRepository {
   DeletionFailure _failure(DioException e) {
     final status = e.response?.statusCode;
     if (status == null) {
-      return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
+      // Only a connection timeout proves the request never left the phone.
+      if (e.type == DioExceptionType.connectionTimeout) {
+        return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
+      }
+      // A connection error is also what a cut after sending looks like
+      // ("Connection closed before full header was received" on Android, any
+      // XHR error on the web), and the backend deactivates the account as soon
+      // as it accepts the request: never claim that nothing was deleted.
+      if (e.type == DioExceptionType.connectionError) {
+        return const DeletionFailure(DeletionFailureKind.uncertain,
+            'No pudimos comunicarnos con el servidor. Si no tenías conexión, no se envió nada; si se cortó durante la solicitud, '
+            'es posible que la eliminación se haya registrado. Inténtalo de nuevo cuando tengas conexión: lo confirmaremos.');
+      }
+      return const DeletionFailure(DeletionFailureKind.uncertain,
+          'No recibimos la respuesta del servidor y no sabemos si la eliminación se registró. Vuelve a intentarlo: si ya se registró, lo confirmaremos.');
     }
     switch (status) {
       case 403:
+        // Only REAUTENTICACION_FALLIDA means a wrong password; other 403s
+        // (HTTPS required, access denied) are a rejection, not the user's fault.
+        if (!_codes(e).contains('REAUTENTICACION_FALLIDA')) {
+          return const DeletionFailure(DeletionFailureKind.rejected, 'El servidor rechazó la solicitud. No se eliminó nada; inténtalo más tarde o escribe al equipo del estudio.');
+        }
         return const DeletionFailure(DeletionFailureKind.wrongPassword, 'La contraseña no es correcta. No se eliminó nada; revísala e inténtalo de nuevo.');
       case 429:
         final seconds = int.tryParse(e.response?.headers.value('retry-after') ?? '');
-        final wait = seconds == null ? null : Duration(seconds: seconds);
-        final minutes = wait == null ? null : (wait.inSeconds / 60).ceil();
+        // Without Retry-After (in a browser the backend does not expose it through
+        // CORS) the button still pauses for a minute: the backend keeps the real
+        // block, and the person is not invited to send attempts that will fail.
+        final wait = seconds == null ? minimumRetryPause : Duration(seconds: seconds);
+        final minutes = seconds == null ? null : (wait.inSeconds / 60).ceil();
         return DeletionFailure(
           DeletionFailureKind.tooManyAttempts,
           'Demasiados intentos con una contraseña incorrecta. Por seguridad, espera'
@@ -98,6 +126,12 @@ class AccountDeletionRepository {
       return const DeletionFailure(DeletionFailureKind.server, 'El servidor no pudo registrar la solicitud. No se eliminó nada; inténtalo más tarde.');
     }
     return DeletionFailure(DeletionFailureKind.rejected, apiError(e));
+  }
+
+  static List<String> _codes(DioException e) {
+    final data = e.response?.data;
+    final details = data is Map ? data['details'] : null;
+    return details is List ? details.map((d) => '$d').toList() : const [];
   }
 }
 

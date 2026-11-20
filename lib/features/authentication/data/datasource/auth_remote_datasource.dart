@@ -53,8 +53,17 @@ class AuthRemoteDataSource {
   }
 
   ApiException _handleError(DioException e) {
-    if (e.response?.statusCode == 401 && e.requestOptions.path == ApiConstants.login) {
+    final status = e.response?.statusCode;
+    final path = e.requestOptions.path;
+    if (status == 401 && path == ApiConstants.login) {
       return ApiException('Correo o contraseña incorrectos.', statusCode: 401, cause: e);
+    }
+    // Password reset (backend 5977d28): clear messages for its known answers.
+    if (status == 400 && path == ApiConstants.resetPassword) {
+      return ApiException('El código no es válido, ya se usó o caducó. Solicita uno nuevo.', statusCode: 400, cause: e);
+    }
+    if (status == 429 && (path == ApiConstants.forgotPassword || path == ApiConstants.resetPassword)) {
+      return ApiException('Demasiadas solicitudes de recuperación. Espera un rato antes de volver a intentarlo.', statusCode: 429, cause: e);
     }
     return ApiException.from(e);
   }

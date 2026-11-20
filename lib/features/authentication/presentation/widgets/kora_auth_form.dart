@@ -1,3 +1,5 @@
+import 'package:fitsense_mobile/features/authentication/domain/password_rules.dart';
+import 'package:fitsense_mobile/features/authentication/domain/email_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -130,9 +132,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     validator: (v) =>
-                        (v ?? '').length <= 254 && RegExp(
-                          r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-                        ).hasMatch((v ?? '').trim())
+looksLikeEmail(v)
                         ? null
                         : 'Ingresa un correo válido',
                   ),
@@ -143,9 +143,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                     hint: '••••••••',
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
-                    validator: (v) => (v ?? '').length < 8 || (v ?? '').length > 72
-                        ? 'Usa entre 8 y 72 caracteres'
-                        : null,
+                    validator: passwordProblem,
                   ),
                   if (widget.register) ...[
                     const SizedBox(height: 22),

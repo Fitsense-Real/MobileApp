@@ -72,6 +72,18 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     if (outcome != 'none' && ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].every((key) => body[key] == 0)) {
       setState(() => message = 'Registra al menos una serie, repetición o segundo realizado.'); return;
     }
+    // The backend classifies a result by executed volume (repetitions or seconds,
+    // not sets): a partial result without it would be stored as not done.
+    if (outcome == 'partial') {
+      final duration = isDurationBased(widget.exercise);
+      final volume = body[duration ? 'actualDurationSeconds' : 'actualRepsTotal'];
+      if (volume is! num || volume <= 0) {
+        setState(() => message = duration
+            ? 'Indica cuántos segundos hiciste en total: sin ellos se guardaría como no realizado.'
+            : 'Indica cuántas repeticiones hiciste en total: sin ellas se guardaría como no realizado.');
+        return;
+      }
+    }
     Navigator.pop(context, body);
   }
   @override

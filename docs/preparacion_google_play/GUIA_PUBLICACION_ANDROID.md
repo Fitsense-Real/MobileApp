@@ -1,5 +1,8 @@
 # Guía de publicación Android de Kora
 
+> **Actualización (20/11/2026):** `DELETE /users/me` ya está en el backend 5977d28 y la app usa su contrato real. La
+> MobileApp suma la PR #8 (integración) después de #7. Ver `ESTADO_PR_MOBILE.md` y `PENDIENTES_INTEGRACION.md`.
+
 No subas nada hasta tener los 8 bloqueantes de `PENDIENTES_Y_DEPENDENCIAS.md` resueltos.
 
 ## 1. Integrar el código, en este orden

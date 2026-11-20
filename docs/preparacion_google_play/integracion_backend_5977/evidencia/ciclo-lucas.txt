@@ -1,0 +1,22 @@
+### GET /metrics (antes del cierre)
+{"timestamp":"2026-11-20T03:56:41.116Z","status":404,"error":"Not Found","path":"/api/v1/metrics/weekly"}
+HTTP 404
+
+### POST /cycle/run-for-me
+{"measuredWeekStart":"2026-11-09","newWeekStart":"2026-11-16","generatedPlanId":3,"cycleStatus":"EJECUTADO"}
+HTTP 200
+### GET /users/me/metrics/weekly
+[{"weeklyMetricId":1,"planId":2,"weekNumber":1,"weekStartDate":"2026-11-09","weekEndDate":"2026-11-15","hasActivePlan":true,"scheduledWorkouts":2,"validWorkouts":1,"completedWorkouts":0,"skippedWorkouts":1,"assignedExercises":13,"completedExercises":5,"weightedAdherencePct":38.89,"frequencyAdherencePct":50.00,"workoutAdherencePct":0.00,"exerciseAdherencePct":38.46,"plannedWeekVolume":260,"executedVolume":114,"totalTrainingMinutes":38,"averageSessionRpe":7.00,"averageSatisfaction":4.00,"consecutiveSkips":1,"daysSinceLastWorkout":3,"dominantSkipReason":"FATIGUE","riskScore":35.00,"riskLevel":"MODERATE","dropout":false,"calculationVersion":"MVP-1.8","calculatedAt":"2026-11-20T03:56:41.149403Z","recordedWorkouts":2,"observedAdherencePct":38.89,"registrationCoveragePct":100.00}]
+HTTP 200
+### weekly_user_metrics
+1 | 8 | 2 | 1 | 2026-11-09 | 2026-11-15 | t | 2 | 1 | 0 | 1 | 13 | 5 | 38.89 | 50.00 | 0.00 | 38.46 | 38 | 7.00 | 4.00 | 1 | 3 | FATIGUE | 35.00 | MODERATE | {"low_adherence": 30, "consecutive_skips": 5} | f | MVP-1.8 | 2026-11-20 03:56:41.149403+00 | 260 | 114 | 220 | 1200 | 100 | 420 | 2 | 38.89 | 100.00
+### user_interventions
+1 | 8 | 1 | 2 | 3 | 38.89 | FATIGUE | {NONE} | 0.00 | 260 | 260 | 0.00 |  |  |  |  |  |  | 0.00 | La semana pasada cumpliste el 39 % de lo previsto. Revisaremos las 2 sesiones que nos indicaste. Nos dijiste que te faltó tiempo. Revisaremos si esas sesiones pueden acortarse sin cambiar tus días. Nos contaste que llegabas con cansancio. Revisaremos la carga de esas sesiones. Si ningún cambio es compatible con tu entrenamiento, la mantendremos como está. | MVP-1.8 | 2026-11-20 03:56:41.205278+00 |  | PENDING | 2026-11-20 03:56:41.232281+00
+### plan_adaptation_attempts
+1 | 8 | 1 | 2 | 2026-11-16 | 3 | ADAPT_EXPANDED | RESPALDO | CONSERVED | 0 | {6,5} | {CONSERVAR,REVISAR_CARGA_Y_RECUPERACION} | {} | {6,5} | {} | {"pasos": [], "avisos": [], "problems": [], "aplicadas": [], "sin_efecto": [], "conservadas": [5, 6], "progresadas": [], "sustituciones": [], "pasos_bloqueados": [], "correcciones_del_backend": [], "fechas_con_duracion_reducible": []} |  | 38.89 | 100.00 | 2026-11-20 03:56:41.363898+00 | {} | ADAPT-2 | 
+### weekly_training_plans
+2 | 2026-11-09 | 2026-11-15 | 1 |  | 2 | COMPLETED | RULE_ENGINE |  | 
+3 | 2026-11-16 | 2026-11-22 | 1 |  | 2 | ACTIVE | CONSERVED | ADAPT_EXPANDED | Revisamos las sesiones que nos indicaste. En 2 sesiones no aplicamos cambios esta semana: se mantienen como estaban.
+### planned_workouts plan 3
+7 | 2026-11-20 | Tren superior | 41 | SCHEDULED
+8 | 2026-11-21 | Tren inferior | 43 | SCHEDULED

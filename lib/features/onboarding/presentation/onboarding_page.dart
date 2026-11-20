@@ -8,6 +8,7 @@ import '../../../shared/widgets/kora_ui.dart';
 import '../../welcome/presentation/first_plan_generation_controller.dart';
 import '../../welcome/presentation/welcome_routes.dart';
 import '../data/profile_repository.dart';
+import '../domain/minimum_age.dart';
 import '../../catalog/data/catalog_repository.dart';
 import 'blocked_exercise_picker.dart';
 import 'equipment_picker.dart';
@@ -113,7 +114,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   String? validBirth(String? value) {
     final date = DateTime.tryParse(value ?? '');
     final now = DateTime.now();
-    return date == null || date.toIso8601String().substring(0, 10) != value || !date.isBefore(DateTime(now.year, now.month, now.day)) ? 'Elige una fecha anterior a hoy' : null;
+    if (date == null || date.toIso8601String().substring(0, 10) != value || !date.isBefore(DateTime(now.year, now.month, now.day))) return 'Elige una fecha anterior a hoy';
+    return ageOn(date, now) < minimumAge ? minimumAgeMessage : null;
   }
   Future<void> pickBirthday() async {
     final now = DateTime.now();

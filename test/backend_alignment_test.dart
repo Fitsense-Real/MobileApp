@@ -191,8 +191,24 @@ void main() {
       final search = backend.requests.firstWhere((r) => r.path == '/catalog/exercises');
       expect(search.queryParameters, {'search': 'sentadilla', 'limit': 30});
     });
+    test('password recovery is offered as working only when enabled at build time', () {
+      // No production mail provider yet: without PASSWORD_RECOVERY_ENABLED=true the
+      // login explains it is not available instead of offering a flow that never arrives.
+      expect(ApiConstants.passwordRecoveryAvailable, isFalse);
+    });
+    test('password reset errors of backend 5977d28 get clear messages', () async {
+      for (final (status, path, message) in [
+        (400, '/confirm', 'El código no es válido, ya se usó o caducó'),
+        (429, '/request', 'Demasiadas solicitudes de recuperación'),
+        (429, '/confirm', 'Demasiadas solicitudes de recuperación'),
+      ]) {
+        final backend = FakeBackend((o) => (status: status, body: {'status': status, 'message': 'El codigo de recuperacion no es valido o ha caducado.'}));
+        final auth = AuthRemoteDataSource(dioWith(backend));
+        final call = path == '/request' ? auth.forgotPassword('ana@example.com') : auth.resetPassword(code: 'x' * 43, password: 'nuevaClave1');
+        await expectLater(call, throwsA(isA<ApiException>().having((e) => e.message, 'message', contains(message))), reason: '$status $path');
+      }
+    });
     test('password reset uses PasswordResetController payloads', () async {
-      expect(ApiConstants.passwordRecoveryAvailable, isTrue);
       final backend = FakeBackend((o) => o.path.endsWith('/request')
           ? (status: 202, body: {'message': 'Si el correo corresponde a una cuenta, recibiras un codigo'})
           : (status: 204, body: null));

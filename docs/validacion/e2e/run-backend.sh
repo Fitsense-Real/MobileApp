@@ -5,9 +5,9 @@ export SPRING_APPLICATION_JSON='{}'
 unset DB_PASSWORD JWT_SECRET REPLICATE_API_TOKEN
 exec java -cp "harness/classes:app/BOOT-INF/classes:app/BOOT-INF/lib/*" main.web.services.fitsense.FitsenseApplication \
   --spring.datasource.url=jdbc:postgresql://localhost:5432/fitsense_e2e \
-  --spring.datasource.username=postgres --spring.datasource.password=x \
-  --spring.flyway.url=jdbc:postgresql://localhost:5432/fitsense_e2e --spring.flyway.user=postgres --spring.flyway.password=x \
-  --authorization.jwt.secret=clave-e2e-local-solo-pruebas-0123456789abcdefghijklmnop \
+  --spring.datasource.username=postgres --spring.datasource.password="${E2E_DB_PASSWORD:?Define E2E_DB_PASSWORD}" \
+  --spring.flyway.url=jdbc:postgresql://localhost:5432/fitsense_e2e --spring.flyway.user=postgres --spring.flyway.password="${E2E_DB_PASSWORD:?Define E2E_DB_PASSWORD}" \
+  --authorization.jwt.secret="${E2E_JWT_SECRET:?Define E2E_JWT_SECRET (32+ caracteres, solo local)}" \
   --fitsense.ai.enabled=false --fitsense.ai.api-token= \
   --fitsense.cors.allowed-origins=http://localhost:5050 \
   --fitsense.plan-generation.heartbeat-ms=5000 \

@@ -1,3 +1,4 @@
+import 'package:fitsense_mobile/features/authentication/domain/password_rules.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,7 +106,7 @@ CrossAxisAlignment.stretch,
 children: [                   const PageHeader(
 title: "Restablecer contraseña",
 subtitle:
-"Ingresa el código recibido y crea una nueva contraseña segura.",
+"Si el correo corresponde a una cuenta de Kora, te llegará un código. Ingrésalo y crea una nueva contraseña. Caduca en 30 minutos y sirve una sola vez.",
 )
 .animate()
 .fade(duration: 500.ms)
@@ -152,22 +153,7 @@ label: "Nueva contraseña",
 hint: "********",
 prefixIcon: Icons.lock_outline,
 isPassword: true,
-validator: (value) {
-if (value == null ||
-value.isEmpty) {
-return "Ingrese una contraseña";
-}
-
-if (value.length < 8) {
-return "Debe contener al menos 8 caracteres";
-}
-
-if (value.length > 72) {
-return "Usa como máximo 72 caracteres";
-}
-
-return null;
-},
+validator: passwordProblem,
 )
 .animate(delay: 200.ms)
 .fade()
