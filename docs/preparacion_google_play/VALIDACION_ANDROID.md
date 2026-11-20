@@ -22,7 +22,7 @@ Que un APK compile no prueba que funcione en un teléfono.
 
 ## APK debug para el teléfono por USB
 
-Compilado desde `d96f4ab`:
+Compilado con el código final de #8 (tras la revisión de seguridad); el primero, de `d96f4ab`, queda sustituido:
 
 ```
 flutter build apk --debug --target-platform android-arm64 \
@@ -33,7 +33,7 @@ flutter build apk --debug --target-platform android-arm64 \
 | Dato | Valor |
 |---|---|
 | Archivo | `app-debug.apk`, entregado como `kora-debug-usb-arm64-5977.apk` (57 MB) |
-| SHA-256 | `3c72dbb5c68d887093f165fa00e464c601cb93aff8956c880d4281abd83d1fcd` |
+| SHA-256 | `53b67931ed73d73830aff08d7a6ca8825fd4e6df92d16581b58e0bab10cb4cef` |
 | Paquete | `com.example.fitsense_mobile`, `minSdk 21`, `targetSdk 36`, `arm64-v8a`, etiqueta «Kora» |
 | Uso | solo pruebas; tráfico en claro únicamente hacia `localhost` por `adb reverse` |
 

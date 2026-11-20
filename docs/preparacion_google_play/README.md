@@ -29,5 +29,6 @@
 | [E2E_KORA_BACKEND_ACTUALIZADO.md](E2E_KORA_BACKEND_ACTUALIZADO.md) | Recorrido completo A–E con el backend real | #8 |
 | [VALIDACION_ANDROID.md](VALIDACION_ANDROID.md) | Protecciones, APK debug para USB e instalación en Windows | #8 |
 | [REGRESION_FLUTTER.md](REGRESION_FLUTTER.md) | 200 pruebas, compilaciones y clasificación de fallos | #8 |
+| [REVISION_SEGURIDAD_COMPATIBILIDAD.md](REVISION_SEGURIDAD_COMPATIBILIDAD.md) | Revisión independiente final: corregido y pendiente | #8 |
 | [PENDIENTES_INTEGRACION.md](PENDIENTES_INTEGRACION.md) | Lo que falta para fusionar, desplegar y publicar | #8 |
 | [integracion_backend_5977/](integracion_backend_5977) | Evidencia: respuestas HTTP, PostgreSQL, capturas y arnés | #8 |

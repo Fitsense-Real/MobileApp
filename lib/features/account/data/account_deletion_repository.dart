@@ -38,7 +38,10 @@ class DeletionFailure implements Exception {
   String toString() => message;
 }
 
-enum DeletionFailureKind { wrongPassword, tooManyAttempts, sessionExpired, alreadyGone, unavailable, offline, server, rejected }
+enum DeletionFailureKind {
+  /// No answer after the request left the phone (timeout, cut connection):
+  /// the backend may have registered the deletion.
+  uncertain, wrongPassword, tooManyAttempts, sessionExpired, alreadyGone, unavailable, offline, server, rejected }
 
 /// `DELETE /api/v1/users/me` of Fitsense-Real/Backend (`generation` 5977d28):
 /// body `{password, confirm: true}` (`DeleteAccountResource`). The backend
@@ -75,10 +78,22 @@ class AccountDeletionRepository {
   DeletionFailure _failure(DioException e) {
     final status = e.response?.statusCode;
     if (status == null) {
-      return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
+      // Could not even connect: the request never reached the backend.
+      if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.connectionTimeout) {
+        return const DeletionFailure(DeletionFailureKind.offline, 'No hay conexión con el servidor. No se eliminó nada; inténtalo cuando tengas conexión.');
+      }
+      // The request may have been processed (the backend deactivates the
+      // account at once): never claim that nothing was deleted.
+      return const DeletionFailure(DeletionFailureKind.uncertain,
+          'No recibimos la respuesta del servidor y no sabemos si la eliminación se registró. Vuelve a intentarlo: si ya se registró, lo confirmaremos.');
     }
     switch (status) {
       case 403:
+        // Only REAUTENTICACION_FALLIDA means a wrong password; other 403s
+        // (HTTPS required, access denied) are a rejection, not the user's fault.
+        if (!_codes(e).contains('REAUTENTICACION_FALLIDA')) {
+          return const DeletionFailure(DeletionFailureKind.rejected, 'El servidor rechazó la solicitud. No se eliminó nada; inténtalo más tarde o escribe al equipo del estudio.');
+        }
         return const DeletionFailure(DeletionFailureKind.wrongPassword, 'La contraseña no es correcta. No se eliminó nada; revísala e inténtalo de nuevo.');
       case 429:
         final seconds = int.tryParse(e.response?.headers.value('retry-after') ?? '');
@@ -104,6 +119,12 @@ class AccountDeletionRepository {
       return const DeletionFailure(DeletionFailureKind.server, 'El servidor no pudo registrar la solicitud. No se eliminó nada; inténtalo más tarde.');
     }
     return DeletionFailure(DeletionFailureKind.rejected, apiError(e));
+  }
+
+  static List<String> _codes(DioException e) {
+    final data = e.response?.data;
+    final details = data is Map ? data['details'] : null;
+    return details is List ? details.map((d) => '$d').toList() : const [];
   }
 }
 

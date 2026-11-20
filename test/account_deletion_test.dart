@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -25,8 +26,10 @@ import 'support/welcome_fakes.dart';
 /// `{password, confirm: true}`; 200 DELETED, 202 PENDING, 400, 403, 429 +
 /// Retry-After, 401, 404, 503.
 class AccountBackend implements HttpClientAdapter {
-  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false, this.retryAfterVisible = true});
+  AccountBackend({this.deleteStatus = 200, this.offline = false, this.alreadyRequested = false, this.retryAfterVisible = true, this.timeouts = 0});
   int deleteStatus;
+  /// The first N DELETEs get no answer (receive timeout) although they left the phone.
+  int timeouts;
   bool offline, alreadyRequested;
   /// false: like a browser, where the backend does not expose Retry-After (CORS).
   bool retryAfterVisible;
@@ -39,6 +42,10 @@ class AccountBackend implements HttpClientAdapter {
     bodies.add(o.data);
     if (offline && o.method == 'DELETE') {
       throw DioException(requestOptions: o, type: DioExceptionType.connectionError);
+    }
+    if (timeouts > 0 && o.method == 'DELETE') {
+      timeouts--;
+      throw DioException(requestOptions: o, type: DioExceptionType.receiveTimeout);
     }
     var headers = <String, List<String>>{Headers.contentTypeHeader: [Headers.jsonContentType]};
     final (int status, Object? body) = switch ('${o.method} ${o.path}') {
@@ -70,6 +77,12 @@ class AccountBackend implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class BrokenLocalData extends LocalAccountData {
+  const BrokenLocalData();
+  @override
+  Future<void> clear(int userId) async => throw Exception('almacenamiento no disponible');
+}
+
 class FakeScheduler implements ReminderScheduler {
   int cancels = 0;
   @override
@@ -90,6 +103,7 @@ Future<({AccountBackend backend, FakeScheduler scheduler, ProviderContainer cont
   WidgetTester tester, {
   AccountBackend? backend,
   bool signedIn = true,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 1200);
   tester.view.devicePixelRatio = 1;
@@ -108,6 +122,7 @@ Future<({AccountBackend backend, FakeScheduler scheduler, ProviderContainer cont
     dioProvider.overrideWithValue(dio),
     authViewModelProvider.overrideWith(signedIn ? SignedIn.new : SignedOut.new),
     reminderSchedulerProvider.overrideWithValue(scheduler),
+    ...overrides,
   ]);
   addTearDown(container.dispose);
   await tester.pumpWidget(UncontrolledProviderScope(container: container, child: MaterialApp.router(routerConfig: router, theme: AppTheme.light)));
@@ -241,6 +256,52 @@ void main() {
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Eliminar mi cuenta')).onPressed, isNull);
     await tester.runAsync(() => r.container.read(accountDeletionProvider.notifier).delete(password: 'Kora12345'));
     expect(r.backend.calls.where((c) => c.startsWith('DELETE')).length, 1);
+  });
+
+  // Found in the independent review: a request that got no answer may have been
+  // processed (the backend deactivates the account at once).
+  testWidgets('no answer after sending: never "nothing was deleted"; a later 401 clears this account', (tester) async {
+    final r = await pumpDeletion(tester, backend: AccountBackend(timeouts: 1, deleteStatus: 401));
+    await fillAndConfirm(tester);
+    expect(find.textContaining('no sabemos si la eliminación se registró'), findsOneWidget);
+    expect(find.textContaining('No se eliminó nada'), findsNothing);
+    expect(r.container.read(authViewModelProvider).user, isNotNull, reason: 'nothing assumed yet');
+    expect(await stored(), userKeys);
+    await tester.runAsync(() => r.container.read(accountDeletionProvider.notifier).delete(password: 'Kora12345'));
+    await tester.pumpAndSettle();
+    expect(r.backend.calls.where((c) => c.startsWith('DELETE')).length, 2);
+    final state = r.container.read(accountDeletionProvider);
+    expect(state.status, DeletionStatus.gone);
+    expect(state.inferred, isTrue);
+    expect(find.text('Tu cuenta probablemente ya se eliminó'), findsOneWidget);
+    final left = await stored();
+    for (final key in LocalAccountData.keysOf(7)) {
+      expect(left.containsKey(key), isFalse, reason: key);
+    }
+    expect(left['kora_welcome_8'], '{"tourStep":3}', reason: 'other accounts are kept');
+  });
+
+  testWidgets('a plain 401 (no earlier unanswered request) keeps the local data', (tester) async {
+    final r = await pumpDeletion(tester, backend: AccountBackend(deleteStatus: 401));
+    await fillAndConfirm(tester);
+    expect(find.textContaining('Tu sesión ya no es válida'), findsOneWidget);
+    expect(r.container.read(accountDeletionProvider).status, DeletionStatus.failed);
+    expect((await stored())['kora_favorites_7'], '[]');
+  });
+
+  testWidgets('a 403 that is not REAUTENTICACION_FALLIDA is not called a wrong password', (tester) async {
+    await pumpDeletion(tester, backend: AccountBackend(deleteStatus: 403));
+    await fillAndConfirm(tester);
+    expect(find.textContaining('La contraseña no es correcta'), findsNothing);
+    expect(find.textContaining('El servidor rechazó la solicitud'), findsOneWidget);
+  });
+
+  testWidgets('200 with a local cleanup failure still says the account was deleted', (tester) async {
+    final r = await pumpDeletion(tester, overrides: [localAccountDataProvider.overrideWithValue(const BrokenLocalData())]);
+    await fillAndConfirm(tester);
+    expect(find.text('Tu cuenta fue eliminada'), findsOneWidget);
+    expect(find.textContaining('No se eliminó nada'), findsNothing);
+    expect(r.container.read(authViewModelProvider).user, isNull, reason: 'signed out anyway');
   });
 
   for (final (name, backend, message) in [

@@ -1,3 +1,4 @@
+import 'package:fitsense_mobile/features/authentication/domain/password_rules.dart';
 import 'package:fitsense_mobile/features/authentication/domain/email_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -142,9 +143,7 @@ looksLikeEmail(v)
                     hint: '••••••••',
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
-                    validator: (v) => (v ?? '').length < 8 || (v ?? '').length > 72
-                        ? 'Usa entre 8 y 72 caracteres'
-                        : null,
+                    validator: passwordProblem,
                   ),
                   if (widget.register) ...[
                     const SizedBox(height: 22),

@@ -93,4 +93,5 @@ El código es una cadena de 43 caracteres de un solo uso. **No es un enlace.**
 | B-3 | Mensajes sin tildes en general («contrasena», «codigo») | cualquier 4xx | La app usa sus propios textos para los casos conocidos |
 | B-4 | No hay endpoint público de versiones de consentimiento | `GET /users/me/consents` sin token → 401 | Si se activa `enforce-on-signup`, la app no puede enviar `acceptedTermsVersion` al registrarse |
 | B-5 | `report` acepta un entrenamiento de una fecha futura | «Ya lo hice» sobre el del 27/11 con fecha del 20/11 → 201 `USER_REPORTED` | La app también lo ofrece (`canReportWorkout` con `SCHEDULED`). Decisión de producto pendiente |
+| B-6 | `/auth/login` no limita intentos: `LimitePorIp` solo cubre la recuperación y la eliminación web | `git grep LimitePorIp 5977d28`: no aparece en el controlador de autenticación | Ninguno en la app; riesgo de fuerza bruta en producción |
 | S-1 | Los logs incluyen correos (p. ej. «generacion para 8 (correo)») | `grep @ backend.log` | Sin cambios por orden expresa; no aptos para producción ni participantes reales |

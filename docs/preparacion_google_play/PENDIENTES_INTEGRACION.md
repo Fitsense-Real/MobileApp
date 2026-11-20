@@ -49,6 +49,7 @@ Reproducción mínima de cada uno en `CONTRATOS_BACKEND_ACTUALIZADOS.md`.
 | Prioridad | # | Hallazgo | Cuándo debe resolverse | Mitigación actual en Mobile |
 |---|---|---|---|---|
 | **Alta** | S-1 | Los logs incluyen correos | Antes de producción o de tener participantes reales | Ninguna posible desde la app; los logs no se tocaron por orden expresa |
+| **Media** | B-6 | `/auth/login` no limita intentos (fuerza bruta de contraseñas) | Antes de producción (en el backend o en el proxy) | Ninguna posible desde la app |
 | **Media** | B-4 | No hay endpoint público de versiones de consentimiento | Antes de activar `enforce-on-signup` | La app pide los documentos justo después del primer login |
 | **Media** | B-5 | `report` acepta un entrenamiento de fecha futura (afecta la adherencia de semanas no vividas) | Decisión de producto antes de la prueba cerrada | Ninguna; la app ofrece «Ya lo hice» en entrenamientos programados |
 | **Baja** | B-1 | `Retry-After` no expuesto por CORS | Solo si hay cliente web | Pausa de 1 min en el botón (`d96f4ab`); Android lee la cabecera |

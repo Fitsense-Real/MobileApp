@@ -83,7 +83,7 @@ class _AccountDeletionPageState extends ConsumerState<AccountDeletionPage> {
                   'Se cerró tu sesión y se borraron de este teléfono tus datos de Kora.',
             ),
           DeletionStatus.gone => _done(
-              'Tu cuenta ya no existe',
+              state.inferred ? 'Tu cuenta probablemente ya se eliminó' : 'Tu cuenta ya no existe',
               '${state.message ?? ''} Se cerró tu sesión y se borraron de este teléfono tus datos de Kora.',
             ),
           _ when user == null => _signedOut(),

@@ -1,14 +1,14 @@
 # Regresión Flutter (integración con 5977d28)
 
-Rama `claude/play-e-backend-5977`, commit `d96f4ab` (el último con código; luego solo hay
-documentación). Flutter 3.32.8.
+Rama `claude/play-e-backend-5977`. Flutter 3.32.8. Se ejecutó en `d96f4ab` (200 pruebas) y de nuevo tras
+las correcciones de la revisión final (**206**, ver `REVISION_SEGURIDAD_COMPATIBILIDAD.md`).
 
 ## Resultados
 
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **200 pasan, 0 fallan, 0 omitidas**, en 24 archivos (antes de esta orden: 177) |
+| `flutter test` | **206 pasan, 0 fallan, 0 omitidas** (200 en `d96f4ab`; antes de esta orden: 177) |
 | `flutter build web --release --no-web-resources-cdn` | ✓ (es la app usada en el E2E) |
 | `flutter build apk --debug --target-platform android-arm64` | ✓, 57 MB (`VALIDACION_ANDROID.md`) |
 | `flutter build apk --release` con URL `.invalid` y `-Pkora.testBackendUrl=true` | ✓, 12,4 MB; manifiesto revisado |
