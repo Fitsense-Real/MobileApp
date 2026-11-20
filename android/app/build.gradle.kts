@@ -21,6 +21,8 @@ plugins {
 //   com.example.*.
 // - Backend: every release build needs --dart-define=API_BASE_URL with a
 //   public https:// URL (CONFIGURACION_BACKEND_HTTPS.md).
+// - Play bundle: account deletion enabled and public https pages for deletion
+//   and privacy (ELIMINACION_CUENTA_FLUTTER.md).
 // ---------------------------------------------------------------------------
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
@@ -70,6 +72,13 @@ gradle.taskGraph.whenReady {
     if (playBundle) {
         if (!hasReleaseKey) problems += "Falta android/key.properties: el AAB para Google Play no se firma con la clave debug."
         if (koraApplicationId.startsWith("com.example")) problems += "applicationId de ejemplo ($koraApplicationId): define kora.applicationId con el identificador aprobado."
+        // Google Play: account deletion inside the app, a public web page to
+        // request it, and a privacy policy (ELIMINACION_CUENTA_FLUTTER.md).
+        if (defines["ACCOUNT_DELETION_ENABLED"] != "true") problems += "La eliminacion de cuenta esta desactivada: Play exige poder borrar la cuenta desde la app (ACCOUNT_DELETION_ENABLED=true cuando DELETE /users/me este en servicio)."
+        for (key in listOf("ACCOUNT_DELETION_WEB_URL", "PRIVACY_POLICY_URL")) {
+            val link = defines[key].orEmpty().trim()
+            if (!link.startsWith("https://")) problems += "Falta --dart-define=$key=https://... (pagina publica exigida por Google Play)."
+        }
         if (testUrlAllowed) logger.warn("AVISO: AAB con URL de prueba (kora.testBackendUrl=true). Es solo para verificar el empaquetado: NO es publicable.")
     }
     if (problems.isNotEmpty()) {

@@ -22,6 +22,8 @@ class ApiConstants {
   // Usuario
   static const me = '/users/me';
   static const withdraw = '/users/me/withdraw';
+  /// `DELETE /users/me`: account deletion (contract being prepared in the backend).
+  static const deleteAccount = '/users/me';
   static const profile = '/users/me/profile';
 
   // Catálogo

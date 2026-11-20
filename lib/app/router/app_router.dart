@@ -6,6 +6,7 @@ import '../../features/authentication/presentation/pages/register_page.dart';
 import '../../features/authentication/presentation/pages/reset_password_page.dart';
 import '../../features/authentication/presentation/pages/splash_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/account/presentation/account_deletion_page.dart';
 import 'app_routes.dart';
 import 'route_names.dart';
 import '../../features/onboarding/presentation/onboarding_page.dart';
@@ -22,6 +23,7 @@ class AppRouter {
 
     routes: [
       GoRoute(path: AppRoutes.accountSetup, builder: (_, __) => const AccountSetupPage()),
+      GoRoute(path: AppRoutes.deleteAccount, builder: (_, __) => const AccountDeletionPage()),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
       GoRoute(
         path: welcomeTourRoute,
