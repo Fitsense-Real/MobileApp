@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class TodayWorkoutCard extends StatelessWidget {
   const TodayWorkoutCard({super.key});

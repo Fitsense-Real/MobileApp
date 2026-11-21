@@ -2,7 +2,7 @@ import 'package:fitsense_mobile/features/dashboard/data/dashboard_repository.dar
 import 'package:fitsense_mobile/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
