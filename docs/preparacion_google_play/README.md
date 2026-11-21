@@ -32,3 +32,9 @@
 | [REVISION_SEGURIDAD_COMPATIBILIDAD.md](REVISION_SEGURIDAD_COMPATIBILIDAD.md) | Revisión independiente final: corregido y pendiente | #8 |
 | [PENDIENTES_INTEGRACION.md](PENDIENTES_INTEGRACION.md) | Lo que falta para fusionar, desplegar y publicar | #8 |
 | [integracion_backend_5977/](integracion_backend_5977) | Evidencia: respuestas HTTP, PostgreSQL, capturas y arnés | #8 |
+
+## Flutter 3.50.1 y herramientas Android 9
+
+| Documento | Contenido |
+|---|---|
+| [MIGRACION_FLUTTER_3_50.md](MIGRACION_FLUTTER_3_50.md) | Causa y corrección de las 11 pruebas, Gradle 9.5/AGP 9.3.1/Kotlin 2.4.20/NDK 28.2, avisos de obsolescencia, verificación |

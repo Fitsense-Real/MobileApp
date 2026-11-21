@@ -223,7 +223,13 @@ class _LackOfTimeDialogState extends State<LackOfTimeDialog> {
     title: const Text('Sobre la falta de tiempo'),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('Opcional: nos ayuda a ajustar tu próxima semana.'),
-      for (final entry in options.entries) RadioListTile<String>(contentPadding: EdgeInsets.zero, value: entry.key, groupValue: choice, title: Text(entry.value), onChanged: (v) => setState(() { choice = v; error = null; })),
+      RadioGroup<String>(
+        groupValue: choice,
+        onChanged: (v) => setState(() { choice = v; error = null; }),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (final entry in options.entries) RadioListTile<String>(contentPadding: EdgeInsets.zero, value: entry.key, title: Text(entry.value)),
+        ]),
+      ),
       if (choice == 'MENOS_TIEMPO_HABITUAL') TextField(controller: minutes, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Minutos que sueles tener (15–180)', errorText: error)),
     ])),
     actions: [
@@ -294,8 +300,8 @@ class _FinishDialogState extends State<FinishDialog> {
   Widget build(BuildContext context) => AlertDialog(title: const Text('Finalizar entrenamiento'), content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
     const Text('El progreso se calculará con los ejercicios que registraste.'),
     if (widget.reporting) FormField<DateTime>(validator: (_) => performedAt == null ? 'Selecciona cuándo entrenaste' : performedAt!.isAfter(DateTime.now()) ? 'La fecha no puede ser futura' : null, builder: (field) => Column(children: [TextButton(onPressed: chooseDate, child: Text(performedAt == null ? 'Elegir fecha y hora del entrenamiento' : '${performedAt!.day}/${performedAt!.month}/${performedAt!.year} ${TimeOfDay.fromDateTime(performedAt!).format(context)}')), if (field.hasError) Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error))])),
-    DropdownButtonFormField<int>(value: rpe, decoration: const InputDecoration(labelText: 'Esfuerzo percibido (1–10)'), items: [for (var i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => rpe = value), validator: (value) => value == null ? 'Selecciona el esfuerzo percibido' : null),
-    DropdownButtonFormField<int>(value: satisfaction, decoration: const InputDecoration(labelText: 'Satisfacción (opcional, 1–5)'), items: [for (var i = 1; i <= 5; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => satisfaction = value)),
+    DropdownButtonFormField<int>(initialValue: rpe, decoration: const InputDecoration(labelText: 'Esfuerzo percibido (1–10)'), items: [for (var i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => rpe = value), validator: (value) => value == null ? 'Selecciona el esfuerzo percibido' : null),
+    DropdownButtonFormField<int>(initialValue: satisfaction, decoration: const InputDecoration(labelText: 'Satisfacción (opcional, 1–5)'), items: [for (var i = 1; i <= 5; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => satisfaction = value)),
     TextFormField(controller: minutes, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Minutos activos (opcional)', helperText: widget.suggestedMinutes == null ? null : 'Según el cronómetro, sin pausas'), validator: (v) => (v ?? '').isEmpty || (int.tryParse(v!) != null && int.parse(v) >= 0) ? null : 'Escribe minutos válidos'),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: () {
     if (!form.currentState!.validate()) return;

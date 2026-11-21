@@ -1,0 +1,106 @@
+### flutter analyze --suggestions (compatibilidad Java/Gradle/AGP)
+┌───────────────────────────────────────────────────────────────────────────┐
+│ General Info                                                              │
+│ [✓] App Name: fitsense_mobile                                             │
+│ [✓] Supported Platforms: android, ios, web, macos, linux, windows         │
+│ [✓] Is Flutter Package: yes                                               │
+│ [✓] Uses Material Design: yes                                             │
+│ [✓] Is Plugin: no                                                         │
+│ [✓] Java/Gradle/KGP/Android Gradle Plugin: compatible java/gradle/agp/kgp │
+└───────────────────────────────────────────────────────────────────────────┘
+### flutter clean + flutter pub get
+Deleting build...                                                  10.2s
+Deleting .dart_tool...                                           2,975ms
+Deleting ephemeral...                                                1ms
+Got dependencies!
+lock tras pub get sin cambios: sí
+### Gradle y plugins efectivos
+Gradle 9.5.0
+Launcher JVM:  21.0.12.1 (Ubuntu 21.0.12.1+1-1-24.04.4-Ubuntu)
+Daemon JVM:    /usr/lib/jvm/java-21-openjdk-amd64 (no Daemon JVM specified, using current Java home)
+JDK de Flutter:   jdk-dir: /usr/lib/jvm/java-17-openjdk-amd64
+### flutter build apk --debug (sin --android-skip-build-dependency-validation)
+salida 0
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+menciones del flag de omisión en el registro: 0
+package: name='com.example.fitsense_mobile' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+sdkVersion:'24'
+targetSdkVersion:'36'
+native-code: 'arm64-v8a' 'armeabi-v7a' 'x86_64'
+uses-permission: name='android.permission.INTERNET'
+69f7f945d9beed03c8ffa3eb59d3cd82a766fb45f9c53cdf4782a271be2ceedb  build/app/outputs/flutter-apk/app-debug.apk
+tamaño 172000329
+### Plugins resueltos por Gradle (JDK 17)
+Launcher JVM:  17.0.21.1 (Ubuntu 17.0.21.1+2-1-24.04.1-Ubuntu)
+Daemon JVM:    /usr/lib/jvm/java-17-openjdk-amd64 (no Daemon JVM specified, using current Java home)
+### Plugins resueltos (gradle --info)
+Resolved plugin [id: 'com.android.application', version: '9.3.1'
+Resolved plugin [id: 'dev.flutter.flutter-plugin-loader', version: '1.0.0'
+Resolved plugin [id: 'org.gradle.kotlin.kotlin-dsl', version: '6.5.7'
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.4.20'
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.2.20'
+kotlin-stdlib en debugRuntimeClasspath: 2.4.20
+### checkJetifier
+Add android.sync.suppressAgpWarnings=UNSUPPORTED_PROJECT_OPTION_USE to the gradle.properties file to suppress this warning.
+Add android.sync.suppressAgpWarnings=UNSUPPORTED_PROJECT_OPTION_USE to the gradle.properties file to suppress this warning.
+Add android.sync.suppressAgpWarnings=UNSUPPORTED_PROJECT_OPTION_USE to the gradle.properties file to suppress this warning.
+For more information, see http://developer.android.com/build/r/new-dsl.
+For more information, see http://developer.android.com/build/r/new-dsl.
+For more information, see http://developer.android.com/build/r/new-dsl.
+The 'org.jetbrains.kotlin.android' plugin in project ':app' is no longer required for Kotlin support since AGP 9.0.
+For more information, see http://developer.android.com/build/r/new-dsl.
+### APK release sin API_BASE_URL
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta --dart-define=API_BASE_URL=https://... (URL HTTPS del backend de produccion).
+salida 1
+### APK release con http://localhost:8080/api/v1
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL debe usar https:// en release: http://localhost:8080/api/v1
+salida 1
+### APK release con https://10.0.2.2:8080/api/v1 (emulador)
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL no puede ser una direccion local o del emulador en release: 10.0.2.2
+salida 1
+### APK release con https://192.168.1.20/api/v1 (IP privada)
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL no puede ser una direccion local o del emulador en release: 192.168.1.20
+salida 1
+### APK release con https://backend.example.test/api/v1 sin bandera de prueba
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL usa un dominio reservado de prueba (backend.example.test); solo se admite con -Pkora.testBackendUrl=true y nunca para Play.
+salida 1
+### AAB sin configuración
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta --dart-define=API_BASE_URL=https://... (URL HTTPS del backend de produccion).
+ - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+ - applicationId de ejemplo (com.example.fitsense_mobile): define kora.applicationId con el identificador aprobado.
+ - La eliminacion de cuenta esta desactivada: Play exige poder borrar la cuenta desde la app (ACCOUNT_DELETION_ENABLED=true cuando DELETE /users/me este en servicio).
+ - Falta --dart-define=ACCOUNT_DELETION_WEB_URL=https://... (pagina publica exigida por Google Play).
+ - Falta --dart-define=PRIVACY_POLICY_URL=https://... (pagina publica exigida por Google Play).
+salida 1
+### AAB con URL de prueba, eliminación y páginas, sin firma ni identificador
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+ - applicationId de ejemplo (com.example.fitsense_mobile): define kora.applicationId con el identificador aprobado.
+salida 1
+### AAB con identificador propuesto pero sin firma (key.properties)
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+salida 1
+### APK release de prueba permitido (backend.example.test + -Pkora.testBackendUrl=true)
+✓ Built build/app/outputs/flutter-apk/app-release.apk (24.0MB)
+salida 0
+### Inspección del APK release de prueba
+package: name='com.example.fitsense_mobile' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+sdkVersion:'24'
+targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
+usesCleartextTraffic: 0 · debuggable: 0 · enableOnBackInvokedCallback: 1
+cadenas sensibles en libapp.so: 0
+zipalign 16 KB: Verification successful
+Signer #1 certificate DN: C=US, O=Android, CN=Android Debug
+### flutter analyze
+81 issues found. (ran in 5.6s)
+errores 0 · warnings 0 · info 81 (material.dart 78, GlobalMaterialLocalizations 3)
+### flutter test
++208: All tests passed

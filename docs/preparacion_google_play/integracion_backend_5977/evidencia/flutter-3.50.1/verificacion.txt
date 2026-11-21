@@ -1,0 +1,48 @@
+### flutter --version
+Flutter 3.50.1 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision ae9b586f34 (2 days ago) • 2026-11-18 17:01:07 -0800
+Engine • hash 51379e6df48ea8ee7205623b90fe66491cad8df3 (revision 4d35714800) (2 days ago) • 2026-11-18 01:50:07.000Z
+Tools • Dart 3.14.0 • DevTools 2.61.0
+### Gradle / JDK
+Gradle 9.5.0
+Kotlin:        2.3.20
+Launcher JVM:  21.0.12.1 (Ubuntu 21.0.12.1+1-1-24.04.4-Ubuntu)
+openjdk version "21.0.12.1" 2026-08-18
+OpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)
+OpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)
+AGP: 9.3.1
+KGP: 2.4.20
+NDK: 28.2.13676358
+compileSdk: compileSdk = 36 · targetSdk: targetSdk = 36
+### flutter pub get
+Resolving dependencies...
+Got dependencies!
+### flutter analyze
+81 issues found. (ran in 1.4s)
+errores: 0 · warnings: 0 · infos: 81
+### flutter test
++208: All tests passed
+### flutter test test/dashboard_live_test.dart
++4: All tests passed
+### flutter test test/dashboard_visual_test.dart
++1: All tests passed
+### flutter test test/edge_to_edge_test.dart
++4: All tests passed
+### flutter test test/onboarding_flow_test.dart
++1: All tests passed
+### flutter test test/welcome_tour_test.dart
++23: All tests passed
+### flutter test test/ink_feedback_test.dart
++1: All tests passed
+### flutter build web --release
+✓ Built build/web
+### Con JDK 17 (flutter config --jdk-dir)
+    • Java binary at: /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+    • Java version OpenJDK Runtime Environment (build 17.0.21.1+2-1-24.04.1-Ubuntu)
+### flutter build apk --debug (arm64)
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+d184345029f0aa611780d437b359c09ec8e187aedca48c1c0cbdb2a32c2c452b  build/app/outputs/flutter-apk/app-debug.apk
+### flutter build apk --debug (todas las ABI, como el CI)
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+### apk release de prueba (JDK 17)
+✓ Built build/app/outputs/flutter-apk/app-release.apk (24.0MB)

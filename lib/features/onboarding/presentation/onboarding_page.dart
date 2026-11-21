@@ -217,7 +217,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         ],
         if (step == 1) ...[
           Padding(padding: const EdgeInsets.only(bottom: 20), child: TextFormField(key: const ValueKey('birthday'), controller: birth, readOnly: true, onTap: pickBirthday, decoration: InputDecoration(labelText: 'Fecha de nacimiento', hintText: 'Elige tu cumpleaños', suffixIcon: IconButton(onPressed: pickBirthday, icon: const Icon(Icons.calendar_month), tooltip: 'Elegir cumpleaños')), validator: validBirth)),
-          DropdownButtonFormField<String>(isExpanded: true, value: sex, decoration: const InputDecoration(labelText: 'Sexo biológico (opcional)'), items: const [DropdownMenuItem(value: null, child: Text('Prefiero no indicarlo')), DropdownMenuItem(value: 'MALE', child: Text('Masculino')), DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')), DropdownMenuItem(value: 'OTHER', child: Text('Otro'))], onChanged: (v) => setState(() => sex = v)), const SizedBox(height: 20),
+          DropdownButtonFormField<String>(isExpanded: true, initialValue: sex, decoration: const InputDecoration(labelText: 'Sexo biológico (opcional)'), items: const [DropdownMenuItem(value: null, child: Text('Prefiero no indicarlo')), DropdownMenuItem(value: 'MALE', child: Text('Masculino')), DropdownMenuItem(value: 'FEMALE', child: Text('Femenino')), DropdownMenuItem(value: 'OTHER', child: Text('Otro'))], onChanged: (v) => setState(() => sex = v)), const SizedBox(height: 20),
           field('Estatura (cm)', height, validator: (v) => number(v,120,250), keyboard: const TextInputType.numberWithOptions(decimal: true)),
           field('Peso actual (kg)', weight, validator: (v) => number(v,30,300), keyboard: const TextInputType.numberWithOptions(decimal: true)),
           field('Peso objetivo (kg, opcional)', target, validator: (v) => number(v,30,300,optional: true), keyboard: const TextInputType.numberWithOptions(decimal: true)),
@@ -248,7 +248,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         ],
         if (step == 4) ...[
           const Text('Desactiva los movimientos que prefieres evitar.', style: TextStyle(fontSize: 16, color: Kora.muted)), const SizedBox(height: 16),
-          KoraCard(padding: const EdgeInsets.symmetric(horizontal: 8), child: Column(children: [for (final entry in permissionLabels.entries) SwitchListTile(title: Text(entry.value, style: const TextStyle(fontSize: 16)), value: permissions[entry.key]!, onChanged: (v) => setState(() { permissions[entry.key] = v; profileSaved = false; }))])),
+          KoraCard(padding: const EdgeInsets.symmetric(horizontal: 8), child: Material(type: MaterialType.transparency, borderRadius: BorderRadius.circular(16), clipBehavior: Clip.antiAlias, child: Column(children: [for (final entry in permissionLabels.entries) SwitchListTile(title: Text(entry.value, style: const TextStyle(fontSize: 16)), value: permissions[entry.key]!, onChanged: (v) => setState(() { permissions[entry.key] = v; profileSaved = false; }))]))),
           const SizedBox(height: 12),
           const Text('Tu perfil no se podrá cambiar durante el estudio. Si hay ejercicios concretos que no puedes o no quieres hacer, agrégalos también.', style: TextStyle(fontSize: 14, color: Kora.muted)), const SizedBox(height: 12),
           KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
