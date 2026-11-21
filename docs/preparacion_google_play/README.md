@@ -37,4 +37,5 @@
 
 | Documento | Contenido |
 |---|---|
+| [ACTUALIZACION_COMPONENTES_OBSOLETOS.md](ACTUALIZACION_COMPONENTES_OBSOLETOS.md) | `material_ui` (0 avisos), `go_router` 18, `fl_chart` retirada, AGP 9 sin banderas transitorias ni Jetifier |
 | [MIGRACION_FLUTTER_3_50.md](MIGRACION_FLUTTER_3_50.md) | Causa y corrección de las 11 pruebas, Gradle 9.5/AGP 9.3.1/Kotlin 2.4.20/NDK 28.2, avisos de obsolescencia, verificación |

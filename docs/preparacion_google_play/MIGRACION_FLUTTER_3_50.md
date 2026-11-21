@@ -1,5 +1,8 @@
 # Migración a Flutter 3.50.1 y herramientas Android 9
 
+> **Actualización:** los 81 avisos pendientes (Material → `material_ui`) y las banderas transitorias de AGP 9 se
+> resolvieron después, en `ACTUALIZACION_COMPONENTES_OBSOLETOS.md`. Lo de abajo describe el estado de la PR #9.
+
 Rama `claude/flutter-3-50-1`, creada desde `generation` `165364c` (código `aa1a0d2`).
 
 ## Entorno validado
