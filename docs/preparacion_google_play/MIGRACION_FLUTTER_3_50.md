@@ -76,7 +76,8 @@ tipos distintos de los de las gráficas y del enrutador. Por ejemplo, el selecto
 español y las gráficas, el tema. Conviene hacerlo en una PR propia, cuando `fl_chart` y `go_router` migren,
 y antes inspeccionar con `dart fix --dry-run`.
 
-En el CI, `flutter analyze --no-fatal-infos` mantiene fatales las advertencias y los errores (hay 0) y sigue
+El CI tiene un paso «Versiones» que imprime `flutter --version` y `dart --version` y **falla** si no son
+Flutter 3.50.1 y Dart 3.14.0. En el CI, `flutter analyze --no-fatal-infos` mantiene fatales las advertencias y los errores (hay 0) y sigue
 mostrando los 81 `info` en el registro. **No se ocultó nada en `analysis_options.yaml`.**
 
 ## Dependencias (`pubspec.lock`)
@@ -92,6 +93,33 @@ impone el SDK; `pubspec.yaml` no cambia.
 
 El resto son transitivas fijadas por el SDK (`meta`, `characters`, `vector_math`, `test_api`, etc.).
 `analysis_options.yaml` gana las exclusiones de `build/` y de las plataformas que añade `flutter pub get`.
+
+### Comprobación de que cada cambio es necesario
+
+Se comprobó fijando como restricción **exacta** cada versión anterior, en una copia aparte del proyecto.
+Un `dependency_overrides` no sirve para esto, porque salta las restricciones del SDK.
+
+| Versión anterior fijada | Resultado con Flutter 3.50.1 |
+|---|---|
+| `flutter_riverpod 3.3.2` (también con `freezed 3.2.3`) | **falla**: `riverpod 3.3.2` depende de `test ^1.0.0`, y ninguna versión de `test` es compatible con `matcher 0.12.20` + `test_api 0.7.14`, que fija `flutter_test` |
+| `freezed 3.0.0-0.0.dev` | **falla**: depende de `macros` → `_macros 0.3.3`, que el SDK ya no trae |
+| `intl 0.20.2` | **falla**: la fija `flutter_localizations` |
+| `meta 1.16.0`, `vector_math 2.1.4`, `test_api 0.7.4`, `matcher 0.12.17`, `stack_trace 1.12.1`, `clock 1.1.2`, `leak_tracker 10.0.9` | **fallan**: las fija `flutter_test` |
+| `characters 1.4.0`, `material_color_utilities 0.11.1` | **fallan**: las fija `flutter` |
+
+`riverpod` 3.5.0 es la **primera** versión sin dependencia de `test`: las 3.3.2, 3.4.0, 3.4.1 y 3.4.x la
+tienen. No hay una versión intermedia con menos cambios.
+
+De dónde vienen los paquetes que entran y salen:
+
+| Paquetes | Origen |
+|---|---|
+| Entran `material_ui` y `cupertino_ui` | `flutter_riverpod` 3.5.0 |
+| Entran `source_gen` y las nuevas `analyzer`/`dart_style` | `freezed` 3.2.3 |
+| Entra `listen` | el propio SDK |
+| Salen `test`, `test_core`, `coverage`, `macros` y otros | solo los traían `riverpod` 3.3.2 y `freezed` 3.0.0-dev |
+
+`flutter pub get` tras `flutter clean` no modifica el lock.
 
 ## Android
 
@@ -115,6 +143,19 @@ Flutter 3.50.1. Se quitarán cuando todos los plugins admitan el DSL nuevo y Kot
 - eliminación de cuenta y URL de eliminación web y de privacidad;
 - borde a borde y gesto atrás;
 - desugaring (`desugar_jdk_libs` 2.1.4) y Java 11.
+
+## Avisos de AGP 9.3.1 (validación final)
+
+`./gradlew` con JDK 17 resuelve `com.android.application` **9.3.1** y `org.jetbrains.kotlin.android`
+**2.4.20**, con `kotlin-stdlib` 2.4.20. `flutter analyze --suggestions` informa «compatible
+java/gradle/agp/kgp».
+
+AGP avisa de que estas opciones se retirarán en AGP 10:
+
+| Opción o uso | Situación |
+|---|---|
+| `android.builtInKotlin=false` / `android.newDsl=false` | **Necesarias hoy.** El plugin de Flutter usa la API antigua `applicationVariants`, que AGP 9 solo permite con `android.newDsl=false`. Además, `kotlin-android` (aplicado a `:app` y a `flutter_local_notifications`, `flutter_secure_storage` y `path_provider_android`) requiere `builtInKotlin=false`. Se quitarán cuando Flutter y los plugins adopten el DSL nuevo |
+| `android.enableJetifier=true` | Heredada. `:app:checkJetifier` confirma que ningún módulo usa las bibliotecas de soporte antiguas, así que se puede quitar en una limpieza aparte. No se cambió en esta PR para no alterar la configuración validada |
 
 ## Avisos de terceros (sin cambios en el proyecto)
 

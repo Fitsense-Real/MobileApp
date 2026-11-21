@@ -32,6 +32,14 @@ jobs:
           channel: stable
           cache: true
 
+      # The toolchain this branch was validated with; fail fast on any other.
+      - name: Versiones (Flutter 3.50.1 / Dart 3.14.0)
+        run: |
+          flutter --version
+          dart --version
+          flutter --version | grep -q '^Flutter 3\.50\.1 ' || { echo 'Se esperaba Flutter 3.50.1'; exit 1; }
+          dart --version 2>&1 | grep -q 'Dart SDK version: 3\.14\.0 ' || { echo 'Se esperaba Dart 3.14.0'; exit 1; }
+
       - name: Dependencias
         run: flutter pub get
 
