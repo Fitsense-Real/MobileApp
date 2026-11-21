@@ -265,6 +265,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ),
     child: child,
   );
+  /// Card of tappable rows (Perfil). ListTile paints its ink on the nearest
+  /// Material; inside the decorated card that Material must be the card's own
+  /// (transparent, clipped to the inner radius) or the splashes are hidden
+  /// under the white background (Flutter 3.50 asserts it).
+  Widget menuSurface(Widget rows) => surface(
+    Material(
+      type: MaterialType.transparency,
+      borderRadius: BorderRadius.circular(29),
+      clipBehavior: Clip.antiAlias,
+      child: rows,
+    ),
+    padding: EdgeInsets.zero,
+  );
   Widget tool(IconData icon, String tooltip, VoidCallback action) => IconButton(
     tooltip: tooltip,
     onPressed: action,
@@ -1296,7 +1309,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       const SizedBox(height: 34),
       label('Actividad'),
       const SizedBox(height: 16),
-      surface(
+      menuSurface(
         Column(
           children: [
             menuRow(
@@ -1319,12 +1332,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             menuRow(Icons.healing_outlined, 'Ejercicios excluidos por dolor', painExclusions),
           ],
         ),
-        padding: EdgeInsets.zero,
       ),
       const SizedBox(height: 30),
       label('Configuración'),
       const SizedBox(height: 16),
-      surface(
+      menuSurface(
         Column(
           children: [
             menuRow(
@@ -1399,7 +1411,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             menuRow(Icons.logout, 'Cerrar sesión', logout, danger: true),
           ],
         ),
-        padding: EdgeInsets.zero,
       ),
       const SizedBox(height: 28),
       surface(

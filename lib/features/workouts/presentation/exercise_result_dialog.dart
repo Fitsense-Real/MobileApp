@@ -104,7 +104,7 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
       },
     )),
     if (outcome == 'partial' || outcome == 'none') ...[
-      const SizedBox(height: 12), DropdownButtonFormField<String>(value: reason, isExpanded: true, decoration: const InputDecoration(labelText: 'Motivo'), items: [for (final e in skipReasons.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (value) => setState(() => reason = value), validator: (v) => v == null ? 'Selecciona un motivo' : null),
+      const SizedBox(height: 12), DropdownButtonFormField<String>(initialValue: reason, isExpanded: true, decoration: const InputDecoration(labelText: 'Motivo'), items: [for (final e in skipReasons.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (value) => setState(() => reason = value), validator: (v) => v == null ? 'Selecciona un motivo' : null),
     ],
     if (message != null) Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: save, child: Text(widget.draft ? 'Usar resultado' : 'Guardar'))]);

@@ -1,0 +1,58 @@
+### APK debug
+package: name='com.example.fitsense_mobile' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+sdkVersion:'24'
+targetSdkVersion:'36'
+native-code: 'arm64-v8a'
+84ee32e4eb1f4fd3df4eb5ddf071030e0c23550b6b454c1b25bbaae2ffbd6b8c  build/app/outputs/flutter-apk/app-debug.apk
+### apk release con http://localhost:8080/api/v1
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL debe usar https:// en release: http://localhost:8080/api/v1
+salida 1
+### apk release con https://10.0.2.2:8080/api/v1
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL no puede ser una direccion local o del emulador en release: 10.0.2.2
+salida 1
+### apk release con https://192.168.1.20/api/v1
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL no puede ser una direccion local o del emulador en release: 192.168.1.20
+salida 1
+### apk release con https://backend.example.test/api/v1
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - API_BASE_URL usa un dominio reservado de prueba (backend.example.test); solo se admite con -Pkora.testBackendUrl=true y nunca para Play.
+salida 1
+### apk release sin API_BASE_URL
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta --dart-define=API_BASE_URL=https://... (URL HTTPS del backend de produccion).
+salida 1
+### appbundle sin configuración
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta --dart-define=API_BASE_URL=https://... (URL HTTPS del backend de produccion).
+ - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+ - applicationId de ejemplo (com.example.fitsense_mobile): define kora.applicationId con el identificador aprobado.
+ - La eliminacion de cuenta esta desactivada: Play exige poder borrar la cuenta desde la app (ACCOUNT_DELETION_ENABLED=true cuando DELETE /users/me este en servicio).
+ - Falta --dart-define=ACCOUNT_DELETION_WEB_URL=https://... (pagina publica exigida por Google Play).
+ - Falta --dart-define=PRIVACY_POLICY_URL=https://... (pagina publica exigida por Google Play).
+salida 1
+### appbundle con URL https pública de prueba pero sin firma ni identificador
+Compilacion release bloqueada (docs/preparacion_google_play/):
+ - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+ - applicationId de ejemplo (com.example.fitsense_mobile): define kora.applicationId con el identificador aprobado.
+salida 1
+### apk release de prueba (backend.example.test con -Pkora.testBackendUrl=true)
+✓ Built build/app/outputs/flutter-apk/app-release.apk (24.0MB)
+salida 0
+package: name='com.example.fitsense_mobile' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+sdkVersion:'24'
+targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
+uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'
+uses-permission: name='android.permission.VIBRATE'
+uses-permission: name='android.permission.POST_NOTIFICATIONS'
+uses-permission: name='com.example.fitsense_mobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+cleartext en release: 0
+debuggable en release: 0
+enableOnBackInvokedCallback: 1
+cadenas sensibles: 0
+alineación 16 KB:
+Verification successful
+Signer #1 certificate DN: C=US, O=Android, CN=Android Debug

@@ -5,8 +5,10 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Flutter 3.50 / AGP 9: Kotlin is not declared here. With
+    // android.builtInKotlin=false (gradle.properties) the Flutter Gradle Plugin
+    // applies kotlin-android itself, as in the Flutter 3.50.1 app template.
+    // The Flutter Gradle Plugin must be applied after the Android plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -91,21 +93,17 @@ gradle.taskGraph.whenReady {
 android {
     namespace = "com.example.fitsense_mobile"
     // Google Play requires targetSdk 36 (Android 16) for new apps and updates since
-    // 31/08/2026. Flutter 3.32 still defaults to 35, so both are set explicitly.
+    // 31/08/2026. Set explicitly so a Flutter default change can never lower it.
     compileSdk = 36
     // flutter_local_notifications, flutter_secure_storage and path_provider_android
-    // require NDK 27 (backward compatible).
-    ndkVersion = "27.0.12077973"
+    // require NDK 28.2 with Flutter 3.50 (backward compatible; Flutter's default).
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         // Required by flutter_local_notifications for scheduled notifications.
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
     defaultConfig {
@@ -136,6 +134,13 @@ android {
             // fallback for local evaluation APKs; bundleRelease refuses it.
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
+    }
+}
+
+// kotlinOptions {} was removed in Kotlin 2.4; same JVM target as Java (11).
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
     }
 }
 
