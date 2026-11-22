@@ -32,12 +32,13 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
   });
 
-  test('initialises once with the app icon and asks for the Android 13+ permission', () async {
+  test('initialises once with the notification icon and asks for the Android 13+ permission', () async {
     final scheduler = LocalNotificationScheduler();
     expect(await scheduler.requestPermission(), isTrue);
     await scheduler.cancelAll();
     expect(calls.map((c) => c.method), ['initialize', 'requestNotificationsPermission', 'cancelAll']);
-    expect((calls.first.arguments as Map)['defaultIcon'], '@mipmap/ic_launcher');
+    // The monochrome Kora icon kept from the release shrinker (res/raw/keep.xml).
+    expect((calls.first.arguments as Map)['defaultIcon'], 'ic_stat_kora');
   });
 
   test('schedules each reminder at its wall-clock time in the user time zone, inexact, with its payload', () async {

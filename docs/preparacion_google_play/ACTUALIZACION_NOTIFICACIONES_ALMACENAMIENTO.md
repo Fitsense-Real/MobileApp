@@ -48,7 +48,7 @@ los datos locales de la cuenta. Perderlo obligaría a todos a volver a iniciar s
 | 21 | minSdk 24, compileSdk 36, `timezone` 0.11 | La app ya tenía minSdk 24; `timezone` → 0.11.2 |
 | 22.3.3 | Corrige que los avisos repetidos no respetaban la hora tras el cambio de horario | Kora no usa repetidos, pero no hace daño |
 | 23.0.0 | **compileSdk 37** y AGP 9.1.1 | `compileSdk = 37` en `android/app/build.gradle.kts`. **targetSdk sigue en 36**: compileSdk solo afecta a la compilación, no al comportamiento en el teléfono. La app ya usaba AGP 9.3.1 |
-| 23.0.0 | Corrige un cierre al entregar un aviso programado por una versión anterior del plugin, sin icono, tras actualizar la app | Relevante para esta actualización. Kora además fija el icono por defecto (`@mipmap/ic_launcher`) y reprograma todo al abrir la app |
+| 23.0.0 | Corrige un cierre al entregar un aviso programado por una versión anterior del plugin, sin icono, tras actualizar la app | Relevante para esta actualización. Kora además fija el ícono por defecto (`ic_stat_kora`, protegido del *shrinker* desde la PR #14) y reprograma todo al abrir la app |
 | 23.0.2 | Deja de usar el método obsoleto `AlarmManagerCompat.setExact()` | Kora usa avisos inexactos (`inexactAllowWhileIdle`) y no pide `SCHEDULE_EXACT_ALARM` |
 
 En el APK, los permisos (`INTERNET`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `POST_NOTIFICATIONS`) y los receptores

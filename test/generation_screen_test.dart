@@ -11,6 +11,7 @@ import 'package:fitsense_mobile/features/onboarding/presentation/generating_plan
 import 'package:fitsense_mobile/features/onboarding/presentation/kapi_fun_messages.dart';
 import 'package:fitsense_mobile/features/onboarding/presentation/onboarding_page.dart';
 import 'package:fitsense_mobile/features/welcome/data/plan_generation_repository.dart';
+import 'package:fitsense_mobile/features/welcome/data/welcome_store.dart';
 import 'package:fitsense_mobile/features/welcome/domain/generation_operation.dart';
 import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
@@ -289,6 +290,40 @@ void main() {
       await _until(tester, 5, 30);
       expect(profile.saves, 1);
       expect(generation.startCalls, 1);
+    });
+
+    testWidgets('the tap marks the welcome tour as owed, so closing the app during the 30 s never skips it', (tester) async {
+      final generation = _TimedGeneration(const Duration(seconds: 3), operation('COMPLETED', planId: 41));
+      await _pumpOnboarding(tester, _Profile(), generation);
+      expect((await WelcomeStore().load(7)).tourStatus, TourStatus.notStarted);
+      await _fillUntilLastStep(tester);
+      await _generate(tester);
+      await tester.pump();
+      // The plan is ready at 3 s; if the app were closed now, account setup
+      // would find a tour in progress and open it (account_setup_test:
+      // «Plan ready but the tour was left half way»).
+      await _until(tester, 0, 5);
+      final saved = await WelcomeStore().load(7);
+      expect(saved.tourStatus, TourStatus.inProgress);
+      expect(saved.tourStep, 0);
+      await _until(tester, 5, 30);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a tour already completed or half way is left as it is', (tester) async {
+      for (final (status, step) in [('completed', 9), ('inProgress', 4)]) {
+        final router = await _pumpOnboarding(tester, _Profile(), FakeGeneration(starts: [operation('PENDING')], finds: [operation('PROCESSING')]));
+        FlutterSecureStorage.setMockInitialValues({'kora_welcome_7': '{"tourStatus":"$status","tourStep":$step}'});
+        await _fillUntilLastStep(tester);
+        await _generate(tester);
+        await _until(tester, 0, 2);
+        final saved = await WelcomeStore().load(7);
+        expect(saved.tourStatus.name, status);
+        expect(saved.tourStep, step);
+        router.go('/login');
+        await tester.pump(const Duration(seconds: 31));
+        await tester.pumpWidget(const SizedBox());
+      }
     });
 
     testWidgets('leaving the screen (logout) cancels its timers and subscriptions', (tester) async {
