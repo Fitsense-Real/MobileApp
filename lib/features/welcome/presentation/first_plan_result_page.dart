@@ -27,11 +27,30 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
   String? planError;
   bool loadingPlan = false;
 
+  /// Whether this is the user's first plan, from the backend's plan history
+  /// (`GET /users/me/plans`). Null while unknown or if the history cannot be
+  /// read: then the neutral wording is used, never «primera».
+  bool? firstPlan;
+
   @override
   void initState() {
     super.initState();
     precacheKapi();
     Future.microtask(() => ref.read(firstPlanGenerationProvider.notifier).start());
+    Future.microtask(_resolveFirstPlan);
+  }
+
+  /// First plan = the history has no plan of another week. A new version of
+  /// the same week (e.g. regenerated) does not make it a returning user.
+  Future<void> _resolveFirstPlan() async {
+    try {
+      final history = await ref.read(planRepositoryProvider).history();
+      if (!mounted) return;
+      final week = plan?['weekStartDate'];
+      setState(() => firstPlan = history.every((p) => week != null && '${p['weekStartDate']}' == '$week'));
+    } catch (_) {
+      if (mounted) setState(() => firstPlan = null);
+    }
   }
 
   Future<void> _loadPlan(int planId) async {
@@ -43,6 +62,8 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
       ref.read(generatedPlanProvider.notifier).setPlan(loaded);
       ref.invalidate(currentPlanProvider);
       setState(() => plan = loaded);
+      // Now the new plan's week is known: plans of other weeks mean it is not the first.
+      await _resolveFirstPlan();
     } catch (e) {
       if (mounted) setState(() => planError = apiError(e));
     } finally {
@@ -123,7 +144,7 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
         final summary = plan == null ? null : _summary(plan!);
         return _ResultView(
           mood: MascotMood.success,
-          title: '¡Tu primera rutina está lista!',
+          title: firstPlan == true ? '¡Tu primera rutina está lista!' : '¡Tu rutina está lista!',
           message: planError ?? summary ?? 'Estamos abriendo tu plan…',
           waiting: plan == null && planError == null,
           actions: [
@@ -165,7 +186,7 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
           mood: problem == null ? MascotMood.waiting : MascotMood.error,
           title: problem == null ? '¡Ya conoces Kora!' : 'Seguimos intentando',
           message: problem ??
-              'Estamos terminando de preparar tu primera rutina. Puede tardar unos minutos; si cierras la app, la seguiremos preparando.',
+              'Estamos terminando de preparar ${firstPlan == true ? 'tu primera rutina' : 'tu rutina'}. Puede tardar unos minutos; si cierras la app, la seguiremos preparando.',
           waiting: true,
           actions: [
             if (problem != null)

@@ -1,0 +1,34 @@
+08:07:43 ✓ [Registro] cuenta creada e inicio de sesión hasta el perfil
+08:08:01 ✓ [Onboarding] 5 pasos y sin «Ejercicios a evitar»
+08:08:10 ✓ [Generación] «Generando» visible a los ~8 s
+08:08:14 ✓ [Generación] tras cerrar la app a mitad, retoma y llega al recorrido — 11.4 s
+08:08:14 ✓ [Generación] una sola operación de generación — COMPLETED|34|-|1
+08:08:36 ✓ [Generación] resultado «¡Tu primera rutina está lista!» con el plan real
+08:08:37 ✓ [Inicio] dashboard con el nombre
+08:08:37 ✓ [Plan] el backend devolvió un plan con entrenamientos — 3 entrenamientos, semana 2026-11-23, fuente RULE_ENGINE
+08:08:50 ✓ [Plan] Rutinas muestra «Cuerpo completo», Lunes · 23/11/2026, Programado
+08:08:50 ✓ [Plan] Rutinas muestra «Cuerpo completo», Miércoles · 25/11/2026, Programado
+08:08:50 ✓ [Plan] Rutinas muestra «Cuerpo completo», Viernes · 27/11/2026, Programado
+08:09:28 ✓ [Plan] detalle de «Cuerpo completo» (2026-11-23): nombre, series, reps/segundos y descanso de cada ejercicio — 8/8 ejercicios iguales al backend
+08:09:48 ✓ [Rutinas] omitir un entrenamiento futuro con motivo
+08:10:04 ✓ [Rutinas] el omitido se muestra «Omitido»
+08:10:15 ✓ [Sesión] iniciar la sesión del día
+08:11:34 ✓ [Sesión] registrar 8 ejercicios: completo, parcial (fatiga) y no realizado (falta de tiempo) — COMPLETED,PARTIAL,SKIPPED,COMPLETED,COMPLETED,COMPLETED,COMPLETED,COMPLETED
+08:11:49 ✓ [Sesión] finalizar con esfuerzo 7, satisfacción 4 y 30 min (parcial: hubo un parcial y un no realizado) — sesión PARTIAL|77.78|7|4|30; entrenamiento PARTIAL
+08:11:55 ✓ [Sesión] el detalle muestra el % que calculó el backend (77.78%) y el estado «Parcial»
+08:14:01 ✓ [Sesión] «Ya lo hice»: registro sin sesión en vivo (8 ejercicios) — COMPLETED USER_REPORTED %=100.00
+08:14:01 ✓ [Adherencia] ciclo semanal ejecutado — {"measuredWeekStart":"2026-11-09","newWeekStart":"2026-11-16","generatedPlanId":35,"cycleStatus":"EJECUTADO"}
+08:14:01 ✓ [Adherencia] métrica semanal calculada por el backend — ponderada|riesgo|completos/programados = 59.26|LOW|1/3
+08:14:01 ✓ [Adaptación] intento de adaptación y plan de la semana siguiente — ADAPT_LOCALIZED RESPALDO CONSERVED · planes: 34 2026-11-09 COMPLETED RULE_ENGINE | 35 2026-11-16 ACTIVE CONSERVED
+08:14:16 ✓ [Adherencia] Progreso muestra la adherencia del backend (59.3%)
+08:14:16 ✓ [Adaptación] Progreso resume el ajuste del plan
+08:14:27 ✓ [Historial] historial con las 2 semanas del backend — 09/11/2026, 16/11/2026
+08:14:36 ✓ [Kapi] el repaso del recorrido abre con Kapi
+08:14:58 ✓ [Kapi] al terminar el repaso vuelve a la app y no pide otra generación — operaciones 1 → 1
+08:15:02 ✓ [Notificaciones] la hoja de recordatorios muestra la hora del aviso y el aviso de vencimiento
+08:15:08 ✓ [Sesión] cerrar sesión lleva al inicio de sesión
+08:15:11 ✓ [Sesión] volver a iniciar sesión entra al inicio con su plan (sin repetir el perfil ni el recorrido)
+08:15:42 ✗ [Cuenta] eliminar mi cuenta: «Tu cuenta fue eliminada», «Salir» lleva al inicio de sesión y la cuenta ya no existe en PostgreSQL — usuarios con ese correo: 0
+08:15:42 ✓ [Cuenta] sus planes y sesiones tampoco quedan
+08:17:25 ✓ [Cuenta] eliminar mi cuenta: «Tu cuenta fue eliminada», «Salir» lleva al inicio de sesión y la cuenta ya no existe en PostgreSQL — usuarios con ese correo: 0
+08:17:25 ✓ [Cuenta] sus planes, sesiones y operaciones tampoco quedan
