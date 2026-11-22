@@ -92,13 +92,13 @@ Corregido el texto, la repetición aislada (`aud3b`) pasó.
   - Otra prueba comprueba que un recorrido completado o a medias se respeta.
   - E2E: tras el arranque en frío, el recorrido aparece a los 11,4 s.
 
-## Observaciones (sin cambiar, por estar fuera del alcance o ser menores)
+## Observaciones
 
 | # | Observación | Severidad | Recomendación |
 |---|---|---|---|
-| O-1 | Si un usuario que ya tuvo planes se queda sin plan vigente (el ciclo semanal no generó la semana), la app pide uno y lo presenta con el título «¡Tu primera rutina está lista!» | Baja | Ajustar el título cuando no es el primer plan. Con el ciclo semanal programado en el backend de producción no debería ocurrir |
-| O-2 | El primer mensaje del recorrido dice «Mientras Kora prepara tu primera rutina…», pero tras los 30 s el plan suele estar listo | Baja | Revisar el texto (ya anotado en la PR #11) |
-| O-3 | Con el GIF cargado, la tarjeta del ejercicio se anuncia con rol de imagen (la etiqueta incluye nombre, series y descanso, así que se lee completa) | Baja (accesibilidad) | Excluir el GIF de la semántica o marcar la tarjeta como contenedor |
+| O-1 | Si un usuario que ya tuvo planes se queda sin plan vigente, la app pedía uno y lo presentaba como «¡Tu primera rutina está lista!» | Baja | **Resuelto:** el título y el mensaje de espera dependen del historial del backend (`GET /users/me/plans`). Sin planes de otras semanas, «¡Tu primera rutina está lista!»; con planes anteriores, «¡Tu rutina está lista!». Si el historial no se puede leer, el título neutro |
+| O-2 | El primer mensaje del recorrido decía «Mientras Kora prepara tu primera rutina…» y el segundo «aparecerá aquí cuando esté lista» | Baja | **Resuelto:** Kapi da la bienvenida y motiva sin hablar de la generación. `kapi_tour_copy_test.dart` lo vigila en todos los pasos |
+| O-3 | Con el GIF cargado, la tarjeta del ejercicio se anunciaba con rol de imagen | Baja (accesibilidad) | **Resuelto:** el GIF queda fuera del árbol de semántica (`excludeFromSemantics`), porque solo ilustra lo que el texto y «Ver instrucciones» ya dicen. Nombre, series, repeticiones, descanso y controles se siguen leyendo (`exercise_media_semantics_test.dart`) |
 | B-5 | El backend acepta «Ya lo hice» de un entrenamiento cuya fecha no llegó | Media (backend; ya documentado) | Decisión de producto en el backend |
 
 ## Problemas del arnés (no son fallos de la app)

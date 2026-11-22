@@ -28,8 +28,13 @@ class _ExerciseMediaState extends State<ExerciseMedia> {
       if (url == null) const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('Este ejercicio no tiene GIF disponible.'))
       else ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network(
         url, key: ValueKey('$url-$attempt'), height: 220, width: double.infinity, fit: BoxFit.contain,
+        // Accessibility: the GIF only illustrates what the card already says in
+        // text (exercise name, sets, reps or time, rest) and what «Ver
+        // instrucciones» explains step by step. Kept out of the semantics tree
+        // so screen readers do not announce the exercise card as an image.
+        excludeFromSemantics: true,
         // Public media is fetched separately from the authenticated API client.
-        frameBuilder: (context, child, frame, synchronous) => frame != null || synchronous ? child : const SizedBox(height: 220, child: Center(child: CircularProgressIndicator())),
+        frameBuilder: (context, child, frame, synchronous) => frame != null || synchronous ? child : const SizedBox(height: 220, child: Center(child: ExcludeSemantics(child: CircularProgressIndicator()))),
         errorBuilder: (_, __, ___) => SizedBox(height: 140, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Text('No se pudo cargar el GIF.'), TextButton(onPressed: () async { await NetworkImage(url).evict(); if (mounted) setState(() => attempt++); }, child: const Text('Reintentar GIF'))]))),
       )),
     ]);
