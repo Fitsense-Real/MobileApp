@@ -1,0 +1,10 @@
+Casa por defecto: chip Peso corporal = true
+selector: Peso corporal marcado = true
+tras desmarcar: marcado = false
+tarjeta: Sin equipo seleccionado · chip = false
+tras Gimnasio: chip Peso corporal = false
+tras Ambos: chip Peso corporal = false
+tras Casa: chip Peso corporal = false
+tras Gimnasio: chip Peso corporal = false
+selector en Gimnasio: Peso corporal marcado = false
+DB perfil: GYM|{assisted,band,barbell,bench,cable,"captains chair",dumbbell,"ez barbell","ghd bench","gymnastic rings","hyperextension bench",landmine,"leverage machine","olympic barbell",other,"parallel bars","preacher bench","pull-up bar",rope,"sled machine","smith machine","squat rack","stationary bike","step platform","suspension straps",treadmill,"vertical pole",weighted} · contiene body weight = false

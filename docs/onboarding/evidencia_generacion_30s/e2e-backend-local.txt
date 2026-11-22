@@ -1,0 +1,29 @@
+paso 4: true
+Casa: chip Peso corporal=true · 1 equipo seleccionado
+  selector Casa: Peso corporal marcado=true · deshabilitado=no
+Gimnasio: chip Peso corporal=true · 29 equipos seleccionados
+  selector Gimnasio: Peso corporal marcado=true · deshabilitado=no
+Ambos: chip Peso corporal=true · 29 equipos seleccionados
+  selector Ambos: Peso corporal marcado=true · deshabilitado=no
+paso 5: true · «ejercicios a evitar» presente: false
+paso 5 (abajo) «ejercicios a evitar» presente: false
+tour visible a los 30.5 s del toque
+mensajes de Kapi (s, texto):
+   0.0 ¿Mañana, tarde o noche? Cada momento tiene su encanto.
+   5.4 Dato capibara: me encanta estirarme al despertar. ¿Y a ti?
+   10.4 Celebrar los avances pequeños hace que los grandes lleguen.
+   15.5 Moverse un poco cada día suma muchísimo.
+   20.4 ¡Choca esa pata! Hoy vamos con todo.
+   25.4 Beber agua también es parte de entrenar. ¡Salud!
+   30.0 
+   30.5 Kapi, la capibara de Kora, saluda ¡Hola! Soy Kapi Mientras Kora prepara tu primera rutina, te muestro lo esencial de la app. Son solo unos pasos.
+API (s desde el toque, método, ruta, estado):
+   - GET /users/me/profile 404
+   - GET /users/me/profile 404
+   0.3 POST /users/me/profile 201
+   0.4 POST /users/me/plan/generation 202
+   0.5 body PENDING -
+   3.6 GET /users/me/plan/generation/ce428c33-c256-4bca-bb2f-45c4117c17e5 200
+   3.6 body COMPLETED 13
+DB perfil: MIXED|{assisted,band,barbell,bench,"body weight",cable,"captains chair",dumbbell,"ez barbell","ghd bench","gymnastic rings","hyperextension bench",landmine,"leverage machine","olympic barbell",other,"parallel bars","preacher bench","pull-up bar",rope,"sled machine","smith machine","squat rack","stationary bike","step platform","suspension straps",treadmill,"vertical pole",weighted}|{}
+DB operaciones: 1 ops, 1 planes · COMPLETED|13|-|1

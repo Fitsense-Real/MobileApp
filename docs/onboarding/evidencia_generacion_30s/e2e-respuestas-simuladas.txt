@@ -1,0 +1,7 @@
+28 s: Generando visible = true · consultas de estado = 8
+estado pendiente a los 30.1 s · «lista» en pantalla = false · tour = false · botón Continuar = true
+tras «Continuar»: tour = true · DB: 0 ops, 0 planes
+422 · 5 s: Generando = true · aviso visible = false
+422 · aviso «perfil está guardado» visible a los 30.1 s
+503 · 5 s: Generando = true · aviso visible = false
+503 · aviso «El servidor no responde» visible a los 30.1 s

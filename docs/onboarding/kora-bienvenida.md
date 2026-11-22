@@ -12,14 +12,14 @@ Documento de diseño. Todo lo descrito aquí se basa en el código actual de la 
 | Recuperar / restablecer contraseña | `forgot_password_form.dart`, `reset_password_form.dart` | `/forgot-password`, `/reset-password` |
 | Preparación de cuenta | `plans/presentation/account_setup_page.dart` | `/account-setup` |
 | Perfil inicial (5 pasos) | `onboarding/presentation/onboarding_page.dart` | `/onboarding` |
-| Generando rutina | `onboarding/presentation/generating_plan.dart` | dentro de onboarding |
+| Generando (30 s con Kapi) | `onboarding/presentation/generating_plan.dart`, `kapi_fun_messages.dart` | dentro de onboarding; ver `GENERACION_30S_Y_EQUIPAMIENTO.md` |
 | Dashboard: Inicio, Rutinas, Progreso, Perfil | `dashboard/presentation/pages/dashboard_page.dart` | `/dashboard?tab=0..3` |
 | Rutina (sesión en vivo, registro, omitir) | `workouts/presentation/planned_workout_page.dart` | desde Inicio/Rutinas |
 | Resultado de ejercicio, finalizar, falta de tiempo | `exercise_result_dialog.dart`, `planned_workout_page.dart` | diálogos |
 | Cronómetro y cuenta regresiva | `workouts/presentation/session_timer.dart` | en la rutina |
 | Instrucciones del ejercicio | `ExerciseInstructions` | hoja desde la rutina |
 | Novedades del plan, Cuenta, Recordatorios, Historial de planes, Exclusiones por dolor, Ayuda | hojas del Perfil | Perfil |
-| Selector de equipamiento / ejercicios a evitar | `equipment_picker.dart`, `blocked_exercise_picker.dart` | perfil inicial |
+| Selector de equipamiento (peso corporal incluido) | `equipment_picker.dart` | perfil inicial. El selector de ejercicios a evitar se retiró (noviembre de 2026) |
 
 No existen en la app: chat con entrenador, pantalla de logros, tienda ni ajustes de tema
 visibles. El recorrido no los menciona. Los PDF originales de los mockups no están en el
