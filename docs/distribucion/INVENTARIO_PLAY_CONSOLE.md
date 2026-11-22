@@ -1,6 +1,6 @@
 # Inventario para Google Play Console
 
-Estado al cierre del Mobile: `generation` `fb01dd5` más las PR abiertas #12–#16.
+Estado al cierre del Mobile: `generation` con las PR #1–#12 y #14–#16 integradas; la #13 (dependencias) sigue abierta hasta la prueba en el Samsung.
 
 **Leyenda:**
 - ✓ **cumplido**: en el código o el repositorio;
@@ -15,15 +15,16 @@ Estado al cierre del Mobile: `generation` `fb01dd5` más las PR abiertas #12–#
 | Compatibilidad con páginas de 16 KB | ✓ | `PREPARACION_PUBLICACION.md`: `zipalign -P 16` y alineación `LOAD` |
 | AAB firmado (ruta verificada con clave desechable) | ✓ | `PREPARACION_PUBLICACION.md`, `FIRMA_Y_AAB.md` |
 | Bloqueos de release (HTTPS, sin hosts locales, sin clave debug, sin `com.example`, eliminación y páginas obligatorias) | ✓ | Matriz repetida en las PR #10 y #14 |
-| Nombre «Kora», ícono adaptativo, ícono de notificación, pantalla de lanzamiento | ✓ con la PR #14 | `PREPARACION_PUBLICACION.md` |
-| Recordatorios funcionando en release | ✓ con la PR #14 | Fallo del *shrinker* corregido |
+| Nombre «Kora», ícono adaptativo, ícono de notificación, pantalla de lanzamiento | ✓ (PR #14) | `PREPARACION_PUBLICACION.md` |
+| Recordatorios funcionando en release | ✓ (PR #14) | Fallo del *shrinker* corregido |
 | Permisos mínimos, sin alarmas exactas | ✓ | `INTERNET`, `RECEIVE_BOOT_COMPLETED`, `POST_NOTIFICATIONS`, `VIBRATE` |
 | Borde a borde y gesto atrás (Android 15/16) | ✓ | `MIGRACION_ANDROID_16.md` |
-| Eliminación de cuenta dentro de la app | ✓ | `ELIMINACION_CUENTA_FLUTTER.md`; E2E en la auditoría (PR #15) |
+| Eliminación de cuenta dentro de la app | ✓ | `ELIMINACION_CUENTA_FLUTTER.md`; E2E en la auditoría (`docs/auditoria_final/`) |
+| Accesibilidad: GIF fuera de la semántica, textos de Kapi sin procesos internos | ✓ (PR #15) | `AUDITORIA_FUNCIONAL.md` |
 | Edad mínima 18 | ✓ | Validación en la app y en el backend |
-| Dependencias al día sin perder sesiones | ◐ PR #13 | Pendiente de la prueba de actualización en Android |
-| Prueba en Android 13–16 físico o emulador | ✗ | `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md` (PR #12), en Windows |
-| `applicationId` definitivo | ✗ (tu decisión) | `IDENTIFICADOR_APLICACION.md`; propuesto `pe.fitsense.kora` |
+| Dependencias al día sin perder sesiones | ◐ PR #13 abierta | Pendiente de la prueba de actualización en el Samsung SM-A145M |
+| Prueba en Android 13–16 físico o emulador | ✗ (guía lista) | `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`, en Windows |
+| `applicationId` definitivo | ✗ (tu decisión) | Propuesto `pe.fitsense.kora`; ver §5 |
 | Clave de subida propia y Play App Signing | ✗ | `FIRMA_Y_AAB.md` §1–5 |
 | Backend HTTPS de producción | ✗ | `CONEXION_BACKEND_PRODUCCION.md` |
 
@@ -67,7 +68,7 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 | Nombre (≤ 30) | ◐ | «Kora» o «Kora: entrena a tu ritmo» |
 | Descripción corta (≤ 80) | ◐ borrador | «Tu plan de entrenamiento semanal, a tu ritmo, con Kapi como compañía.» |
 | Descripción completa (≤ 4000) | ◐ borrador abajo | Revisarla con el comité: debe mencionar el estudio y no prometer resultados de salud |
-| Ícono 512 × 512 | ✓ con la PR #14 | `docs/preparacion_google_play/recursos/icono-play-512.png` |
+| Ícono 512 × 512 | ✓ (PR #14) | `docs/preparacion_google_play/recursos/icono-play-512.png` |
 | Capturas de teléfono (mín. 2, 9:16) | ◐ borradores | `capturas_ficha/`: 6 capturas de **1080 × 1920** con datos sintéticos (bienvenida, «Generando» con Kapi, recorrido, inicio, rutinas, detalle de rutina). Se regeneran con `capturas_ficha/generar.js` |
 | Gráfico destacado 1024 × 500 | ✗ | Pieza de diseño |
 | Categoría | ◐ | Salud y bienestar |
@@ -96,10 +97,10 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 
 ## 4. Orden recomendado
 
-1. Aprobar el `applicationId` y crear la clave de subida.
-2. Desplegar el backend HTTPS (`CONEXION_BACKEND_PRODUCCION.md`).
-3. Publicar la política de privacidad y la página de eliminación.
-4. Prueba en Android (PR #12) y fusión de las PR #13–#15.
+1. Aprobar el `applicationId` (§5) y crear la clave de subida.
+2. Probar la PR #13 en el Samsung y fusionarla. A partir de ahí, toda instalación lleva `flutter_secure_storage` 10.
+3. Desplegar el backend HTTPS (`CONEXION_BACKEND_PRODUCCION.md`), con S-1 y B-6 resueltos.
+4. Publicar la política de privacidad y la página de eliminación.
 5. Beta por App Distribution (`DISTRIBUCION_BETA.md`).
 6. Play Console:
    - ficha;
@@ -109,3 +110,21 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
    - acceso del revisor;
    - prueba cerrada de 12 × 14 días;
    - producción.
+
+## 5. Identificador `pe.fitsense.kora`: qué se comprobó y qué falta
+
+Es **permanente**: cuando una app se publica (incluso en una prueba cerrada) o se sube su primer AAB, Play no deja
+cambiarlo. Cambiarlo después sería otra app, con otra ficha, sin los usuarios ni las reseñas.
+
+| Comprobación | Resultado |
+|---|---|
+| Formato válido de paquete Android (minúsculas, segmentos que empiezan por letra, sin palabras reservadas de Java) | ✓ |
+| Compila y empaqueta con ese identificador (`-Pkora.applicationId=pe.fitsense.kora`; AAB firmado con clave de prueba) | ✓ (`PREPARACION_PUBLICACION.md`) |
+| El código no depende del identificador (el `namespace` de Kotlin sigue en `com.example.fitsense_mobile`, que no se publica) | ✓ |
+| Que no exista ya una app pública con ese identificador en Play | **No verificable desde este entorno** (la red no llega a Play). Comprobar <https://play.google.com/store/apps/details?id=pe.fitsense.kora>: debe dar «no encontrado» |
+| Que esté disponible para tu cuenta | **Solo Play Console lo confirma**, al crear la app y subir el primer AAB. Si estuviera tomado, la subida lo rechaza |
+| Convención de dominio invertido (`fitsense.pe`) | **Pendiente:** confirmar en NIC.pe (<https://punto.pe>) que el equipo controla `fitsense.pe`, o elegir un dominio propio. Play no lo exige, pero evita usar el dominio de otra organización |
+| Coherencia con Firebase | La app de App Distribution debe registrarse con el **mismo** identificador definitivo |
+
+Hasta tu aprobación, el código sigue con `com.example.fitsense_mobile`, y el AAB para Play se niega a compilar con
+`com.example.*`.

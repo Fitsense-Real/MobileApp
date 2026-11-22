@@ -1,23 +1,15 @@
 # Cierre del Mobile de Kora
 
-**Base:** `generation` `fb01dd5`, con las PR #1–#11 integradas. Cada trabajo de cierre va en su propia PR, todas sin
-fusionar hasta tu autorización.
+**Estado:** `generation` integra las PR #1–#12 y #14–#16. Solo queda abierta la **#13** (dependencias), a la espera de
+la prueba de actualización en un Android físico.
 
-| PR | Alcance | Fusión |
+| PR | Alcance | Estado |
 |---|---|---|
-| #12 | Lista de la prueba en Android físico y emulador, en Windows (solo documentación) | Cuando quieras |
-| #13 | `flutter_local_notifications` 23 y `flutter_secure_storage` 10 (migración de la sesión) | **Después** de la prueba de actualización en Android (`ACTUALIZACION_NOTIFICACIONES_ALMACENAMIENTO.md`) |
-| #14 | **Recordatorios en release** (ícono que sobreviva al *shrinker*), ícono adaptativo, evidencia de 16 KB, AAB firmado y bloqueos de release | Cuando quieras. Conflicto de una línea con la #13 (`reminder_scheduler.dart`) |
-| #15 | **El recorrido no se pierde** al cerrar la app durante los 30 s, más la auditoría funcional 32/32 | Cuando quieras |
-| #16 (esta) | Distribución beta, inventario de Play Console y conexión al backend de producción (documentación y script) | Cuando quieras |
-
-**Orden sugerido para fusionar:**
-1. #15;
-2. #14;
-3. #12;
-4. #16;
-5. #13, tras la prueba en Android. Al fusionar la #13 después de la #14, conservar `settings:` y `'ic_stat_kora'` en
-   `reminder_scheduler.dart`.
+| #12 | Lista de la prueba en Android físico y emulador, en Windows (con backend `local-dev`) | Fusionada |
+| #13 | `flutter_local_notifications` 23 y `flutter_secure_storage` 10 (migración de la sesión), compileSdk 37 | **Abierta**: espera la prueba en el Samsung SM-A145M (`PRUEBA_ACTUALIZACION_SAMSUNG.md` en su rama) |
+| #14 | Recordatorios en release (ícono que sobrevive al *shrinker*), ícono adaptativo, 16 KB, AAB firmado y bloqueos de release | Fusionada |
+| #15 | El recorrido no se pierde, textos de Kapi, título según el historial, GIF accesibles y auditoría funcional | Fusionada |
+| #16 | Distribución beta, inventario de Play Console y conexión al backend de producción | Fusionada |
 
 ## Documentos
 
