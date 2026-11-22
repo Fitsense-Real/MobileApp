@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../data/profile_repository.dart';
 import 'equipment_illustration.dart';

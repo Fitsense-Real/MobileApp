@@ -3,7 +3,7 @@ import 'package:fitsense_mobile/features/authentication/domain/repositories/auth
 import 'package:fitsense_mobile/features/authentication/domain/usecases/forgot_password_usecase.dart';
 import 'package:fitsense_mobile/features/authentication/presentation/providers/forgot_password_provider.dart';
 import 'package:fitsense_mobile/features/authentication/presentation/widgets/forgot_password_form.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';

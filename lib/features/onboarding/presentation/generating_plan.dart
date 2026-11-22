@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../../../shared/widgets/mascot/kora_mascot.dart';
 import 'kapi_fun_messages.dart';

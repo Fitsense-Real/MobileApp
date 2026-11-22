@@ -5,9 +5,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // Flutter 3.50 / AGP 9: Kotlin is not declared here. With
-    // android.builtInKotlin=false (gradle.properties) the Flutter Gradle Plugin
-    // applies kotlin-android itself, as in the Flutter 3.50.1 app template.
+    // AGP 9 built-in Kotlin (android.builtInKotlin=true): no kotlin-android here.
     // The Flutter Gradle Plugin must be applied after the Android plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }

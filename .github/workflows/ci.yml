@@ -43,12 +43,9 @@ jobs:
       - name: Dependencias
         run: flutter pub get
 
-      # Warnings and errors stay fatal. The info-level notices are still printed:
-      # they are the deprecation of package:flutter/material.dart in favour of
-      # material_ui, pending a separate migration because fl_chart and
-      # go_router still use the old types (MIGRACION_FLUTTER_3_50.md).
+      # Errors, warnings and info notices are all fatal again (material_ui migration).
       - name: Analisis
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze
 
       - name: Pruebas
         run: flutter test
