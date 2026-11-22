@@ -12,8 +12,9 @@ Evidencia completa: matriz `rel-matrix-fcm` (salida en la descripción de la PR)
 | APK release de prueba (`backend.example.test` + `-Pkora.testBackendUrl=true`) | ✓ con **JDK 21**: `pe.fit.kora`, compileSdk 37, targetSdk 36, minSdk 24, no depurable, `ic_stat_kora` incluido, alineación de 16 KB |
 | APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint (`lintVitalAnalyzeRelease`, sin omitir) falla al analizar `firebase_core` con JDK 17 (`List.removeLast` es API de JDK 21). **Las compilaciones release y el AAB se hacen con JDK 21**, el de Android Studio. El APK debug y el CI siguen con 17 |
 | Manifiesto | ✓ ícono `ic_stat_kora` y canal `kora_avisos` para los mensajes FCM en segundo plano |
-| Sin `google-services.json` | ✓ el APK compila y la app arranca sin push. Así lo hacen el CI y la web |
+| Sin `google-services.json` | ✓ el APK compila y la app arranca sin push (antes de `62083b2`, así compilaba el CI) |
 | Con un `google-services.json` **ficticio** de `pe.fit.kora`, solo local y borrado después | ✓ el plugin de Google Services genera los recursos de Firebase. El AAB solo queda bloqueado por la firma |
+| Con el `google-services.json` **real** de `kora-fitpe` (`62083b2`) | ✓ 270 pruebas y análisis limpio. APK debug (JDK 17) y release de prueba (JDK 21) con `pe.fit.kora` y los recursos de Firebase (`google_app_id`, `gcm_defaultSenderId`, `project_id` = `kora-fitpe`). El AAB solo queda bloqueado por la firma. Evidencia: `docs/push/evidencia/configuracion-real-kora-fitpe.txt` |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
 
 ### Protecciones de Google Play: AAB
@@ -39,7 +40,7 @@ Siguen activas, sin cambios, las protecciones anteriores:
 
 | Pendiente | Por qué |
 |---|---|
-| Que Firebase reconozca la app y entregue mensajes | Hace falta el `google-services.json` **real** de `kora-fitpe`, que está solo en tu PC (ver `INCORPORAR_CONFIGURACION_FIREBASE.md`). No hay ningún dato de `kora-fitpe` en esta PR |
+| Que Firebase entregue mensajes al teléfono | La configuración real de `kora-fitpe` ya está en la rama (`62083b2`) y compila. Lo que falta es la recepción, que solo se comprueba en un dispositivo |
 | Recepción de push en un teléfono o emulador | Este entorno no tiene teléfono ni aceleración para el emulador. Necesita la sección 2 |
 | Envío desde el backend | El backend no tiene el endpoint ni el envío, y esta PR no lo modifica (ver `CONTRATO_PUSH_BACKEND.md`) |
 | Disponibilidad de `pe.fit.kora` en Play | Solo Play Console lo confirma, al crear la app |

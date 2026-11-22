@@ -85,6 +85,6 @@ Los APK preparados para el Samsung (`PRUEBA_ACTUALIZACION_SAMSUNG.md`) usan `com
 |---|---|
 | Formato Android válido | ✓ |
 | APK debug y APK release de prueba con `pe.fit.kora` | ✓ (`aapt dump badging`; ver `docs/push/PRUEBAS_PUSH_E_IDENTIFICADOR.md`) |
-| Plugin de Google Services y configuración de la app `pe.fit.kora` | ✓ con un `google-services.json` **ficticio** solo local, que no se versionó. Pendiente con el real de `kora-fitpe` |
+| Plugin de Google Services y configuración de la app `pe.fit.kora` | ✓ con el `google-services.json` **real** de `kora-fitpe`, que el propietario subió en `62083b2`: el APK debug y el release de prueba llevan los recursos de Firebase con `project_id` `kora-fitpe` (`docs/push/evidencia/configuracion-real-kora-fitpe.txt`) |
 | Disponible en Google Play | Solo Play Console lo confirma al crear la app y subir el primer AAB |
 | Dominio `fit.pe` | Play no lo exige. Si el equipo no controla `fit.pe`, conviene saberlo antes de la primera subida, porque el identificador será permanente |

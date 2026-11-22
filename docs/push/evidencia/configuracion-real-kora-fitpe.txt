@@ -1,0 +1,43 @@
+HEAD 62083b2
+### flutter analyze
+   No issues found! (ran in 19.9s)
+   salida 0
+### flutter test
+   00:03 +13: /home/user/MobileApp/test/session_expiry_test.dart: AuthInterceptor other errors keep the session
+   00:10 +80: /home/user/MobileApp/test/api_config_test.dart: a release without a valid URL shows a configuration error, not the app
+   00:12 +86: /home/user/MobileApp/test/generation_screen_test.dart: Generation screen: exactly 30 s from the tap request refused: the error is shown only after the 30 s
+   00:12 +88: /home/user/MobileApp/test/generation_screen_test.dart: Generation screen: exactly 30 s from the tap profile not saved: back to the form with the error after the 30 s, nothing requested
+   00:28 +174: /home/user/MobileApp/test/first_plan_generation_test.dart: a refused request (422) is an error with the backend message
+   00:41 +270: All tests passed!
+   salida 0
+--- JDK: java-17-openjdk-amd64
+### APK debug con la configuración real (JDK 17)
+   ✓ Built build/app/outputs/flutter-apk/app-debug.apk
+   salida 0
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   google_app_id: presente
+   gcm_defaultSenderId: presente
+   project_id: presente
+   google_api_key: presente
+   project_id = (string8) "kora-fitpe"
+--- JDK: java-21-openjdk-amd64
+### APK release de prueba con la configuración real (JDK 21)
+   ✓ Built build/app/outputs/flutter-apk/app-release.apk (24.6MB)
+   salida 0
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   targetSdkVersion:'36'
+   google_app_id: presente
+   gcm_defaultSenderId: presente
+   project_id: presente
+   google_api_key: presente
+   project_id = (string8) "kora-fitpe"
+   zipalign 16 KB: ok
+### AAB con la configuración real (solo debe faltar la firma)
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+   salida 1
+### flutter build web
+   ✓ Built build/web
+   salida 0
+--- JDK: java-17-openjdk-amd64
+### git status

@@ -51,7 +51,8 @@ El contrato propuesto para el backend está en `CONTRATO_PUSH_BACKEND.md`.
 
 ## Sin `google-services.json`
 
-Esto ocurre en el CI, en la web y en un repositorio clonado sin la configuración:
+Desde `62083b2` el archivo está versionado, así que el CI compila con Firebase. Esto solo ocurre si se borra el archivo,
+o en la web, donde Firebase no se inicializa:
 - la app compila y funciona;
 - el push queda apagado;
 - solo se ve un aviso en el log de depuración;

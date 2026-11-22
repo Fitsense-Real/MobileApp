@@ -1,5 +1,8 @@
 # Incorporar a la PR los archivos de Firebase generados en tu PC (Windows, PowerShell)
 
+> **Hecho.** El propietario subió los tres archivos en `62083b2`: `kora-fitpe`, la app `pe.fit.kora` y sin credenciales
+> de administrador. Este procedimiento queda como referencia por si hay que regenerarlos.
+
 **Situación:**
 - Ejecutaste FlutterFire CLI y registraste `kora-fitpe` con `pe.fit.kora`. Los archivos generados están solo en tu PC.
 - La PR (rama `claude/identificador-fcm`) ya trae:
