@@ -1,1 +1,4 @@
-<resources><color name="kora_splash_background">#F7F5ED</color></resources>
+<resources>
+    <color name="kora_splash_background">#F7F5ED</color>
+    <color name="kora_icon_background">#D9FF59</color>
+</resources>

@@ -49,7 +49,7 @@ const welcomeTourSteps = <TourStep>[
     tab: 0,
     mood: MascotMood.welcome,
     title: '¡Hola! Soy Kapi',
-    message: 'Mientras Kora prepara tu primera rutina, te muestro lo esencial de la app. Son solo unos pasos.',
+    message: '¡Qué alegría tenerte aquí! Te acompaño a conocer lo esencial de Kora en unos pocos pasos. ¡Vamos a tu ritmo!',
     replayMessage: 'Te muestro de nuevo lo esencial de Kora. Son solo unos pasos.',
     nextLabel: 'Empezar',
   ),
@@ -58,7 +58,7 @@ const welcomeTourSteps = <TourStep>[
     target: _planCard,
     mood: MascotMood.explain,
     title: 'Tu plan de la semana',
-    message: 'Aquí verás tu plan semanal y los días que te quedan. Tu primera rutina aparecerá aquí cuando esté lista.',
+    message: 'Aquí verás tu plan semanal y los días que te quedan. ¡Cada semana es una nueva oportunidad!',
     replayMessage: 'Aquí verás tu plan semanal y los días que te quedan.',
   ),
   TourStep(
