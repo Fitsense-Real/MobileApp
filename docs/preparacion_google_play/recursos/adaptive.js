@@ -1,0 +1,9 @@
+// Preview of the adaptive icon (108 dp canvas) under common launcher masks + the notification icon.
+const { chromium } = require('playwright');
+const glyph = (c) => `<g transform="translate(54 54) scale(0.85) translate(-54 -54)"><path fill="${c}" d="M64,26 A8,8 0,1 1,64,42 A8,8 0,1 1,64,26 Z"/><path fill="none" stroke="${c}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" d="M42,45 L35,74 L65,53 M50,64 L70,78"/></g>`;
+const icon = (clip, i) => `<svg width="160" height="160" viewBox="9 9 90 90"><defs><clipPath id="m${i}">${clip}</clipPath></defs><g clip-path="url(#m${i})"><rect width="108" height="108" fill="#D9FF59"/>${glyph('#0F2E25')}</g></svg>`;
+const masks = ['<circle cx="54" cy="54" r="45"/>', '<rect x="9" y="9" width="90" height="90" rx="22"/>', '<path d="M54 9 C90 9 99 18 99 54 C99 90 90 99 54 99 C18 99 9 90 9 54 C9 18 18 9 54 9Z"/>'];
+const stat = `<div style="background:#3c4043;border-radius:12px;padding:10px;display:inline-flex;align-items:center;gap:8px;color:#fff;font:14px sans-serif"><svg width="24" height="24" viewBox="0 0 108 108"><g transform="translate(54 54) scale(1.25) translate(-54 -54)"><path fill="#fff" d="M64,26 A8,8 0,1 1,64,42 A8,8 0,1 1,64,26 Z"/><path fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" d="M42,45 L35,74 L65,53 M50,64 L70,78"/></g></svg>Kora · Hoy toca entrenar</div>`;
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 600, height: 260 }, deviceScaleFactor: 2 });
+  await p.setContent(`<html><body style="margin:20px;background:#f1f3f4;font:13px sans-serif"><div style="display:flex;gap:24px">${masks.map(icon).join('')}</div><p>Máscaras: círculo, cuadrado redondeado, squircle (zona segura de 66 dp respetada)</p>${stat}</body></html>`);
+  await p.screenshot({ path: process.argv[2] }); await b.close(); })();

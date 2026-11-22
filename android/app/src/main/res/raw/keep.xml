@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The notification icon is only named from Dart (reminder_scheduler.dart),
+     so the release resource shrinker cannot see it is used. Without this the
+     plugin rejects the icon (invalid_icon) and reminders stay off in release. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_kora" />
