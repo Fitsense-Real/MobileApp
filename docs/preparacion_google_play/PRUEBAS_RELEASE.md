@@ -1,5 +1,8 @@
 # Pruebas de release (19/11/2026)
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 > **Actualización (20/11/2026):** esta prueba se hizo con el backend `a1ccf53`, cuando `DELETE /users/me` daba 405. La
 > repetición con 5977d28 (200 pruebas, eliminación real, recuperación, edad y consentimientos) está en
 > `REGRESION_FLUTTER.md` y `E2E_KORA_BACKEND_ACTUALIZADO.md`.

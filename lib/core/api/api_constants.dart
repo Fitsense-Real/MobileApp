@@ -28,6 +28,11 @@ class ApiConstants {
   static const withdraw = '/users/me/withdraw';
   /// `DELETE /users/me`: account deletion (contract being prepared in the backend).
   static const deleteAccount = '/users/me';
+
+  /// Push notifications (FCM registration tokens). Proposed contract, not in
+  /// the backend yet: docs/push/CONTRATO_PUSH_BACKEND.md.
+  static const pushDevices = '/users/me/push-devices';
+  static String pushDevice(String token) => '/users/me/push-devices/${Uri.encodeComponent(token)}';
   static const profile = '/users/me/profile';
 
   // Catálogo

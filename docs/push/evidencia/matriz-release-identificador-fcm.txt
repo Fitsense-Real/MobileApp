@@ -1,0 +1,62 @@
+--- JDK: /usr/lib/jvm/java-17-openjdk-amd64
+### APK release de prueba con JDK 17 (mensaje claro en lugar del fallo de lint)
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Las compilaciones release necesitan JDK 21 (el de Android Studio); Gradle usa JDK 17. Configuralo con: flutter config --jdk-dir=<ruta del JDK 21>.
+   salida 1
+--- JDK: /usr/lib/jvm/java-21-openjdk-amd64
+### AAB sin google-services.json (identificador por defecto pe.fit.kora)
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+    - Falta android/app/google-services.json (Firebase kora-fitpe, generado con FlutterFire): sin ese archivo no hay notificaciones push.
+   salida 1
+### AAB con -Pkora.applicationId=com.example.fitsense_mobile
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+    - applicationId de ejemplo (com.example.fitsense_mobile): quita kora.applicationId; el aprobado (pe.fit.kora) es el valor por defecto.
+    - Falta android/app/google-services.json (Firebase kora-fitpe, generado con FlutterFire): sin ese archivo no hay notificaciones push.
+   salida 1
+### AAB con -Pkora.applicationId=pe.otro.kora
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+    - applicationId (pe.otro.kora) distinto del aprobado para Kora (pe.fit.kora); en Play es permanente.
+    - Falta android/app/google-services.json (Firebase kora-fitpe, generado con FlutterFire): sin ese archivo no hay notificaciones push.
+   salida 1
+### AAB con google-services.json FICTICIO de otra app (pe.otro.kora)
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+    - android/app/google-services.json no contiene la app Android pe.fit.kora (proyecto Firebase equivocado o desactualizado).
+   salida 1
+### AAB con google-services.json FICTICIO de pe.fit.kora (solo debe faltar la firma)
+   Compilacion release bloqueada (docs/preparacion_google_play/):
+    - Falta android/key.properties: el AAB para Google Play no se firma con la clave debug.
+   salida 1
+### APK debug con google-services.json FICTICIO
+   ✓ Built build/app/outputs/flutter-apk/app-debug.apk
+   salida 0
+   recursos de Firebase generados (project_id ficticio): 2
+### APK debug sin google-services.json
+   ✓ Built build/app/outputs/flutter-apk/app-debug.apk
+   salida 0
+### Inspección build/app/outputs/flutter-apk/app-debug.apk
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   sdkVersion:'24'
+   targetSdkVersion:'36'
+   drawable ic_stat_kora en la tabla de recursos: 1
+           A: android:resource(0x01010025)=@0x7f06001d
+           A: android:value(0x01010024)="kora_avisos" (Raw: "kora_avisos")
+   zipalign 16 KB: ok
+### APK release de prueba (backend.example.test + -Pkora.testBackendUrl=true)
+   ✓ Built build/app/outputs/flutter-apk/app-release.apk (24.6MB)
+   salida 0
+### Inspección build/app/outputs/flutter-apk/app-release.apk
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   sdkVersion:'24'
+   targetSdkVersion:'36'
+   drawable ic_stat_kora en la tabla de recursos: 1
+           A: android:resource(0x01010025)=@0x7f06001d
+           A: android:value(0x01010024)="kora_avisos" (Raw: "kora_avisos")
+   zipalign 16 KB: ok
+   debuggable en release: 0
+### git status de google-services.json
+   ls: cannot access 'android/app/google-services.json': No such file or directory
+--- JDK: /usr/lib/jvm/java-17-openjdk-amd64

@@ -4,7 +4,6 @@
 #
 # Uso (desde la raíz del repositorio, en tu computadora):
 #   KORA_API_BASE_URL=https://api.ejemplo.pe/api/v1 \
-#   KORA_APPLICATION_ID=pe.fitsense.kora \
 #   KORA_ACCOUNT_DELETION_WEB_URL=https://ejemplo.pe/eliminar-cuenta \
 #   KORA_PRIVACY_POLICY_URL=https://ejemplo.pe/privacidad \
 #   FIREBASE_APP_ID=1:000000000000:android:0000000000000000 \
@@ -18,7 +17,10 @@ NOTAS="${1:-}"
 falta=()
 [[ -f android/key.properties ]] || falta+=("android/key.properties (tu clave de subida; ver docs/preparacion_google_play/FIRMA_Y_AAB.md)")
 [[ "${KORA_API_BASE_URL:-}" == https://* ]] || falta+=("KORA_API_BASE_URL con https:// (backend de pruebas o de producción, accesible desde internet)")
-[[ -n "${KORA_APPLICATION_ID:-}" && "${KORA_APPLICATION_ID}" != com.example* ]] || falta+=("KORA_APPLICATION_ID aprobado (no com.example.*). No cambiarlo después: sería otra app y los evaluadores perderían sus datos")
+KORA_APPLICATION_ID="${KORA_APPLICATION_ID:-pe.fit.kora}"
+[[ "$KORA_APPLICATION_ID" == "pe.fit.kora" ]] || falta+=("KORA_APPLICATION_ID debe ser el aprobado, pe.fit.kora (otro identificador sería otra app y los evaluadores perderían sus datos)")
+[[ -f android/app/google-services.json ]] || falta+=("android/app/google-services.json (Firebase kora-fitpe, generado con FlutterFire; sin él no hay notificaciones push)")
+[[ ! -f android/app/google-services.json ]] || grep -qE "\"package_name\"[[:space:]]*:[[:space:]]*\"${KORA_APPLICATION_ID//./\\.}\"" android/app/google-services.json || falta+=("google-services.json no contiene la app Android $KORA_APPLICATION_ID")
 [[ "${KORA_ACCOUNT_DELETION_WEB_URL:-}" == https://* ]] || falta+=("KORA_ACCOUNT_DELETION_WEB_URL con https://")
 [[ "${KORA_PRIVACY_POLICY_URL:-}" == https://* ]] || falta+=("KORA_PRIVACY_POLICY_URL con https://")
 [[ -n "$NOTAS" && -f "$NOTAS" ]] || falta+=("archivo de notas de la versión (primer argumento; plantilla en tool/beta/notas_version_plantilla.txt)")

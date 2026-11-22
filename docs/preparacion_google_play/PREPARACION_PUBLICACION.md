@@ -1,5 +1,8 @@
 # Preparación técnica para Google Play (cierre del Mobile)
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 Rama `claude/preparacion-publicacion`, desde `generation` `fb01dd5`. **No se publicó nada** y no se creó ninguna
 clave real.
 

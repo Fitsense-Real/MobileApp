@@ -15,6 +15,10 @@ Rama `claude/flutter-3-50-1`, creada desde `generation` `165364c` (código `aa1a
 | Android Gradle Plugin | 8.9.1 | **9.3.1** |
 | Kotlin Gradle Plugin | 2.1.0 | **2.4.20** |
 | JDK | 17 | **17** (OpenJDK 17.0.21, configurado con `flutter config --jdk-dir`; también compila con 21) |
+
+> **Desde la integración de Firebase (push):** las compilaciones **release** necesitan **JDK 21**. Con JDK 17, Android
+> lint (`lintVitalAnalyzeRelease`, que no se omite) falla al analizar `firebase_core` (`List.removeLast`, API de JDK 21).
+> El guardián de Gradle lo avisa con un mensaje claro. El APK debug y el CI siguen compilando con 17.
 | NDK | 27.0.12077973 | **28.2.13676358** |
 | compileSdk / targetSdk | 36 / 36 | **36 / 36** |
 | minSdk | 21 (Flutter 3.32) | **24** (mínimo de Flutter 3.50, Android 7.0) |

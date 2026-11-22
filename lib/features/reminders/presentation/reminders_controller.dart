@@ -39,8 +39,13 @@ final reminderSchedulerProvider = Provider<ReminderScheduler>(
 );
 
 /// Screen opened by tapping a reminder with [payload].
-String reminderRoute(String? payload) =>
-    payload != null && payload.startsWith('workout:') ? '/dashboard?tab=1' : '/dashboard';
+/// Screen opened by a tap on a local notification: a workout reminder opens
+/// Rutinas, a push shown with the app open carries its own route (`route:/…`),
+/// anything else opens Inicio.
+String reminderRoute(String? payload) {
+  if (payload != null && payload.startsWith('route:/')) return payload.substring('route:'.length);
+  return payload != null && payload.startsWith('workout:') ? '/dashboard?tab=1' : '/dashboard';
+}
 
 class RemindersController extends AsyncNotifier<ReminderSettings> {
   int? get _userId => ref.read(authViewModelProvider).user?.id;
