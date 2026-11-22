@@ -7,10 +7,9 @@ import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../../welcome/presentation/first_plan_generation_controller.dart';
 import '../../welcome/presentation/welcome_routes.dart';
+import '../../welcome/domain/generation_operation.dart';
 import '../data/profile_repository.dart';
 import '../domain/minimum_age.dart';
-import '../../catalog/data/catalog_repository.dart';
-import 'blocked_exercise_picker.dart';
 import 'equipment_picker.dart';
 import 'generating_plan.dart';
 
@@ -20,7 +19,7 @@ class OnboardingPage extends ConsumerStatefulWidget {
   ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends ConsumerState<OnboardingPage> {
+class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTickerProviderStateMixin {
   final form = GlobalKey<FormState>();
   final scroll = ScrollController();
   final birth = TextEditingController();
@@ -31,15 +30,27 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final minutes = TextEditingController(text: '45');
   final notes = TextEditingController();
   int step = 0;
-  bool loading = true, busy = false, savingProfile = false, exists = false, loadFailed = false, profileSaved = false;
+  bool loading = true, busy = false, exists = false, loadFailed = false, profileSaved = false;
+  /// The 30 s generation screen: visual clock (never the backend's progress)
+  /// and the timer that ends it. `preserve` keeps the bar on real time with
+  /// reduced motion too.
+  late final AnimationController generationClock = AnimationController(vsync: this, duration: generationScreenDuration, animationBehavior: AnimationBehavior.preserve);
+  Timer? generationTimer;
+  /// The 30 s are over / the save + request finished / the result is late.
+  bool screenTimeOver = false, requestFinished = false, resultPending = false;
+  /// Error of the save or of the request, shown only when the 30 s are over.
+  String? requestError;
+  /// The generation ended in FAILED or NO_FACTIBLE (shown after the 30 s).
+  GenerationOperation? failedOperation;
   String? error, equipmentError, sex;
   String level = 'BEGINNER', goal = 'GENERAL_FITNESS', location = 'HOME';
   final days = <int>{1, 3, 5};
   int get maxWeeklySessions => level == 'BEGINNER' ? 4 : 6;
   String? get daysError => days.isEmpty ? 'Elige al menos un día para entrenar.' : days.length > maxWeeklySessions ? 'Para ${levels[level]} puedes elegir como máximo $maxWeeklySessions días. Desmarca ${days.length - maxWeeklySessions} para continuar.' : null;
   final selectedEquipment = <String>{};
-  /// Exercise ids sent as `blockedExerciseIds`; names only for display.
-  final blocked = <int, String>{};
+  /// `blockedExerciseIds`: the onboarding no longer offers the exercise list,
+  /// so a new profile sends `[]`; an existing profile keeps what it had.
+  final blockedExerciseIds = <int>[];
   /// Movement permissions of `CreateUserProfileResource` (V25): true = allowed.
   final permissions = <String, bool>{'allowHighImpact': true, 'allowFloorExercises': true, 'allowKneelingExercises': true, 'allowHangingExercises': true, 'allowOverheadExercises': true};
   List<Equipment> equipment = [];
@@ -53,7 +64,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   void initState() { super.initState(); load(); }
   @override
-  void dispose() { for (final c in [birth, height, weight, target, goalText, minutes, notes]) { c.dispose(); } scroll.dispose(); super.dispose(); }
+  void dispose() { generationTimer?.cancel(); generationClock.dispose(); for (final c in [birth, height, weight, target, goalText, minutes, notes]) { c.dispose(); } scroll.dispose(); super.dispose(); }
 
   Future<void> load() async {
     setState(() { loading = true; error = null; loadFailed = false; });
@@ -74,23 +85,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         sex = data['biologicalSex'] as String?;
         level = data['fitnessLevel'] as String; goal = data['goalType'] as String; location = data['trainingLocation'] as String;
         days..clear()..addAll((data['availableDays'] as List).map((d) => (d as num).toInt()));
+        // Saved choices are kept exactly as they are (bodyweight is not added).
         selectedEquipment..clear()..addAll((data['equipmentCodes'] as List? ?? []).cast<String>());
-        blocked..clear()..addAll({for (final id in (data['blockedExerciseIds'] as List? ?? [])) (id as num).toInt(): 'Ejercicio #$id'});
+        blockedExerciseIds..clear()..addAll([for (final id in (data['blockedExerciseIds'] as List? ?? [])) (id as num).toInt()]);
         for (final key in permissions.keys.toList()) { permissions[key] = data[key] as bool? ?? true; }
+      } else {
+        // New profile: «Peso corporal» starts selected, whatever the location.
+        selectedEquipment.add(bodyWeightCode);
       }
       await loadEquipment();
-      if (blocked.isNotEmpty) unawaited(resolveBlockedNames());
     } catch (e) { if (mounted) setState(() { error = apiError(e); loadFailed = true; }); }
     finally { if (mounted) setState(() => loading = false); }
-  }
-  Future<void> resolveBlockedNames() async {
-    final catalog = ref.read(catalogRepositoryProvider);
-    for (final id in blocked.keys.toList()) {
-      try {
-        final name = (await catalog.exercise(id))['name'];
-        if (mounted && name is String && blocked.containsKey(id)) setState(() => blocked[id] = name);
-      } catch (_) { /* keep the placeholder name */ }
-    }
   }
   Future<void> loadEquipment() async {
     try {
@@ -145,7 +150,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       'targetWeightKg': target.text.trim().isEmpty ? null : parse(target),
       'fitnessLevel': level, 'goalType': goal, 'goalText': goalText.text.trim(), 'trainingLocation': location,
       'daysPerWeek': days.length, 'availableDays': days.toList()..sort(), 'sessionMinutes': int.parse(minutes.text.trim()),
-      'equipmentCodes': selectedEquipment.toList()..sort(), 'blockedExerciseIds': blocked.keys.toList()..sort(),
+      'equipmentCodes': selectedEquipment.toList()..sort(), 'blockedExerciseIds': blockedExerciseIds.toList()..sort(),
       'healthNotes': notes.text.trim().isEmpty ? null : notes.text.trim(), ...permissions,
     };
   }
@@ -153,36 +158,82 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (!profileSaved && daysError != null) { setState(() { step = 2; error = daysError; }); return; }
     if (busy || (!profileSaved && !form.currentState!.validate())) return;
     FocusScope.of(context).unfocus();
-    setState(() { busy = true; savingProfile = !profileSaved; error = null; });
+    final generation = ref.read(firstPlanGenerationProvider.notifier);
+    final previous = failedOperation;
+    // The generation screen stays exactly 30 s from this tap, whatever the
+    // backend does: the result is only looked at when the time is over.
+    generationTimer?.cancel();
+    setState(() {
+      busy = true; error = null; failedOperation = null;
+      screenTimeOver = false; requestFinished = false; resultPending = false; requestError = null;
+    });
+    generationClock.forward(from: 0);
+    generationTimer = Timer(generationScreenDuration, () { screenTimeOver = true; settleGeneration(); });
     try {
       if (!profileSaved) {
         await ref.read(profileRepositoryProvider).save(profileBody(), exists: exists);
         if (!mounted) return;
         exists = true; profileSaved = true;
       }
-      setState(() => savingProfile = false);
-      // The first plan is requested now and generated on the server while the
-      // welcome tour runs. The request is idempotent: retrying never starts a
-      // second generation. Without connection the controller keeps retrying.
-      await ref.read(firstPlanGenerationProvider.notifier).start();
+      // One request per tap; the backend is idempotent, so a retry never starts
+      // a second generation. After a retryable failure the backend opens a new
+      // operation only because the previous one is closed.
+      if (previous != null && previous.retryable) {
+        await generation.retry();
+      } else {
+        await generation.start();
+      }
       if (!mounted) return;
       final refused = ref.read(firstPlanGenerationProvider).error;
       if (refused != null) throw Exception(refused);
-      context.go(welcomeTourRoute);
     } catch (e) {
-      if (mounted) setState(() => error = '${profileSaved ? 'Tu perfil está guardado. ' : ''}${apiError(e)}');
-    } finally { if (mounted) setState(() => busy = false); }
+      requestError = '${profileSaved ? 'Tu perfil está guardado. ' : ''}${apiError(e)}';
+    }
+    if (!mounted) return;
+    requestFinished = true;
+    settleGeneration();
+  }
+
+  /// Decides what follows the generation screen. Does nothing until the 30 s
+  /// are over; then continues if the plan is ready, shows the error, or shows
+  /// the pending state (never a plan that does not exist). Called again on
+  /// every change of the generation while the pending state is shown.
+  void settleGeneration() {
+    if (!mounted || !busy || !screenTimeOver) return;
+    if (!requestFinished) { if (!resultPending) setState(() => resultPending = true); return; }
+    if (requestError != null) {
+      setState(() { busy = false; resultPending = false; error = requestError; });
+      return;
+    }
+    final state = ref.read(firstPlanGenerationProvider);
+    final operation = state.operation;
+    if (state.error != null) {
+      setState(() { busy = false; resultPending = false; error = 'Tu perfil está guardado. ${state.error}'; });
+    } else if (operation?.status == GenerationStatus.completed) {
+      generationTimer?.cancel();
+      context.go(welcomeTourRoute);
+    } else if (operation != null && operation.isTerminal) {
+      setState(() {
+        busy = false; resultPending = false; failedOperation = operation;
+        error = 'Tu perfil está guardado. ${operation.message ?? (operation.status == GenerationStatus.noFactible ? 'No encontramos una rutina compatible con tu perfil.' : 'No pudimos preparar tu rutina.')}';
+      });
+    } else if (!resultPending) {
+      setState(() => resultPending = true);
+    }
+  }
+
+  /// Pending state: the user goes on to Kora; the generation keeps running and
+  /// its real result is shown after the welcome tour.
+  void continueWhilePending() {
+    generationTimer?.cancel();
+    context.go(welcomeTourRoute);
   }
 
   Widget field(String label, TextEditingController controller, {String? Function(String?)? validator, TextInputType? keyboard, int? maxLength, int lines = 1}) => Padding(key: ValueKey(label), padding: const EdgeInsets.only(bottom: 20), child: TextFormField(controller: controller, maxLength: maxLength, maxLines: lines, style: const TextStyle(fontSize: 16), keyboardType: keyboard, decoration: InputDecoration(labelText: label, alignLabelWithHint: true), validator: validator));
   Widget choices(String label, Map<String, String> options, String selected, ValueChanged<String> choose) => Padding(padding: const EdgeInsets.only(bottom: 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12), Wrap(spacing: 8, runSpacing: 8, children: [for (final item in options.entries) ChoiceChip(label: Text(item.value), selected: selected == item.key, selectedColor: Kora.lime, onSelected: (_) => setState(() { choose(item.key); profileSaved = false; }))])]));
   Future<void> pickEquipment() async {
-    final result = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: EquipmentPicker(items: equipment, selected: selectedEquipment, home: location == 'HOME')));
+    final result = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: EquipmentPicker(items: equipment, selected: selectedEquipment, home: location == 'HOME', alwaysIncluded: {if (selectedEquipment.contains(bodyWeightCode)) bodyWeightCode})));
     if (result != null && mounted) setState(() { selectedEquipment..clear()..addAll(result); profileSaved = false; });
-  }
-  Future<void> pickBlocked() async {
-    final result = await showModalBottomSheet<Map<int, String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: BlockedExercisePicker(selected: blocked)));
-    if (result != null && mounted) setState(() { blocked..clear()..addAll(result); profileSaved = false; });
   }
   Widget goalCard(MapEntry<String, String> entry) {
     final selected = goal == entry.key;
@@ -195,12 +246,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const KoraPage(child: Center(child: CircularProgressIndicator()));
-    if (busy) return GeneratingPlan(saving: savingProfile);
+    if (busy) {
+      // Every change of the generation is looked at, but acted on only after the 30 s.
+      ref.listen(firstPlanGenerationProvider, (_, __) => settleGeneration());
+      final problem = resultPending ? switch (ref.watch(firstPlanGenerationProvider).problem) {
+        CheckProblem.connection => 'No hay conexión para consultar el resultado. Lo seguimos intentando; puedes continuar mientras tanto.',
+        CheckProblem.server => 'El servidor no responde por ahora. Tu perfil no se pierde; lo seguimos intentando.',
+        CheckProblem.none => null,
+      } : null;
+      return GeneratingPlan(progress: generationClock, pending: resultPending, problem: problem, onContinue: requestFinished ? continueWhilePending : null);
+    }
     if (profileSaved) {
+      final failed = failedOperation;
       return KoraPage(child: ListView(padding: const EdgeInsets.all(24), children: [
       const KoraLogo(), const SizedBox(height: 24),
       Text(error ?? 'Tu perfil está guardado.'), const SizedBox(height: 24),
-      KoraButton(label: 'Reintentar generación', onPressed: submit),
+      // A failure the backend does not let us retry: its options (contact the
+      // study team) are on the result screen after the welcome tour.
+      if (failed != null && !failed.retryable) KoraButton(label: 'Continuar', onPressed: continueWhilePending)
+      else KoraButton(label: 'Reintentar generación', onPressed: submit),
     ]));
     }
     if (loadFailed) return KoraPage(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(error!), const SizedBox(height: 20), KoraButton(label: 'Reintentar', onPressed: load), TextButton(onPressed: () => context.go(AppRoutes.login), child: const Text('Iniciar sesión'))])));
@@ -240,25 +304,23 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             if (v == 'GYM') { selectedEquipment.addAll(equipment.where((e) => e.selectedForGym).map((e) => e.code)); }
             if (v == 'HOME') { selectedEquipment.removeWhere((code) => equipment.any((e) => e.code == code && e.requiresGym)); }
           }),
-          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(selectedEquipment.isEmpty ? 'Sin equipo · peso corporal' : '${selectedEquipment.length} equipos seleccionados', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12),
+          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(selectedEquipment.isEmpty ? 'Sin equipo · peso corporal' : '${selectedEquipment.length} ${selectedEquipment.length == 1 ? 'equipo seleccionado' : 'equipos seleccionados'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 4),
+            const Text('Peso corporal viene incluido. Agrega el equipo que tengas.', style: TextStyle(color: Kora.muted)), const SizedBox(height: 12),
             if (equipmentError != null) ...[Text(equipmentError!), TextButton(onPressed: loadEquipment, child: const Text('Reintentar catálogo'))]
             else OutlinedButton.icon(onPressed: pickEquipment, icon: const Icon(Icons.tune), label: const Text('Elegir equipamiento')),
-            if (selectedEquipment.isNotEmpty) Wrap(spacing: 6, children: [for (final code in selectedEquipment) InputChip(label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? code), onDeleted: () => setState(() { selectedEquipment.remove(code); profileSaved = false; }))]),
+            if (selectedEquipment.isNotEmpty) Wrap(spacing: 6, runSpacing: 6, children: [for (final code in selectedEquipment)
+              // «Peso corporal» is always included: shown as a fixed chip, not removable.
+              if (code == bodyWeightCode) Chip(avatar: const Icon(Icons.check, size: 16, color: Kora.forest), label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? 'Peso corporal'), backgroundColor: Kora.lime)
+              else InputChip(label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? code), onDeleted: () => setState(() { selectedEquipment.remove(code); profileSaved = false; }))]),
           ])),
         ],
         if (step == 4) ...[
           const Text('Desactiva los movimientos que prefieres evitar.', style: TextStyle(fontSize: 16, color: Kora.muted)), const SizedBox(height: 16),
           KoraCard(padding: const EdgeInsets.symmetric(horizontal: 8), child: Material(type: MaterialType.transparency, borderRadius: BorderRadius.circular(16), clipBehavior: Clip.antiAlias, child: Column(children: [for (final entry in permissionLabels.entries) SwitchListTile(title: Text(entry.value, style: const TextStyle(fontSize: 16)), value: permissions[entry.key]!, onChanged: (v) => setState(() { permissions[entry.key] = v; profileSaved = false; }))]))),
           const SizedBox(height: 12),
-          const Text('Tu perfil no se podrá cambiar durante el estudio. Si hay ejercicios concretos que no puedes o no quieres hacer, agrégalos también.', style: TextStyle(fontSize: 14, color: Kora.muted)), const SizedBox(height: 12),
-          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(blocked.isEmpty ? 'Sin ejercicios excluidos' : '${blocked.length} ${blocked.length == 1 ? 'ejercicio excluido' : 'ejercicios excluidos'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(onPressed: pickBlocked, icon: const Icon(Icons.block), label: const Text('Elegir ejercicios a evitar')),
-            if (blocked.isNotEmpty) Wrap(spacing: 6, children: [for (final entry in blocked.entries) InputChip(label: Text(entry.value), onDeleted: () => setState(() { blocked.remove(entry.key); profileSaved = false; }))]),
-          ])),
+          const Text('Tu perfil no se podrá cambiar durante el estudio.', style: TextStyle(fontSize: 14, color: Kora.muted)),
           const SizedBox(height: 24), field('Notas de salud (opcional)', notes, maxLength: 500, lines: 3, validator: (v) => (v ?? '').length > 500 ? 'Máximo 500 caracteres' : null),
-          const Text('Las notas son informativas. Usa los interruptores y la lista de ejercicios a evitar para excluir movimientos.', style: TextStyle(fontSize: 14,color: Kora.muted)),
+          const Text('Las notas son informativas. Usa los interruptores para excluir movimientos.', style: TextStyle(fontSize: 14,color: Kora.muted)),
         ],
       ])),
       if (error != null) Padding(padding: const EdgeInsets.symmetric(vertical:16), child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 15))),

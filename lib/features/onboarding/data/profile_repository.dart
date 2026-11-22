@@ -6,6 +6,11 @@ import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
 
+/// Catalog code of «Peso corporal» (`GET /catalog/equipment-types`). The
+/// backend always allows bodyweight exercises; the onboarding preselects it so
+/// the profile says so explicitly.
+const bodyWeightCode = 'body weight';
+
 class Equipment {
   const Equipment(this.code, this.name, this.requiresGym);
   final String code, name;

@@ -1,0 +1,28 @@
+paso 4: true
+Casa: chip Peso corporal=true · 1 equipo seleccionado
+  selector Casa: «Siempre incluido»=true
+Gimnasio: chip Peso corporal=true · 29 equipos seleccionados
+  selector Gimnasio: «Siempre incluido»=true
+Ambos: chip Peso corporal=true · 29 equipos seleccionados
+  selector Ambos: «Siempre incluido»=true
+paso 5: true · «ejercicios a evitar» presente: false
+paso 5 (abajo) «ejercicios a evitar» presente: false
+tour visible a los 30.2 s del toque
+mensajes de Kapi (s, texto):
+   0.0 Respirar profundo un par de veces se siente genial. ¿Probamos?
+   5.4 Celebrar los avances pequeños hace que los grandes lleguen.
+   10.5 ¡Choca esa pata! Hoy vamos con todo.
+   15.5 ¿Qué te gusta más: saltar, correr o bailar?
+   20.4 ¿Sabías que dormir bien ayuda a que tus músculos se recuperen?
+   25.5 ¿Team entrenamiento con música o en silencio?
+   30.2 Kapi, la capibara de Kora, saluda ¡Hola! Soy Kapi Mientras Kora prepara tu primera rutina, te muestro lo esencial de la app. Son solo unos pasos.
+API (s desde el toque, método, ruta, estado):
+   - GET /users/me/profile 404
+   - GET /users/me/profile 404
+   0.3 POST /users/me/profile 201
+   0.5 POST /users/me/plan/generation 202
+   0.5 body PENDING -
+   3.6 GET /users/me/plan/generation/ec8db177-e34b-44ab-a66a-f625735dae86 200
+   3.6 body COMPLETED 10
+DB perfil: MIXED|{assisted,band,barbell,bench,"body weight",cable,"captains chair",dumbbell,"ez barbell","ghd bench","gymnastic rings","hyperextension bench",landmine,"leverage machine","olympic barbell",other,"parallel bars","preacher bench","pull-up bar",rope,"sled machine","smith machine","squat rack","stationary bike","step platform","suspension straps",treadmill,"vertical pole",weighted}|{}
+DB operaciones: 1 ops, 1 planes · COMPLETED|10|-|1
