@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/storage/secure_storage.dart';
 
 enum TourStatus { notStarted, inProgress, completed }
 
@@ -33,7 +34,7 @@ class WelcomeProgress {
 /// Persists the welcome progress in the secure storage, keyed by user id, so
 /// two accounts on the same phone never share it.
 class WelcomeStore {
-  WelcomeStore([this._storage = const FlutterSecureStorage()]);
+  WelcomeStore([this._storage = appSecureStorage]);
   final FlutterSecureStorage _storage;
 
   String _key(int userId) => 'kora_welcome_$userId';

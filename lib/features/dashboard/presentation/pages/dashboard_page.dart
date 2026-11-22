@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../../core/storage/secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/kora_ui.dart';
@@ -131,7 +131,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     favorites.clear();
     if (userId == null) return;
     try {
-      final stored = await const FlutterSecureStorage().read(
+      final stored = await appSecureStorage.read(
         key: 'kora_favorites_$userId',
       );
       if (mounted && favoritesUser == userId && stored != null) {
@@ -151,7 +151,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final next = {...favorites};
     next.contains(id) ? next.remove(id) : next.add(id);
     try {
-      await const FlutterSecureStorage().write(
+      await appSecureStorage.write(
         key: 'kora_favorites_$userId',
         value: jsonEncode(next.toList()),
       );

@@ -90,9 +90,10 @@ gradle.taskGraph.whenReady {
 
 android {
     namespace = "com.example.fitsense_mobile"
-    // Google Play requires targetSdk 36 (Android 16) for new apps and updates since
-    // 31/08/2026. Set explicitly so a Flutter default change can never lower it.
-    compileSdk = 36
+    // compileSdk 37: flutter_local_notifications 23 compiles against API 37 and
+    // its AAR metadata requires the app to do the same. Compile-time only: the
+    // runtime behaviour is set by targetSdk, which stays at 36.
+    compileSdk = 37
     // flutter_local_notifications, flutter_secure_storage and path_provider_android
     // require NDK 28.2 with Flutter 3.50 (backward compatible; Flutter's default).
     ndkVersion = "28.2.13676358"
@@ -110,6 +111,8 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
+        // Google Play requires targetSdk 36 (Android 16) for new apps and updates since
+        // 31/08/2026. Set explicitly so a Flutter default change can never lower it.
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -1,9 +1,9 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'secure_storage.dart';
 
 class TokenStorage {
   TokenStorage._();
 
-  static const _storage = FlutterSecureStorage();
+  static const _storage = appSecureStorage;
 
   static const _tokenKey = "access_token";
 

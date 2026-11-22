@@ -1,11 +1,12 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/storage/token_storage.dart';
 
 /// Everything the app keeps on the phone for one account. Removed when the
 /// account is deleted (or its deletion is accepted), so nothing of that
 /// person stays on the device. Other accounts on the same phone are kept.
 class LocalAccountData {
-  const LocalAccountData([this._storage = const FlutterSecureStorage()]);
+  const LocalAccountData([this._storage = appSecureStorage]);
   final FlutterSecureStorage _storage;
 
   static List<String> keysOf(int userId) => [
