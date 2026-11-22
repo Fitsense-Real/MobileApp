@@ -7,8 +7,8 @@ import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
 
 /// Catalog code of «Peso corporal» (`GET /catalog/equipment-types`). The
-/// backend always allows bodyweight exercises; the onboarding preselects it so
-/// the profile says so explicitly.
+/// onboarding preselects it on the first equipment setup; the user may untick
+/// it and the profile then sends exactly what is selected.
 const bodyWeightCode = 'body weight';
 
 class Equipment {

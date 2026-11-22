@@ -20,8 +20,8 @@ const E = process.env.EMAIL || 'ux30@e2e.local';
     await p.mouse.move(195, 400); await p.mouse.wheel(0, 400); await p.waitForTimeout(500);
     await shot(p, `U-equipo-${lugar.toLowerCase()}`);
     await k.tap(p, 'Elegir equipamiento'); await p.waitForTimeout(1000);
-    const sel = (await texts(p)).join(' | ');
-    console.log(`  selector ${lugar}: «Siempre incluido»=${sel.includes('Siempre incluido')}`);
+    const pc = await p.$$eval('flt-semantics[role=checkbox]', ns => { const n = ns.find(n => (n.textContent || n.getAttribute('aria-label') || '').includes('Peso corporal')); return n ? [n.getAttribute('aria-checked'), n.getAttribute('aria-disabled')] : null; });
+    console.log(`  selector ${lugar}: Peso corporal marcado=${pc?.[0]} · deshabilitado=${pc?.[1] ?? 'no'}`);
     await shot(p, `U-selector-${lugar.toLowerCase()}`);
     if (lugar === 'Casa') { await k.tap(p, 'Mancuerna', { role: 'checkbox' }); await p.waitForTimeout(400); await shot(p, 'U-selector-casa-agrega-mancuerna'); }
     await k.tap(p, 'LISTO'); await p.waitForTimeout(700);

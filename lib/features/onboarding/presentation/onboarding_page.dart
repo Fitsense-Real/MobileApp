@@ -90,7 +90,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
         blockedExerciseIds..clear()..addAll([for (final id in (data['blockedExerciseIds'] as List? ?? [])) (id as num).toInt()]);
         for (final key in permissions.keys.toList()) { permissions[key] = data[key] as bool? ?? true; }
       } else {
-        // New profile: «Peso corporal» starts selected, whatever the location.
+        // First equipment setup: «Peso corporal» starts selected, whatever the
+        // location. It is a default, not a rule: the user can untick it, and
+        // nothing adds it back (switching location included).
         selectedEquipment.add(bodyWeightCode);
       }
       await loadEquipment();
@@ -232,7 +234,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
   Widget field(String label, TextEditingController controller, {String? Function(String?)? validator, TextInputType? keyboard, int? maxLength, int lines = 1}) => Padding(key: ValueKey(label), padding: const EdgeInsets.only(bottom: 20), child: TextFormField(controller: controller, maxLength: maxLength, maxLines: lines, style: const TextStyle(fontSize: 16), keyboardType: keyboard, decoration: InputDecoration(labelText: label, alignLabelWithHint: true), validator: validator));
   Widget choices(String label, Map<String, String> options, String selected, ValueChanged<String> choose) => Padding(padding: const EdgeInsets.only(bottom: 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12), Wrap(spacing: 8, runSpacing: 8, children: [for (final item in options.entries) ChoiceChip(label: Text(item.value), selected: selected == item.key, selectedColor: Kora.lime, onSelected: (_) => setState(() { choose(item.key); profileSaved = false; }))])]));
   Future<void> pickEquipment() async {
-    final result = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: EquipmentPicker(items: equipment, selected: selectedEquipment, home: location == 'HOME', alwaysIncluded: {if (selectedEquipment.contains(bodyWeightCode)) bodyWeightCode})));
+    final result = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => FractionallySizedBox(heightFactor: .88, child: EquipmentPicker(items: equipment, selected: selectedEquipment, home: location == 'HOME')));
     if (result != null && mounted) setState(() { selectedEquipment..clear()..addAll(result); profileSaved = false; });
   }
   Widget goalCard(MapEntry<String, String> entry) {
@@ -304,14 +306,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
             if (v == 'GYM') { selectedEquipment.addAll(equipment.where((e) => e.selectedForGym).map((e) => e.code)); }
             if (v == 'HOME') { selectedEquipment.removeWhere((code) => equipment.any((e) => e.code == code && e.requiresGym)); }
           }),
-          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(selectedEquipment.isEmpty ? 'Sin equipo · peso corporal' : '${selectedEquipment.length} ${selectedEquipment.length == 1 ? 'equipo seleccionado' : 'equipos seleccionados'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 4),
-            const Text('Peso corporal viene incluido. Agrega el equipo que tengas.', style: TextStyle(color: Kora.muted)), const SizedBox(height: 12),
+          KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(selectedEquipment.isEmpty ? 'Sin equipo seleccionado' : '${selectedEquipment.length} ${selectedEquipment.length == 1 ? 'equipo seleccionado' : 'equipos seleccionados'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 4),
+            const Text('Peso corporal viene marcado. Puedes quitarlo o agregar el equipo que tengas.', style: TextStyle(color: Kora.muted)), const SizedBox(height: 12),
             if (equipmentError != null) ...[Text(equipmentError!), TextButton(onPressed: loadEquipment, child: const Text('Reintentar catálogo'))]
             else OutlinedButton.icon(onPressed: pickEquipment, icon: const Icon(Icons.tune), label: const Text('Elegir equipamiento')),
-            if (selectedEquipment.isNotEmpty) Wrap(spacing: 6, runSpacing: 6, children: [for (final code in selectedEquipment)
-              // «Peso corporal» is always included: shown as a fixed chip, not removable.
-              if (code == bodyWeightCode) Chip(avatar: const Icon(Icons.check, size: 16, color: Kora.forest), label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? 'Peso corporal'), backgroundColor: Kora.lime)
-              else InputChip(label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? code), onDeleted: () => setState(() { selectedEquipment.remove(code); profileSaved = false; }))]),
+            if (selectedEquipment.isNotEmpty) Wrap(spacing: 6, runSpacing: 6, children: [for (final code in selectedEquipment) InputChip(label: Text(equipment.where((e) => e.code == code).firstOrNull?.name ?? (code == bodyWeightCode ? 'Peso corporal' : code)), onDeleted: () => setState(() { selectedEquipment.remove(code); profileSaved = false; }))]),
           ])),
         ],
         if (step == 4) ...[

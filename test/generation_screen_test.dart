@@ -400,34 +400,116 @@ void main() {
   });
 
   group('Onboarding: equipment and removed exercise list', () {
-    for (final location in ['Casa', 'Gimnasio', 'Ambos']) {
-      testWidgets('«Peso corporal» is selected by default in $location and is sent once', (tester) async {
+    // What reaches the backend for each location when the user keeps the defaults.
+    const defaults = {
+      'Casa': [bodyWeightCode],
+      'Gimnasio': ['band', bodyWeightCode, 'dumbbell', 'machine'],
+      'Ambos': [bodyWeightCode],
+    };
+    for (final location in defaults.keys) {
+      testWidgets('«Peso corporal» is ticked by default in $location, removable, and sent once', (tester) async {
         final profile = _Profile();
         await _pumpOnboarding(tester, profile, FakeGeneration());
         await _fillUntilLastStep(tester, location: location);
         await tester.tap(find.byTooltip('Volver'));
         await tester.pumpAndSettle();
-        // Fixed chip (no delete action); the other equipment keeps its removable chip.
-        expect(find.widgetWithText(Chip, 'Peso corporal'), findsOneWidget);
-        expect(find.widgetWithText(InputChip, 'Peso corporal'), findsNothing);
+        expect(find.widgetWithText(InputChip, 'Peso corporal'), findsOneWidget);
+        expect(tester.widget<InputChip>(find.widgetWithText(InputChip, 'Peso corporal')).onDeleted, isNotNull, reason: 'not mandatory');
         await _tapText(tester, 'Elegir equipamiento');
         final tile = tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Peso corporal'));
         expect(tile.value, isTrue);
-        expect(tile.onChanged, isNull, reason: 'locked: the user only adds equipment');
-        expect(find.text('Siempre incluido'), findsOneWidget);
+        expect(tile.onChanged, isNotNull, reason: 'can be unticked like any other equipment');
+        expect(find.text('Siempre incluido'), findsNothing);
         await tester.tap(find.byTooltip('Cancelar'));
         await tester.pumpAndSettle();
         await _tapText(tester, 'Continuar');
         await _generate(tester);
-        final codes = profile.saved!['equipmentCodes'] as List;
-        expect(codes.where((c) => c == bodyWeightCode).length, 1);
-        if (location == 'Gimnasio') expect(codes, containsAll(['band', 'dumbbell', 'machine']));
-        if (location == 'Casa') expect(codes, [bodyWeightCode]);
+        expect(profile.saved!['equipmentCodes'], defaults[location]);
         await tester.pumpWidget(const SizedBox());
       });
     }
 
-    testWidgets('other equipment can be added; switching location keeps bodyweight and the user choices', (tester) async {
+    testWidgets('unticked «Peso corporal» is never added back (locations, steps) and is not sent', (tester) async {
+      final profile = _Profile();
+      await _pumpOnboarding(tester, profile, FakeGeneration());
+      await _fillUntilLastStep(tester, location: 'Casa');
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await _tapText(tester, 'Elegir equipamiento');
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Peso corporal'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Peso corporal')).value, isFalse);
+      await tester.tap(find.text('LISTO · 0 SELECCIONADOS'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sin equipo seleccionado'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsNothing);
+      // Switching location (gym adds its own equipment) never ticks it again.
+      for (final location in ['Gimnasio', 'Ambos', 'Casa', 'Gimnasio']) {
+        await tester.tap(find.widgetWithText(ChoiceChip, location));
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(InputChip, 'Peso corporal'), findsNothing, reason: 'after $location');
+      }
+      // Leaving the step and coming back keeps the decision too.
+      await _tapText(tester, 'Continuar');
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsNothing);
+      await _tapText(tester, 'Elegir equipamiento');
+      expect(tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Peso corporal')).value, isFalse);
+      await tester.tap(find.byTooltip('Cancelar'));
+      await tester.pumpAndSettle();
+      await _tapText(tester, 'Continuar');
+      await _generate(tester);
+      // Exactly the selection: gym equipment, no forced bodyweight.
+      expect(profile.saved!['equipmentCodes'], ['band', 'dumbbell', 'machine']);
+      expect(profile.saved!['trainingLocation'], 'GYM');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('removed with its chip and ticked again: saved normally, once', (tester) async {
+      final profile = _Profile();
+      await _pumpOnboarding(tester, profile, FakeGeneration());
+      await _fillUntilLastStep(tester, location: 'Ambos');
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.widgetWithText(InputChip, 'Peso corporal'), matching: find.byTooltip('Eliminar')));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsNothing);
+      await _tapText(tester, 'Elegir equipamiento');
+      expect(tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Peso corporal')).value, isFalse);
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Peso corporal'));
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Mancuerna'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('LISTO · 2 SELECCIONADOS'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsOneWidget);
+      await _tapText(tester, 'Continuar');
+      await _generate(tester);
+      expect(profile.saved!['equipmentCodes'], [bodyWeightCode, 'dumbbell']);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the saved choice is kept on «Reintentar generación»: the profile is not re-sent', (tester) async {
+      final profile = _Profile();
+      final generation = FakeGeneration(starts: [httpError(422, 'Perfil incompleto'), operation('PENDING')]);
+      await _pumpOnboarding(tester, profile, generation);
+      await _fillUntilLastStep(tester, location: 'Casa');
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.widgetWithText(InputChip, 'Peso corporal'), matching: find.byTooltip('Eliminar')));
+      await tester.pumpAndSettle();
+      await _tapText(tester, 'Continuar');
+      await _generate(tester);
+      await _until(tester, 0, 30);
+      await tester.tap(find.text('Reintentar generación'));
+      await tester.pump();
+      expect(profile.saves, 1);
+      expect(profile.saved!['equipmentCodes'], isEmpty, reason: 'unticked bodyweight stays unticked');
+      await _until(tester, 0, 30);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('other equipment can be added; switching location keeps the user choices', (tester) async {
       final profile = _Profile();
       await _pumpOnboarding(tester, profile, FakeGeneration());
       await _fillUntilLastStep(tester, location: 'Casa');
@@ -443,7 +525,7 @@ void main() {
       // Gym adds its equipment and keeps bodyweight; back home removes only gym-only items.
       await tester.tap(find.widgetWithText(ChoiceChip, 'Gimnasio'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(Chip, 'Peso corporal'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsOneWidget);
       expect(find.widgetWithText(InputChip, 'Máquina'), findsOneWidget);
       await tester.tap(find.widgetWithText(ChoiceChip, 'Ambos'));
       await tester.pumpAndSettle();
@@ -451,11 +533,11 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'Casa'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(InputChip, 'Máquina'), findsNothing);
-      expect(find.widgetWithText(Chip, 'Peso corporal'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Peso corporal'), findsOneWidget);
       expect(find.widgetWithText(InputChip, 'Banda'), findsOneWidget);
       await _tapText(tester, 'Continuar');
       await _generate(tester);
-      expect(profile.saved!['equipmentCodes'], containsAll([bodyWeightCode, 'band']));
+      expect(profile.saved!['equipmentCodes'], ['band', bodyWeightCode, 'dumbbell']);
       expect(profile.saved!['trainingLocation'], 'HOME');
       await tester.pumpWidget(const SizedBox());
     });

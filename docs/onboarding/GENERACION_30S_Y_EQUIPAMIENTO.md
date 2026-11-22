@@ -69,24 +69,29 @@ No incluye nada de la PR #10 (`material_ui`). No cambia el backend, las reglas d
   «Personalizado»; en el código y en el backend es «Ambos».
 - **Código existente:** `body weight` («Peso corporal»), de `equipment_types` (V3) y `GET /catalog/equipment-types`.
   No se creó ningún código. Queda como constante `bodyWeightCode`.
-- **Perfil nuevo:** empieza con `body weight` seleccionado en los tres lugares.
-  - En la tarjeta, «Peso corporal» aparece como chip fijo marcado, sin quitar. El resto del equipo tiene su chip
-    con ✕.
-  - En el selector aparece marcado, bloqueado y con «Siempre incluido».
-  - Por qué no se puede desmarcar: el backend siempre añade peso corporal a los ejercicios elegibles
-    (`ExerciseQueryServiceImpl`, `declared.add("body weight")`). Desmarcarlo daría a entender algo que no ocurre.
+- **Primera configuración:** «Peso corporal» empieza **marcado** en los tres lugares (`HOME`, `GYM`, `MIXED`). Es un
+  valor por defecto, no una obligación:
+  - se puede desmarcar y volver a marcar como cualquier otro equipo, en el selector o con la ✕ de su chip;
+  - si el usuario lo desmarca, nada vuelve a marcarlo: ni cambiar de lugar, ni salir del paso y volver, ni
+    «Reintentar generación»;
+  - si lo vuelve a marcar, se guarda normalmente, una sola vez.
+- **Lo que se envía:** el backend recibe en `equipmentCodes` exactamente la selección, sin añadir `body weight`.
+  Si se desmarcó, no va. El backend sigue considerando ejercicios de peso corporal por su cuenta
+  (`ExerciseQueryServiceImpl`); eso es lógica del backend y no se tocó.
 - **Agregar equipo:** se agrega desde «Elegir equipamiento», como antes.
-- **Cambiar de lugar:**
-  - Gimnasio sigue añadiendo su equipo;
-  - Casa sigue quitando solo lo de gimnasio;
-  - peso corporal se mantiene siempre;
-  - las elecciones del usuario se conservan.
+- **Cambiar de lugar:** como antes:
+  - Gimnasio añade su equipo;
+  - Casa quita solo lo exclusivo de gimnasio;
+  - Ambos no cambia nada.
+
+  Ninguno de los tres toca «Peso corporal», porque no es equipo de gimnasio. Las elecciones del usuario se
+  conservan.
 - **Perfil existente:** durante el estudio no se edita. Si la cuenta ya tiene perfil, el onboarding la manda a
   «Preparación de cuenta» sin enviar nada. El código que rellena un perfil guardado conserva sus códigos tal cual,
   sin añadir peso corporal.
 - **Sin duplicados:** el equipo se guarda en un `Set` y el backend normaliza con `distinct()`.
   `UserProfile.bodyWeightOnly()` (lista vacía) no se usa en ningún sitio del backend `5977d28`, así que enviar el
-  código explícito no cambia la planificación.
+  código, o no enviarlo, no cambia la planificación.
 
 ## 4. Retiro de «Ejercicios a evitar» (la orden lo llama «Ejercicios restringidos»)
 
@@ -109,7 +114,7 @@ barra no cambian.
 
 ## 5. Pruebas
 
-- **Nuevas (24),** en `test/generation_screen_test.dart`, todas con respuestas simuladas:
+- **Nuevas (27),** en `test/generation_screen_test.dart`, todas con respuestas simuladas:
   - **Generación:**
     - el backend responde a los 5 s y a los 20 s: la pantalla sigue hasta los 30 s y no se vuelve a consultar;
     - responde justo a los 30 s: continúa;
@@ -125,7 +130,10 @@ barra no cambian.
     - el cambio de mensaje, solo o al tocar, no mueve la barra;
     - pantallas de 320 × 568 y 360 × 640, con texto a ×1, ×1,3 y ×2.
   - **Onboarding:**
-    - peso corporal por defecto en Casa, Gimnasio y Ambos, enviado una sola vez;
+    - peso corporal marcado por defecto en Casa, Gimnasio y Ambos, desmarcable, con el envío exacto en cada lugar;
+    - desmarcado, no vuelve a marcarse al cambiar de lugar ni al salir y volver al paso, y no se envía;
+    - quitado con su chip y marcado de nuevo: se envía una vez;
+    - desmarcado, se mantiene así en «Reintentar generación» y el perfil no se reenvía;
     - agregar equipo y cambiar de lugar;
     - un perfil existente no se sobrescribe;
     - «Ejercicios a evitar» ausente;
@@ -146,16 +154,27 @@ IA apagada (motor de reglas), sin Replicate (`e2e-backend-local.txt`).
 | Momento | Hecho |
 |---|---|
 | 0,3 s | `POST /users/me/profile` 201 |
-| 0,5 s | `POST /users/me/plan/generation` 202 `PENDING` |
+| 0,4 s | `POST /users/me/plan/generation` 202 `PENDING` |
 | 3,6 s | `GET …/generation/{id}` 200 **`COMPLETED`** |
-| 0–30 s | La pantalla «Generando…» sigue. Kapi cambia de mensaje a los 0, 5,4, 10,5, 15,5, 20,4 y 25,5 s, sin repetir ninguno |
-| **30,2 s** | Aparece el recorrido («Soy Kapi») |
-| PostgreSQL | `equipment_codes` incluye `"body weight"`, `blocked_exercise_ids = {}`; 1 operación y 1 plan |
+| 0–30 s | La pantalla «Generando…» sigue. Kapi cambia de mensaje a los 0, 5,4, 10,4, 15,5, 20,4 y 25,4 s, sin repetir ninguno |
+| **30,5 s** | Aparece el recorrido («Soy Kapi»), contando la transición de página: a los 30,0 s la pantalla «Generando» ya se está retirando |
+| PostgreSQL | Con los valores por defecto, `equipment_codes` incluye `"body weight"`; `blocked_exercise_ids = {}`; 1 operación y 1 plan |
 
 Capturas:
 - de la generación: `U-generando-02s/09s/16s/24s/29s.png`;
-- del lugar: `U-equipo-{casa,gimnasio,ambos}.png` y `U-selector-*.png`, este último con «Siempre incluido»;
+- del lugar: `U-equipo-{casa,gimnasio,ambos}.png` y `U-selector-*.png`, con «Peso corporal» marcado por defecto y habilitado;
 - del paso 5 sin la lista: `U-paso5-arriba.png` y `U-paso5-abajo.png`.
+
+### «Peso corporal» desmarcado, contra el mismo backend (`e2e-peso-corporal-desmarcado.txt`)
+
+| Paso | Resultado |
+|---|---|
+| Casa, primera configuración | Chip «Peso corporal» presente; en el selector, marcado y habilitado |
+| Desmarcar en el selector | Desmarcado; la tarjeta dice «Sin equipo seleccionado» |
+| Gimnasio → Ambos → Casa → Gimnasio | «Peso corporal» sigue sin marcar en cada cambio, y también en el selector |
+| PostgreSQL | `equipment_codes` con el equipo de gimnasio y **sin** `body weight` |
+
+Capturas: `U-peso-desmarcado-selector.png` y `U-peso-desmarcado-gimnasio.png`.
 
 ### Con respuestas simuladas
 
@@ -167,7 +186,7 @@ Por `page.route` de Playwright; el backend no generó nada (`e2e-respuestas-simu
 | 422 | A los 5 s, sin error. A los **30,1 s**, «Tu perfil está guardado. …» (`U-error-422-tras-30s.png`) |
 | 503 | A los **30,1 s**, pendiente con «El servidor no responde…» (`U-pendiente-503-tras-30s.png`) |
 
-Los arneses (`arnes/ux30.js`, `arnes/ux-simulado.js`, `arnes/p1-ux.json`) usan los helpers de
+Los arneses (`arnes/ux30.js`, `arnes/ux-peso.js`, `arnes/ux-simulado.js`, `arnes/p1-ux.json`) usan los helpers de
 `docs/preparacion_google_play/integracion_backend_5977/evidencia/arnes/`.
 
 ## 7. Observaciones fuera del alcance (sin cambiar)
