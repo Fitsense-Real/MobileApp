@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "201817196613",
+    "project_id": "kora-fitpe",
+    "storage_bucket": "kora-fitpe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201817196613:android:9887754ad67c85cd5f3b2c",
+        "android_client_info": {
+          "package_name": "pe.fit.kora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc0dXessrhvLJ52apQG_iNJ_r9PRXiB3o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
