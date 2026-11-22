@@ -1,12 +1,12 @@
 # Cierre del Mobile de Kora
 
-**Estado:** `generation` integra las PR #1–#12 y #14–#16. Solo queda abierta la **#13** (dependencias), a la espera de
-la prueba de actualización en un Android físico.
+**Estado:** `generation` integra las PR #1–#16. **Pendiente antes de distribuir:** la prueba manual de actualización de
+la #13 en Android (Samsung SM-A145M o emulador; `PRUEBA_ACTUALIZACION_SAMSUNG.md`).
 
 | PR | Alcance | Estado |
 |---|---|---|
 | #12 | Lista de la prueba en Android físico y emulador, en Windows (con backend `local-dev`) | Fusionada |
-| #13 | `flutter_local_notifications` 23 y `flutter_secure_storage` 10 (migración de la sesión), compileSdk 37 | **Abierta**: espera la prueba en el Samsung SM-A145M (`PRUEBA_ACTUALIZACION_SAMSUNG.md` en su rama) |
+| #13 | `flutter_local_notifications` 23 y `flutter_secure_storage` 10 (migración de la sesión), compileSdk 37 | Fusionada con autorización. **Migración aún no validada a mano**: bloquea la distribución externa hasta la prueba |
 | #14 | Recordatorios en release (ícono que sobrevive al *shrinker*), ícono adaptativo, 16 KB, AAB firmado y bloqueos de release | Fusionada |
 | #15 | El recorrido no se pierde, textos de Kapi, título según el historial, GIF accesibles y auditoría funcional | Fusionada |
 | #16 | Distribución beta, inventario de Play Console y conexión al backend de producción | Fusionada |

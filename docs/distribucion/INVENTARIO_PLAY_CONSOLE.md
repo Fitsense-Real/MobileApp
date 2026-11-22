@@ -1,6 +1,6 @@
 # Inventario para Google Play Console
 
-Estado al cierre del Mobile: `generation` con las PR #1–#12 y #14–#16 integradas; la #13 (dependencias) sigue abierta hasta la prueba en el Samsung.
+Estado al cierre del Mobile: `generation` con las PR #1–#16 integradas. La migración de la #13 (dependencias) está pendiente de la prueba manual en Android.
 
 **Leyenda:**
 - ✓ **cumplido**: en el código o el repositorio;
@@ -22,7 +22,7 @@ Estado al cierre del Mobile: `generation` con las PR #1–#12 y #14–#16 integr
 | Eliminación de cuenta dentro de la app | ✓ | `ELIMINACION_CUENTA_FLUTTER.md`; E2E en la auditoría (`docs/auditoria_final/`) |
 | Accesibilidad: GIF fuera de la semántica, textos de Kapi sin procesos internos | ✓ (PR #15) | `AUDITORIA_FUNCIONAL.md` |
 | Edad mínima 18 | ✓ | Validación en la app y en el backend |
-| Dependencias al día sin perder sesiones | ◐ PR #13 abierta | Pendiente de la prueba de actualización en el Samsung SM-A145M |
+| Dependencias al día sin perder sesiones | ◐ integradas (PR #13) | **Migración pendiente de validar a mano** en el Samsung SM-A145M o el emulador (`PRUEBA_ACTUALIZACION_SAMSUNG.md`). Bloquea la distribución externa |
 | Prueba en Android 13–16 físico o emulador | ✗ (guía lista) | `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`, en Windows |
 | `applicationId` definitivo | ✗ (tu decisión) | Propuesto `pe.fitsense.kora`; ver §5 |
 | Clave de subida propia y Play App Signing | ✗ | `FIRMA_Y_AAB.md` §1–5 |
@@ -98,7 +98,7 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 ## 4. Orden recomendado
 
 1. Aprobar el `applicationId` (§5) y crear la clave de subida.
-2. Probar la PR #13 en el Samsung y fusionarla. A partir de ahí, toda instalación lleva `flutter_secure_storage` 10.
+2. Validar a mano la actualización de la PR #13 (ya integrada) en el Samsung o el emulador.
 3. Desplegar el backend HTTPS (`CONEXION_BACKEND_PRODUCCION.md`), con S-1 y B-6 resueltos.
 4. Publicar la política de privacidad y la página de eliminación.
 5. Beta por App Distribution (`DISTRIBUCION_BETA.md`).

@@ -66,7 +66,7 @@ class LocalNotificationScheduler implements ReminderScheduler {
     try {
       _loadTimezones();
       await _plugin.initialize(
-        const InitializationSettings(
+        settings: const InitializationSettings(
           android: AndroidInitializationSettings('ic_stat_kora'),
           // Permission is requested explicitly, never at plugin start.
           iOS: DarwinInitializationSettings(
@@ -117,11 +117,11 @@ class LocalNotificationScheduler implements ReminderScheduler {
       final location = _location(timezone);
       for (final r in reminders) {
         await _plugin.zonedSchedule(
-          r.id,
-          r.title,
-          r.body,
-          tz.TZDateTime(location, r.at.year, r.at.month, r.at.day, r.at.hour, r.at.minute),
-          _details,
+          id: r.id,
+          title: r.title,
+          body: r.body,
+          scheduledDate: tz.TZDateTime(location, r.at.year, r.at.month, r.at.day, r.at.hour, r.at.minute),
+          notificationDetails: _details,
           // Inexact: no SCHEDULE_EXACT_ALARM permission; a few minutes of
           // slack is fine for a training reminder.
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

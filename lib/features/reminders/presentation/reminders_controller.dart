@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../app/router/app_router.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../plans/data/plan_repository.dart';
@@ -9,7 +10,7 @@ import '../domain/reminder_planner.dart';
 
 /// Device-local preferences, one entry per user.
 class ReminderSettingsStore {
-  const ReminderSettingsStore([this._storage = const FlutterSecureStorage()]);
+  const ReminderSettingsStore([this._storage = appSecureStorage]);
   final FlutterSecureStorage _storage;
 
   String _key(int userId) => 'kora_reminders_$userId';
