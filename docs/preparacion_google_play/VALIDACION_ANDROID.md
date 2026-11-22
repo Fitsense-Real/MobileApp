@@ -84,6 +84,9 @@ Sin correo, compila sin `PASSWORD_RECOVERY_ENABLED`.
 
 ## Qué queda por probar en un teléfono real (Android 13–16)
 
+> **Lista vigente (`generation` `fb01dd5`, PR #1–#11):** `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`. Pendiente; la hará el
+> propietario en Windows, con emulador y teléfono físico.
+
 La tabla de `GUIA_PUBLICACION_ANDROID.md` §8 sigue vigente. Además:
 
 - **Eliminar mi cuenta**: 200, «Solicitud recibida» (202) y 403/429. En el teléfono, el 429 debe
