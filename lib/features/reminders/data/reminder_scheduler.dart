@@ -67,7 +67,7 @@ class LocalNotificationScheduler implements ReminderScheduler {
       _loadTimezones();
       await _plugin.initialize(
         const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          android: AndroidInitializationSettings('ic_stat_kora'),
           // Permission is requested explicitly, never at plugin start.
           iOS: DarwinInitializationSettings(
             requestAlertPermission: false,
