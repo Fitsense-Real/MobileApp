@@ -8,6 +8,8 @@ import '../../../shared/widgets/kora_ui.dart';
 import '../../welcome/presentation/first_plan_generation_controller.dart';
 import '../../welcome/presentation/welcome_routes.dart';
 import '../../welcome/domain/generation_operation.dart';
+import '../../welcome/data/welcome_store.dart';
+import '../../authentication/presentation/providers/auth_provider.dart';
 import '../data/profile_repository.dart';
 import '../domain/minimum_age.dart';
 import 'equipment_picker.dart';
@@ -172,6 +174,15 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
     generationClock.forward(from: 0);
     generationTimer = Timer(generationScreenDuration, () { screenTimeOver = true; settleGeneration(); });
     try {
+      // The mandatory welcome tour is owed from this tap on. If the app is
+      // closed during the 30 s and the plan is ready when it opens again,
+      // account setup sees a tour in progress and shows it instead of going
+      // straight to the dashboard (it never resumes a tour that was not started).
+      final userId = ref.read(authViewModelProvider).user?.id;
+      if (userId != null) {
+        await ref.read(welcomeStoreProvider).update(userId, (p) => p.tourStatus == TourStatus.notStarted ? p.copyWith(tourStatus: TourStatus.inProgress, tourStep: 0) : p);
+        if (!mounted) return;
+      }
       if (!profileSaved) {
         await ref.read(profileRepositoryProvider).save(profileBody(), exists: exists);
         if (!mounted) return;

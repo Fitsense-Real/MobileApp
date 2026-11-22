@@ -20,8 +20,19 @@ import 'support/system_bars.dart';
 import 'support/welcome_fakes.dart';
 
 class PlansById extends PlanRepository {
-  PlansById() : super(Dio());
+  PlansById({this.previousWeeks = const [], this.historyFails = false}) : super(Dio());
   final requested = <Object>[];
+  /// Weeks of plans the user had before (plan history, `GET /users/me/plans`).
+  final List<String> previousWeeks;
+  final bool historyFails;
+  @override
+  Future<List<Json>> history() async {
+    if (historyFails) throw httpError(503);
+    return [
+      if (requested.isNotEmpty) {'planId': requested.last, 'weekStartDate': '2026-11-16'},
+      for (final week in previousWeeks) {'planId': week.hashCode, 'weekStartDate': week},
+    ];
+  }
   @override
   Future<Json> byId(Object id) async {
     requested.add(id);
@@ -339,6 +350,33 @@ void main() {
       await settle(tester, 40); // two polls of 3 s
       await settle(tester, 40);
       expect(find.text('¡Tu primera rutina está lista!'), findsOneWidget);
+      await disposeTree(tester);
+    });
+
+    testWidgets('A2 · a user who already had plans reads «¡Tu rutina está lista!», never «primera»', (tester) async {
+      final plans = PlansById(previousWeeks: ['2026-11-09']);
+      final generation = FakeGeneration(starts: [operation('COMPLETED', planId: 42)], finds: [operation('COMPLETED', planId: 42)]);
+      await pumpWelcome(tester, generation, location: welcomeResultRoute, plans: plans);
+      expect(find.text('¡Tu rutina está lista!'), findsOneWidget);
+      expect(find.textContaining('primera'), findsNothing);
+      expect(find.textContaining('3 entrenamientos'), findsOneWidget);
+      await disposeTree(tester);
+    });
+
+    testWidgets('A3 · plan history unavailable: neutral title, it does not assume the first plan', (tester) async {
+      final plans = PlansById(historyFails: true);
+      final generation = FakeGeneration(starts: [operation('COMPLETED', planId: 42)], finds: [operation('COMPLETED', planId: 42)]);
+      await pumpWelcome(tester, generation, location: welcomeResultRoute, plans: plans);
+      expect(find.text('¡Tu rutina está lista!'), findsOneWidget);
+      expect(find.textContaining('primera'), findsNothing);
+      await disposeTree(tester);
+    });
+
+    testWidgets('B2 · still generating for a returning user: «tu rutina», not «tu primera rutina»', (tester) async {
+      final generation = FakeGeneration(starts: [operation('PROCESSING')], finds: [operation('PROCESSING')]);
+      await pumpWelcome(tester, generation, location: welcomeResultRoute, plans: PlansById(previousWeeks: ['2026-11-09']));
+      expect(find.textContaining('Estamos terminando de preparar tu rutina'), findsOneWidget);
+      expect(find.textContaining('primera'), findsNothing);
       await disposeTree(tester);
     });
 
