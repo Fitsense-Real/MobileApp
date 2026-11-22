@@ -5,7 +5,9 @@ ni borrar datos. Con eso se comprueba que:
 - `flutter_secure_storage` 9.2.4 → 10.3.4 migra la sesión guardada;
 - `flutter_local_notifications` 19 → 23 conserva o reprograma los recordatorios.
 
-**No se fusiona la PR #13 hasta que esta prueba salga bien.**
+**Estado:** la PR #13 se fusionó en `generation` con autorización del propietario. **La migración aún no está validada a
+mano**: hasta que esta prueba, en el Samsung o en el emulador (§7), salga bien, Kora **no se distribuye** a evaluadores
+externos. Si algo falla, se corrige antes de distribuir.
 
 ## APK entregados
 
@@ -159,8 +161,8 @@ Anota el nombre de la cuenta, la hora de los recordatorios y la rutina favorita.
 | 11 | **Un aviso real** (opcional) | Si hay un entrenamiento hoy, pon la hora a 2–3 minutos y espera | Llega la notificación con la **silueta de Kora** |
 | 12 | **Sin errores de migración** | `adb logcat -d -s FlutterSecureStorage flutter > kora-logcat.txt` | Sin `Exception`, `AEADBadTagException` ni `migration failed` |
 
-Si el #1 falla (pide iniciar sesión), **la migración falló**. No sigas, guarda `kora-logcat.txt` y avisa: la PR #13 no
-se fusiona.
+Si el #1 falla (pide iniciar sesión), **la migración falló**. No sigas, guarda `kora-logcat.txt` y avisa: hay que corregirlo
+antes de distribuir Kora.
 
 ## 5. Qué reportar
 
@@ -168,7 +170,7 @@ Para cada fila del §4, ✓ o ✗. Adjunta además:
 - los archivos `alarmas-antes.txt`, `alarmas-nueva-hora.txt` y `kora-logcat.txt`;
 - la versión de Android del teléfono (Ajustes → Acerca del teléfono → Información de software).
 
-Con todo en ✓ puede autorizarse el merge de la PR #13.
+Con todo en ✓, la migración queda validada y deja de bloquear la distribución beta.
 
 ## 6. Después (no forma parte de esta prueba)
 
@@ -176,3 +178,53 @@ Con todo en ✓ puede autorizarse el merge de la PR #13.
   vez una versión con la 10 (`ACTUALIZACION_NOTIFICACIONES_ALMACENAMIENTO.md`).
 - **Volver a la versión anterior:** si quisieras dejar el teléfono como estaba, Android no instala un versionCode menor
   encima. Habría que desinstalar, y eso borra los datos locales de Kora (no los del backend).
+
+## 7. La misma prueba en el emulador de Android Studio (Windows)
+
+Los APK del Samsung son solo `arm64-v8a`. Para el emulador `x86_64` de Windows hay un par equivalente, con **la misma
+firma** (certificado SHA-256 `6d61a307…315a`), el mismo identificador y los mismos versionCode:
+
+| Archivo | Código | versionCode | SHA-256 |
+|---|---|---|---|
+| `kora-emulador-anterior-40f5fcf-x86_64.apk` | `generation` `40f5fcf` (antes de la PR #13) | 1 | `1677cfedeb4e0be1fd090bbcb5576f0b95cf426dce12d3008dafa1e3c90dfd44` |
+| `kora-emulador-nueva-pr13-x86_64.apk` | PR #13 | 2 | `2346b05f1a5329d707592bc7fd9d6c20a04512d4b99e01dd04b4714dd0f72a09` |
+
+1. **Crea el emulador.** En Android Studio, Device Manager → *Create Virtual Device*:
+   - Pixel 7;
+   - imagen **API 36 (Android 16), Google APIs, x86_64**;
+   - si quieres cubrir el mínimo, otro emulador con **API 24** x86_64.
+
+   Arráncalo y espera a que termine de iniciar.
+2. **Conéctalo al backend del PC.** `adb reverse` también funciona con el emulador:
+
+   ```
+   adb devices
+   ```
+
+   Debe aparecer `emulator-5554  device`. Si también está conectado el teléfono, añade `-s emulator-5554` a cada comando
+   `adb`.
+
+   ```
+   adb -s emulator-5554 reverse tcp:8080 tcp:8080
+   ```
+
+3. **Instala la versión anterior:**
+
+   ```
+   adb -s emulator-5554 install -r .\kora-emulador-anterior-40f5fcf-x86_64.apk
+   ```
+
+   Luego repite el **§2** (cuenta sintética, perfil, recordatorios, favorito y recuento de avisos), con
+   `adb -s emulator-5554` en lugar de `adb`.
+4. **Instala la nueva encima.** Sin desinstalar ni borrar datos:
+
+   ```
+   adb -s emulator-5554 install -r .\kora-emulador-nueva-pr13-x86_64.apk
+   ```
+
+5. **Comprueba la tabla del §4.**
+   - En el emulador, la prueba de reinicio (#10) se hace con «Cold Boot Now» desde Device Manager.
+   - Para que llegue un aviso real (#11), deja el emulador encendido hasta la hora elegida.
+
+Los resultados del emulador cuentan como validación técnica de la migración. **La prueba en el Samsung sigue siendo la
+de referencia** antes de entregar Kora a evaluadores externos con teléfonos reales.

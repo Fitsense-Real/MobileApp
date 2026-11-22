@@ -70,10 +70,11 @@ En el APK, los permisos (`INTERNET`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `POST_
     JSON, se leen igual;
   - otro usuario del mismo teléfono no los ve.
 
-## Prueba obligatoria en Android antes de fusionar
+## Prueba obligatoria en Android antes de distribuir
 
-La migración nativa del cifrado solo puede comprobarse en un teléfono o emulador. En esta nube no hay KVM. **Esta PR
-no debe fusionarse hasta pasar esta prueba**, que forma parte de `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`.
+La migración nativa del cifrado solo puede comprobarse en un teléfono o emulador. En esta nube no hay KVM. La PR se
+fusionó con autorización del propietario, pero **Kora no se distribuye a evaluadores externos hasta pasar esta
+prueba**. Instrucciones exactas, APK y versión para emulador en `PRUEBA_ACTUALIZACION_SAMSUNG.md`.
 
 1. **Con la versión anterior** (APK debug de `generation` `fb01dd5`):
 
@@ -102,8 +103,8 @@ no debe fusionarse hasta pasar esta prueba**, que forma parte de `PRUEBA_ANDROID
    - [ ] en `adb logcat -d -s FlutterSecureStorage flutter` no aparecen errores de migración.
 4. **Repite el paso 1 en un emulador API 24** (minSdk) y en uno **API 36**.
 
-Si algo falla, la PR no se fusiona: se guarda `logcat` y se revisa. Volver atrás es seguro antes de distribuirla, porque
-nadie habrá migrado todavía.
+Si algo falla, se guarda `logcat` y se corrige antes de distribuir. Mientras no haya distribución externa, nadie habrá
+migrado todavía, así que corregir es seguro.
 
 ## Riesgos que quedan
 
