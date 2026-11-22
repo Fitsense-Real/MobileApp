@@ -94,24 +94,37 @@ void main() {
     expect(tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Polea')).value, true);
     expect(tester.widget<CheckboxListTile>(find.widgetWithText(CheckboxListTile, 'Banda')).value, true);
     await tester.tap(find.widgetWithText(CheckboxListTile, 'Polea')); await tester.pumpAndSettle();
-    await tester.tap(find.text('LISTO · 2 SELECCIONADOS')); await tester.pumpAndSettle();
+    // «Peso corporal» is part of the selection even if the catalog lacks it.
+    await tester.tap(find.text('LISTO · 3 SELECCIONADOS')); await tester.pumpAndSettle();
     // Tapping the current location must not undo the user's deselection.
     await tester.tap(find.widgetWithText(ChoiceChip, 'Gimnasio')); await tester.pumpAndSettle();
     await tapButton('Continuar');
     await tester.scrollUntilVisible(find.text('Generar mi plan').hitTestable(),200,scrollable: find.descendant(of:find.byType(ListView).first,matching:find.byType(Scrollable)).first);
     await tester.tap(find.text('Generar mi plan')); await tester.pump(); await tester.pump(const Duration(seconds:1));
     expect(profile.saved?['daysPerWeek'], 2); expect(profile.saved?['availableDays'], [2,4]);
-    expect(profile.saved?['equipmentCodes'], ['band', 'machine']);
-    // The backend refused the first request: the profile stays saved.
+    expect(profile.saved?['equipmentCodes'], ['band', 'body weight', 'machine']);
+    expect(profile.saved?['blockedExerciseIds'], isEmpty);
+    // The backend refused the first request: the error waits for the 30 s.
+    expect(find.text('Generando...'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 28));
+    expect(find.text('Generando...'), findsOneWidget);
+    expect(find.textContaining('Tu perfil está guardado.'), findsNothing);
+    await tester.pump(const Duration(seconds: 1)); await tester.pump();
+    // The profile stays saved.
     expect(find.text('Recorrido del usuario'), findsNothing);
-    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.textContaining('Tu perfil está guardado.').hitTestable(),200,scrollable:find.descendant(of:find.byType(ListView).first,matching:find.byType(Scrollable)).first);
     expect(find.textContaining('Tu perfil está guardado.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Reintentar generación').hitTestable(),200,scrollable:find.descendant(of:find.byType(ListView).first,matching:find.byType(Scrollable)).first);
     await tester.tap(find.text('Reintentar generación')); await tester.pump(); await tester.pump(const Duration(seconds:1));
     expect(profile.saves, 1);
-    // The generation is requested and the tour opens at once: no blocking wait.
-    await tester.pumpAndSettle(); expect(find.text('Recorrido del usuario'), findsOneWidget);
+    // The generation is requested at once (no blocking wait for the request);
+    // the screen stays its 30 s and the tour follows.
+    expect(generation.startCalls, 2);
+    await tester.pump(const Duration(seconds: 29)); await tester.pump();
+    expect(find.text('Generando...'), findsNothing, reason: 'still PENDING after 30 s: pending state');
+    expect(find.text('Tu plan sigue en camino'), findsOneWidget);
+    await tester.tap(find.text('Continuar')); await tester.pumpAndSettle();
+    expect(find.text('Recorrido del usuario'), findsOneWidget);
     expect(generation.startCalls, 2);
     expect(plans.attempts, isEmpty, reason: 'the synchronous endpoint is no longer used');
   });

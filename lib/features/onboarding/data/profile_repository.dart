@@ -6,6 +6,11 @@ import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
 
+/// Catalog code of «Peso corporal» (`GET /catalog/equipment-types`). The
+/// onboarding preselects it on the first equipment setup; the user may untick
+/// it and the profile then sends exactly what is selected.
+const bodyWeightCode = 'body weight';
+
 class Equipment {
   const Equipment(this.code, this.name, this.requiresGym);
   final String code, name;
