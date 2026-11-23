@@ -51,7 +51,6 @@ modificó: este documento sustituye la propuesta anterior del Mobile (token FCM 
 | **E** | **`WEEKLY_PLAN_READY` y el aviso local del lunes** («tu plan de la semana está listo») pueden avisar de lo mismo | Producto | Dos avisos parecidos el lunes, si el usuario tiene los dos activados | Sin cambios: la orden prohíbe modificar los recordatorios locales. Se decide aparte |
 | **F** | **`PLAN_ADAPTED` abre Inicio**, no Progreso como en la propuesta anterior, porque el Backend manda `targetScreen = WEEKLY_PLAN` | — | — | Alineado con el Backend |
 
-**No queda ninguna incompatibilidad de contrato HTTP ni de formato de mensaje entre la app y la PR #82.** Lo que impide
-el envío real hoy:
-- la configuración de credenciales en Railway, sin desplegar todavía;
-- la prueba en un teléfono.
+**No queda ninguna incompatibilidad de contrato HTTP ni de formato de mensaje entre la app y la PR #82.** La integración
+se probó satisfactoriamente en un celular real, según informó el propietario el 2026-11-23 (`PRUEBAS_PUSH_E_IDENTIFICADOR.md`
+§3). La configuración de credenciales en Railway queda fuera de esta PR.

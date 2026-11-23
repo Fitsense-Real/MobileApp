@@ -5,7 +5,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` (reglas estrictas, sin desactivar ninguna) | ✓ sin problemas |
-| `flutter test` | ✓ **337** pruebas (2 en vivo omitidas sin Backend). Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
+| `flutter test` | ✓ **337** pruebas (4 en vivo omitidas sin Backend). Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
 | APK debug (JDK 17) y APK release de prueba (JDK 21) con la configuración real de `kora-fitpe` | ✓ `package: name='pe.fit.kora'`, `firebase_messaging_installation_id_enabled=true`, canal por defecto `kora_planes`, `project_id` = `kora-fitpe`, alineación de 16 KB (`evidencia/apk-fid.txt`) |
 | APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint falla con `firebase_core` en JDK 17. **Las compilaciones release y el AAB se hacen con JDK 21** (el de Android Studio) |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
@@ -32,8 +32,8 @@ Por el hallazgo A de `COMPATIBILIDAD_BACKEND_PR82.md`, el Backend solo arrancó 
 | 3. Comprobar en PostgreSQL que quedó asociado al usuario | ✓ `push_devices`: fila activa de A con `identifier_type=FID`, `platform=ANDROID`, `app_id=pe.fit.kora` y el FID exacto que envió la app. También quedan el vínculo revocado por `CAMBIO_DE_CUENTA` y el de B, `DESVINCULADO` |
 | 4. Generar un plan con datos sintéticos | ✓ generación asíncrona → `plan_generation_operations.status = COMPLETED` |
 | 5. Verificar que el Backend envía el evento | ✓ `notification_events`: `PLAN_GENERATED`, `WEEKLY_PLAN`, `PLAN:<id>`. `notification_deliveries`: el emisor intentó el envío **a ese FID**. Falló con `ERROR_TEMPORAL` (sin red ni credenciales reales), como se esperaba |
-| 6. Firebase entrega la notificación | **Pendiente:** necesita credenciales reales en el Backend, el arreglo del hallazgo A y un teléfono |
-| 7. Pulsar la notificación y comprobar la navegación | **Pendiente en el teléfono.** Cubierto en las pruebas automáticas (`push_notifications_test.dart`: arranque en frío, segundo plano y app abierta) |
+| 6. Firebase entrega la notificación | **Probado en un celular real por el propietario** (ver §3). En este entorno, sin red: necesita credenciales reales en el Backend, el arreglo del hallazgo A y un teléfono |
+| 7. Pulsar la notificación y comprobar la navegación | **Probado en un celular real por el propietario** (ver §3). Cubierto en las pruebas automáticas (`push_notifications_test.dart`: arranque en frío, segundo plano y app abierta) |
 
 Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
 
@@ -65,10 +65,18 @@ sesión iniciada sin interrupción desde el login hasta la generación.
 | **B** · usuario nuevo que acepta la hoja | Permiso, `201` y solo después la generación. `registered_at` anterior a la operación. El `PLAN_GENERATED` llega a la entrega, a su FID |
 | **C** · usuario nuevo que pulsa «Ahora no» | La generación sigue con normalidad (`COMPLETED`) y no se registra ningún dispositivo. `PLAN_GENERATED` → `SIN_DESTINO` / `SIN_DISPOSITIVOS_ACTIVOS`, como corresponde |
 
-En A y B la entrega termina en `ERROR_TEMPORAL` porque no hay salida a Internet ni credenciales reales. **La entrega real
-a un celular sigue pendiente.**
+En A y B la entrega termina en `ERROR_TEMPORAL` porque en este entorno no hay salida a Internet ni credenciales reales.
+La entrega real a un celular la probó el propietario (§3).
 
-## 3. Prueba integral en Android (pendiente: teléfono o emulador)
+## 3. Prueba integral en Android
+
+**Resultado: probada satisfactoriamente en un celular real.**
+- **Quién y cuándo:** el propietario del proyecto, que lo comunicó el 2026-11-23 al autorizar el merge de la PR #17 (commit
+  validado `d944692`).
+- **Evidencia:** este repositorio **no contiene** registros, capturas ni datos de ese dispositivo. No se añadió ninguna
+  evidencia que no se haya recibido.
+- **Para repetir la prueba,** sigue los pasos de abajo.
+
 
 **Requisitos:**
 - Backend de la PR #82 en `7abf3a1` o posterior (el arranque con push activo ya funciona);
