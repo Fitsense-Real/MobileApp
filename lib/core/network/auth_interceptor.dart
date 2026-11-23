@@ -11,6 +11,11 @@ class AuthInterceptor extends Interceptor {
   /// a message. Null in tests and before the app starts.
   static FutureOr<void> Function()? onSessionExpired;
 
+  /// `Options.extra` key: a 401 on this request is expected and must not end
+  /// the session again (unlinking the push device while logging out, or after
+  /// the account was deleted).
+  static const quietUnauthorized = 'kora.quietUnauthorized';
+
   /// Guards against several requests failing with 401 at the same time.
   static Future<void>? _expiring;
 
@@ -45,6 +50,7 @@ class AuthInterceptor extends Interceptor {
   /// never authenticated: neither is an expired session.
   static bool isExpiredSession(DioException err) =>
       err.response?.statusCode == 401 &&
+      err.requestOptions.extra[quietUnauthorized] != true &&
       !ApiConstants.publicPaths.contains(err.requestOptions.path) &&
       err.requestOptions.headers['Authorization'] != null;
 

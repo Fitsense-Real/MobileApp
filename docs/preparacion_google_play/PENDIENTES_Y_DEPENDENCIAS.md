@@ -1,5 +1,8 @@
 # Pendientes y dependencias para publicar Kora
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 > **Actualización (20/11/2026):** con el backend 5977d28, `DELETE /users/me` ya existe y está integrado (bloqueante 2), la app
 > valida la edad mínima y la recuperación funciona con correo. El estado vigente está en `PENDIENTES_INTEGRACION.md`.
 

@@ -5,6 +5,7 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../app/router/app_router.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../plans/data/plan_repository.dart';
+import '../../push/presentation/push_permission_prompt.dart';
 import '../data/reminder_scheduler.dart';
 import '../domain/reminder_planner.dart';
 
@@ -39,8 +40,13 @@ final reminderSchedulerProvider = Provider<ReminderScheduler>(
 );
 
 /// Screen opened by tapping a reminder with [payload].
-String reminderRoute(String? payload) =>
-    payload != null && payload.startsWith('workout:') ? '/dashboard?tab=1' : '/dashboard';
+/// Screen opened by a tap on a local notification: a workout reminder opens
+/// Rutinas, a push shown with the app open carries its own route (`route:/…`),
+/// anything else opens Inicio.
+String reminderRoute(String? payload) {
+  if (payload != null && payload.startsWith('route:/')) return payload.substring('route:'.length);
+  return payload != null && payload.startsWith('workout:') ? '/dashboard?tab=1' : '/dashboard';
+}
 
 class RemindersController extends AsyncNotifier<ReminderSettings> {
   int? get _userId => ref.read(authViewModelProvider).user?.id;
@@ -87,8 +93,18 @@ final reminderSyncProvider = FutureProvider.autoDispose<int>((ref) async {
   try {
     final settings = await settingsFuture;
     if (!settings.configured) {
-      // First time with a plan: ask once; the answer is remembered.
-      await ref.read(remindersControllerProvider.notifier).save(settings);
+      // First time with a plan, nothing saved yet: ask once; the answer is
+      // remembered. The OS permission is shared with push notifications, whose
+      // explanation came first (once per phone, before the first plan). It is only
+      // about push: whatever the answer («Activar avisos» or «Ahora no»), it
+      // never turns the workout reminders on, and the reminders do not show
+      // the system dialog a second time. They start off and stay the user's
+      // own choice in Perfil → Recordatorios. A configuration already saved
+      // never reaches this branch, so it is never changed here.
+      // The explanation is shown at the end of the profile setup, never from
+      // here: this only reads whether it was ever shown on this phone.
+      final explainedPush = await ref.read(pushPermissionPromptProvider).shownOnThisPhone();
+      await ref.read(remindersControllerProvider.notifier).save(explainedPush ? settings.copyWith(enabled: false) : settings);
       return 0; // the settings change triggers a new sync
     }
     final plan = await planFuture;

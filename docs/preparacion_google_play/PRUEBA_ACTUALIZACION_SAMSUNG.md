@@ -9,6 +9,12 @@ ni borrar datos. Con eso se comprueba que:
 mano**: hasta que esta prueba, en el Samsung o en el emulador (§7), salga bien, Kora **no se distribuye** a evaluadores
 externos. Si algo falla, se corrige antes de distribuir.
 
+> **Identificador.** Estos APK son `com.example.fitsense_mobile`, anteriores al identificador aprobado `pe.fit.kora`.
+> Siguen sirviendo para la migración 9 → 10, porque es la misma app en las dos versiones, pero **no** actualizan ni
+> sustituyen a una instalación de `pe.fit.kora`: son dos apps distintas. La prueba con `pe.fit.kora` (instalación
+> limpia, push, recordatorios y actualización 1 → 2) está en `docs/push/PRUEBAS_PUSH_E_IDENTIFICADOR.md`, y la
+> transición en `IDENTIFICADOR_APLICACION.md`.
+
 ## APK entregados
 
 Los dos están firmados con **la misma clave** (debug del entorno de compilación), así que uno se instala encima del

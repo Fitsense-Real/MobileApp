@@ -2,6 +2,10 @@
 
 **Estado:** pendiente. La hará el propietario en Windows.
 
+> **Identificador.** Desde la PR del identificador definitivo, la app es `pe.fit.kora`. Instalarla **no** actualiza una
+> `com.example.fitsense_mobile` anterior: aparecen dos Kora. Usa `pe.fit.kora` en los comandos `adb` que nombran el
+> paquete, y la checklist de push en `docs/push/PRUEBAS_PUSH_E_IDENTIFICADOR.md`.
+
 El código bajo prueba es `generation` desde `c895dc6`. Incluye las PR #1–#11, #14 y #15:
 - Flutter 3.50.1 / Dart 3.14.0;
 - `material_ui`, `go_router` 18, sin `fl_chart`;
@@ -39,7 +43,7 @@ contra el backend local. **Que un APK compile no prueba que funcione en un telé
    ```
 
    Si Windows pregunta por el firewall para Java, permite solo **redes privadas**.
-2. **SDK:** Flutter 3.50.1, Android Studio con el SDK 36 (y el 37 para la PR #13), JDK 17 o 21 para Gradle, y
+2. **SDK:** Flutter 3.50.1, Android Studio con el SDK 36 (y el 37 para la PR #13), JDK 21 para Gradle (el que trae Android Studio; desde Firebase, las compilaciones release lo exigen y el debug también funciona con 17), y
    `adb` en el `PATH` (`%LOCALAPPDATA%\Android\Sdk\platform-tools`).
 3. **APK debug.** Para el emulador:
 

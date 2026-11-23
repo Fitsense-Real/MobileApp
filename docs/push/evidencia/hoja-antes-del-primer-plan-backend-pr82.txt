@@ -1,0 +1,24 @@
+# Hoja de notificaciones al final del perfil y registro del FID antes de la primera generación — Mobile PR #17 ↔ Backend PR #82 (7abf3a1, jar sin modificar), 2026-11-23.
+# Local: PostgreSQL 16, datos y FID sintéticos, sin Replicate, credenciales de servicio SINTETICAS y sin salida a Internet.
+# Cada cuenta mantiene la sesión iniciada desde el login hasta la generación. La entrega real a un celular sigue PENDIENTE.
+
+== 1. App: hoja al final del perfil → permiso → FID → PUT → generación (PushPermissionPrompt, PushController, FirstPlanGenerationController reales)
+   A · permission already granted: no sheet, synchronised directly, PUT 201 before the generation; restored session renews
+   All tests passed!
+   B · new user accepts the sheet: Android permission, PUT 201, and only then the generation
+   C · new user picks «Ahora no»: the generation goes on, no device
+== 2. PostgreSQL: dispositivo registrado ANTES de la operación de generación, sin duplicados
+   A: dispositivos=1 activos=1 filas_con_su_FID=1 registrado_antes_de_la_operacion=true
+   B: dispositivos=1 activos=1 filas_con_su_FID=1 registrado_antes_de_la_operacion=true
+   C: dispositivos=0 activos=0 filas_con_su_FID=0 registrado_antes_de_la_operacion=sin dispositivo
+== 3. Contrato push (cuentas D y E)
+   00:00 +1: All tests passed!
+== 4. Eventos PLAN_GENERATED y entregas (detector cada 30 s)
+   evento: acepta-b-<n>@e2e.local | PLAN_GENERATED | PENDIENTE | REINTENTO | 1
+   evento: ahora-no-c-<n>@e2e.local | PLAN_GENERATED | SIN_DESTINO | SIN_DISPOSITIVOS_ACTIVOS | 1
+   evento: concedido-a-<n>@e2e.local | PLAN_GENERATED | PENDIENTE | REINTENTO | 1
+   entrega: acepta-b-<n>@e2e.local | ERROR_TEMPORAL | UNKNOWN | AUZO…
+   entrega: concedido-a-<n>@e2e.local | ERROR_TEMPORAL | UNKNOWN | efEp…
+   operacion: acepta-b-<n>@e2e.local | COMPLETED
+   operacion: ahora-no-c-<n>@e2e.local | COMPLETED
+   operacion: concedido-a-<n>@e2e.local | COMPLETED

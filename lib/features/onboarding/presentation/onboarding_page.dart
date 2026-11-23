@@ -10,6 +10,7 @@ import '../../welcome/presentation/welcome_routes.dart';
 import '../../welcome/domain/generation_operation.dart';
 import '../../welcome/data/welcome_store.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
+import '../../push/presentation/push_permission_prompt.dart';
 import '../data/profile_repository.dart';
 import '../domain/minimum_age.dart';
 import 'equipment_picker.dart';
@@ -33,6 +34,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
   final notes = TextEditingController();
   int step = 0;
   bool loading = true, busy = false, exists = false, loadFailed = false, profileSaved = false;
+  /// The push notification explanation is open (end of the profile setup).
+  bool askingNotifications = false;
   /// The 30 s generation screen: visual clock (never the backend's progress)
   /// and the timer that ends it. `preserve` keeps the bar on real time with
   /// reduced motion too.
@@ -160,10 +163,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
   }
   Future<void> submit() async {
     if (!profileSaved && daysError != null) { setState(() { step = 2; error = daysError; }); return; }
-    if (busy || (!profileSaved && !form.currentState!.validate())) return;
+    if (busy || askingNotifications || (!profileSaved && !form.currentState!.validate())) return;
     FocusScope.of(context).unfocus();
     final generation = ref.read(firstPlanGenerationProvider.notifier);
     final previous = failedOperation;
+    // End of the profile setup, before the first plan is requested: the push
+    // notification explanation (once per phone), so the "plan ready" notice of
+    // this first plan can reach the phone. Optional: «Ahora no», a refusal or
+    // Firebase failing never stop the generation. Not shown on a retry or
+    // while a generation is already under way, and never touches reminders.
+    if (previous == null) {
+      askingNotifications = true;
+      try {
+        await ref.read(pushPermissionPromptProvider).beforeFirstPlan(generationStarted: await _generationStarted());
+      } catch (_) {
+      } finally {
+        askingNotifications = false;
+      }
+      if (!mounted) return;
+    }
     // The generation screen stays exactly 30 s from this tap, whatever the
     // backend does: the result is only looked at when the time is over.
     generationTimer?.cancel();
@@ -205,6 +223,16 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
     if (!mounted) return;
     requestFinished = true;
     settleGeneration();
+  }
+
+  /// A first plan was already requested (in this run, or stored before the
+  /// app was closed): the explanation must not interrupt it.
+  Future<bool> _generationStarted() async {
+    final operation = ref.read(firstPlanGenerationProvider).operation;
+    if (operation != null && !operation.isTerminal) return true;
+    final userId = ref.read(authViewModelProvider).user?.id;
+    if (userId == null) return false;
+    return (await ref.read(welcomeStoreProvider).load(userId)).operationId != null;
   }
 
   /// Decides what follows the generation screen. Does nothing until the 30 s

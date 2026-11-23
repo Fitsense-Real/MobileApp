@@ -1,5 +1,8 @@
 # Validación Android (integración con 5977d28)
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 > **Actualización (Flutter 3.50.1):** las herramientas pasan a Gradle 9.5.0, AGP 9.3.1, Kotlin 2.4.20, NDK 28.2 y
 > minSdk 24, manteniendo todas las protecciones de abajo. Ver `MIGRACION_FLUTTER_3_50.md`.
 

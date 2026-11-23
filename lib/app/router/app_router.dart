@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/authentication/presentation/pages/forgot_password_page.dart';
@@ -19,7 +20,12 @@ import '../../features/welcome/presentation/welcome_tour_page.dart';
 class AppRouter {
   AppRouter._();
 
+  /// Root navigator, for sheets shown from outside a page (the push
+  /// notification permission prompt).
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
   static final router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: AppRoutes.splash,
 
     routes: [

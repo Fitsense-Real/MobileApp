@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/auth_interceptor.dart';
 import '../features/authentication/presentation/providers/auth_provider.dart';
+import '../features/push/presentation/push_controller.dart';
 
 import '../shared/theme/app_theme.dart';
 import 'router/app_router.dart';
@@ -35,11 +36,27 @@ class _FitSenseAppState
       auth: ref.read(authViewModelProvider.notifier),
       router: AppRouter.router,
     );
+    // Push notifications (Firebase kora-fitpe): the device is registered for
+    // the signed-in user and a tapped notification opens its screen.
+    pushRouter = AppRouter.router.go;
+    // Only a confirmed session (JWT stored): after login or a restored session,
+    // not the account just created by register (no JWT yet).
+    ref.listenManual(authViewModelProvider.select(pushSessionUserId),
+        (_, userId) => ref.read(pushControllerProvider).onUser(userId), fireImmediately: true);
+    // Back from the permission dialog, the phone settings or without network:
+    // register what is still missing.
+    _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
+    // The push permission explanation is shown at the end of the profile
+    // setup, before the first plan (OnboardingPage), not on Inicio.
   }
+
+  AppLifecycleListener? _lifecycle;
 
   @override
   void dispose() {
     AuthInterceptor.onSessionExpired = null;
+    pushRouter = null;
+    _lifecycle?.dispose();
     super.dispose();
   }
 

@@ -28,6 +28,11 @@ class ApiConstants {
   static const withdraw = '/users/me/withdraw';
   /// `DELETE /users/me`: account deletion (contract being prepared in the backend).
   static const deleteAccount = '/users/me';
+
+  /// Push notifications by Firebase Installation ID (Backend PR #82,
+  /// CONTRATO_PUSH_MOBILE.md): PUT/GET/DELETE devices and the preferences.
+  static const pushDevices = '/users/me/push-devices';
+  static const notificationPreferences = '/users/me/notification-preferences';
   static const profile = '/users/me/profile';
 
   // Catálogo

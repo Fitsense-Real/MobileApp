@@ -16,7 +16,7 @@ No subas nada hasta tener los 8 bloqueantes de `PENDIENTES_Y_DEPENDENCIAS.md` re
 En `android/gradle.properties`:
 
 ```properties
-kora.applicationId=pe.fitsense.kora
+kora.applicationId=pe.fit.kora
 ```
 
 Ver `IDENTIFICADOR_APLICACION.md`.
@@ -38,6 +38,9 @@ Luego crea `android/key.properties`, que no se versiona.
 - Política de privacidad.
 
 ## 5. Compilar el AAB
+
+Con **JDK 21** (el de Android Studio; `flutter doctor -v` lo muestra). Con JDK 17, la compilación se detiene y lo
+explica.
 
 ```bash
 flutter build appbundle --release --dart-define=API_BASE_URL=https://<dominio>/api/v1 --dart-define=ACCOUNT_DELETION_ENABLED=true --dart-define=ACCOUNT_DELETION_WEB_URL=https://<pagina-eliminacion> --dart-define=PRIVACY_POLICY_URL=https://<politica>

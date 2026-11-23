@@ -1,5 +1,8 @@
 # Pendientes tras la integración con el backend 5977d28
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 ## Para fusionar Mobile: **hecho** (20/11/2026)
 
 Las ocho PR están en `generation` (`aa1a0d2`); ver `ESTADO_PR_MOBILE.md`. Lo que sigue es histórico.

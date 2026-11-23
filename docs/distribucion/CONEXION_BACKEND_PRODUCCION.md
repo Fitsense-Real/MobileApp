@@ -29,7 +29,7 @@ flutter build appbundle --release \
   --dart-define=ACCOUNT_DELETION_ENABLED=true \
   --dart-define=ACCOUNT_DELETION_WEB_URL=https://TU-DOMINIO/eliminar-cuenta \
   --dart-define=PRIVACY_POLICY_URL=https://TU-DOMINIO/privacidad \
-  -Pkora.applicationId=pe.fitsense.kora
+  -Pkora.applicationId=pe.fit.kora
 ```
 
 - Añade `--dart-define=PASSWORD_RECOVERY_ENABLED=true` solo si el punto 9 está resuelto.

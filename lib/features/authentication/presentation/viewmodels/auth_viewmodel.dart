@@ -9,6 +9,7 @@ import '../../../../core/providers/core_providers.dart';
 import '../../../reminders/presentation/reminders_controller.dart';
 import '../providers/auth_provider.dart';
 import '../state/auth_state.dart';
+import '../../../push/presentation/push_controller.dart';
 
 class AuthViewModel extends Notifier<AuthState> {
   late final LoginUseCase _loginUseCase;
@@ -102,6 +103,11 @@ class AuthViewModel extends Notifier<AuthState> {
     // Reminders belong to this account: never notify after logging out.
     try {
       await ref.read(reminderSchedulerProvider).cancelAll();
+    } catch (_) {}
+    // Push notifications too: unlink this phone's Firebase Installation ID
+    // while the JWT can still authenticate the DELETE, then unregister from FCM.
+    try {
+      await ref.read(pushControllerProvider).beforeLogout();
     } catch (_) {}
     await _logoutUseCase();
 

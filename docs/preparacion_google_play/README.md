@@ -8,7 +8,7 @@
 | [MIGRACION_ANDROID_16.md](MIGRACION_ANDROID_16.md) | API 36, AGP 8.9.1, borde a borde | A |
 | [VALIDACION_NAVEGACION_KAPI.md](VALIDACION_NAVEGACION_KAPI.md) | Gesto atrás en el tour y el resultado | A |
 | [CONFIGURACION_BACKEND_HTTPS.md](CONFIGURACION_BACKEND_HTTPS.md) | URL HTTPS obligatoria y bloqueo de compilación | B |
-| [IDENTIFICADOR_APLICACION.md](IDENTIFICADOR_APLICACION.md) | `pe.fitsense.kora` propuesto, pendiente de aprobación | B |
+| [IDENTIFICADOR_APLICACION.md](IDENTIFICADOR_APLICACION.md) | **`pe.fit.kora` aprobado** (Firebase `kora-fitpe`) y transición desde `com.example` | B, push |
 | [FIRMA_Y_AAB.md](FIRMA_Y_AAB.md) | Firma propia, Play App Signing y AAB | B |
 | [ELIMINACION_CUENTA_FLUTTER.md](ELIMINACION_CUENTA_FLUTTER.md) | Eliminar mi cuenta, separado del retiro | C |
 | [PRUEBAS_RELEASE.md](PRUEBAS_RELEASE.md) | Suites, artefactos y prueba integral | C |

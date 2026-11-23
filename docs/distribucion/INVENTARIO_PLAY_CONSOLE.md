@@ -24,7 +24,7 @@ Estado al cierre del Mobile: `generation` con las PR #1–#16 integradas. La mig
 | Edad mínima 18 | ✓ | Validación en la app y en el backend |
 | Dependencias al día sin perder sesiones | ◐ integradas (PR #13) | **Migración pendiente de validar a mano** en el Samsung SM-A145M o el emulador (`PRUEBA_ACTUALIZACION_SAMSUNG.md`). Bloquea la distribución externa |
 | Prueba en Android 13–16 físico o emulador | ✗ (guía lista) | `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`, en Windows |
-| `applicationId` definitivo | ✗ (tu decisión) | Propuesto `pe.fitsense.kora`; ver §5 |
+| `applicationId` definitivo | ✓ **`pe.fit.kora`** aprobado (Firebase `kora-fitpe`) | Predeterminado en Gradle; transición en `IDENTIFICADOR_APLICACION.md`; ver §5 |
 | Clave de subida propia y Play App Signing | ✗ | `FIRMA_Y_AAB.md` §1–5 |
 | Backend HTTPS de producción | ✗ | `CONEXION_BACKEND_PRODUCCION.md` |
 
@@ -50,12 +50,13 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 
 | Pregunta | Respuesta propuesta |
 |---|---|
-| ¿Recoge o comparte datos? | Recoge. **No comparte** con terceros (sin analítica, publicidad ni SDK de terceros; solo el backend propio) |
+| ¿Recoge o comparte datos? | Recoge. **No comparte** con terceros: sin analítica ni publicidad. Usa **Firebase Cloud Messaging** (Google) como proveedor que solo entrega las notificaciones push, con el Firebase Installation ID (FID) del dispositivo; en Play eso es un proveedor de servicio, no «compartir» |
 | Cifrado en tránsito | Sí, HTTPS obligatorio en release |
 | ¿El usuario puede pedir que se borren? | Sí, dentro de la app y en la web |
 | Información personal | Nombre, correo |
 | Salud y fitness | Datos de salud: sexo biológico (opcional), fecha de nacimiento, estatura, peso, notas de salud, limitaciones de movimiento y exclusiones por dolor. Datos de fitness: nivel, objetivo, días y minutos disponibles, equipamiento, entrenamientos realizados, esfuerzo y satisfacción |
 | Actividad en la app | Interacciones con el plan: entrenamientos completados u omitidos y sus motivos |
+| Identificadores del dispositivo u otros | **Sí:** Firebase Installation ID (FID), para enviar las notificaciones push de la app (finalidad: funcionalidad de la app). Se guarda en el backend asociado a la cuenta, se desvincula al cerrar sesión y se borra al eliminar la cuenta. Coincide con el inventario del Backend (PR #82, `INVENTARIO_PRIVACIDAD_GOOGLE_PLAY.md`) |
 | Ubicación, contactos, fotos, audio, archivos, mensajes, calendario, identificadores de publicidad | **No** |
 | Finalidad | Funcionalidad de la app (plan personalizado) e investigación del estudio. No publicidad ni marketing |
 | ¿Obligatorios u opcionales? | La cuenta y el perfil son necesarios para el plan; el sexo biológico y las notas de salud son opcionales |
@@ -97,7 +98,7 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 
 ## 4. Orden recomendado
 
-1. Aprobar el `applicationId` (§5) y crear la clave de subida.
+1. Crear la clave de subida (el `applicationId` `pe.fit.kora` ya está aprobado) y subir los archivos de Firebase a la PR de push.
 2. Validar a mano la actualización de la PR #13 (ya integrada) en el Samsung o el emulador.
 3. Desplegar el backend HTTPS (`CONEXION_BACKEND_PRODUCCION.md`), con S-1 y B-6 resueltos.
 4. Publicar la política de privacidad y la página de eliminación.
@@ -111,7 +112,7 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
    - prueba cerrada de 12 × 14 días;
    - producción.
 
-## 5. Identificador `pe.fitsense.kora`: qué se comprobó y qué falta
+## 5. Identificador `pe.fit.kora`: qué se comprobó y qué falta
 
 Es **permanente**: cuando una app se publica (incluso en una prueba cerrada) o se sube su primer AAB, Play no deja
 cambiarlo. Cambiarlo después sería otra app, con otra ficha, sin los usuarios ni las reseñas.
@@ -119,12 +120,12 @@ cambiarlo. Cambiarlo después sería otra app, con otra ficha, sin los usuarios 
 | Comprobación | Resultado |
 |---|---|
 | Formato válido de paquete Android (minúsculas, segmentos que empiezan por letra, sin palabras reservadas de Java) | ✓ |
-| Compila y empaqueta con ese identificador (`-Pkora.applicationId=pe.fitsense.kora`; AAB firmado con clave de prueba) | ✓ (`PREPARACION_PUBLICACION.md`) |
+| Compila y empaqueta con ese identificador (predeterminado; APK debug y release de prueba inspeccionados) | ✓ (`PREPARACION_PUBLICACION.md`) |
 | El código no depende del identificador (el `namespace` de Kotlin sigue en `com.example.fitsense_mobile`, que no se publica) | ✓ |
-| Que no exista ya una app pública con ese identificador en Play | **No verificable desde este entorno** (la red no llega a Play). Comprobar <https://play.google.com/store/apps/details?id=pe.fitsense.kora>: debe dar «no encontrado» |
+| Que no exista ya una app pública con ese identificador en Play | **No verificable desde este entorno** (la red no llega a Play). Comprobar <https://play.google.com/store/apps/details?id=pe.fit.kora>: debe dar «no encontrado» |
 | Que esté disponible para tu cuenta | **Solo Play Console lo confirma**, al crear la app y subir el primer AAB. Si estuviera tomado, la subida lo rechaza |
-| Convención de dominio invertido (`fitsense.pe`) | **Pendiente:** confirmar en NIC.pe (<https://punto.pe>) que el equipo controla `fitsense.pe`, o elegir un dominio propio. Play no lo exige, pero evita usar el dominio de otra organización |
+| Convención de dominio invertido (`fit.pe`) | Decisión del propietario. Play no lo exige |
 | Coherencia con Firebase | La app de App Distribution debe registrarse con el **mismo** identificador definitivo |
 
-Hasta tu aprobación, el código sigue con `com.example.fitsense_mobile`, y el AAB para Play se niega a compilar con
-`com.example.*`.
+Aprobado: el código usa `pe.fit.kora` por defecto. El AAB para Play solo acepta ese identificador y exige el
+`google-services.json` de `kora-fitpe`.

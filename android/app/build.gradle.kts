@@ -8,6 +8,8 @@ plugins {
     // AGP 9 built-in Kotlin (android.builtInKotlin=true): no kotlin-android here.
     // The Flutter Gradle Plugin must be applied after the Android plugin.
     id("dev.flutter.flutter-gradle-plugin")
+    // On the classpath always; applied below only when google-services.json exists.
+    id("com.google.gms.google-services") apply false
 }
 
 // ---------------------------------------------------------------------------
@@ -16,9 +18,14 @@ plugins {
 // - Signing: android/key.properties (never versioned; see FIRMA_Y_AAB.md).
 //   Without it, release builds fall back to the debug key, and the Play
 //   bundle (bundleRelease) is refused.
-// - Application ID: Gradle property kora.applicationId (pending the owner's
-//   approval; IDENTIFICADOR_APLICACION.md). The Play bundle refuses
-//   com.example.*.
+// - Application ID: pe.fit.kora, approved by the owner and registered in the
+//   Firebase project kora-fitpe. It is permanent once uploaded to Play. The
+//   Gradle property kora.applicationId may override it for a local test build,
+//   but the Play bundle only accepts the approved ID (and never com.example.*).
+// - Firebase (push): android/app/google-services.json from FlutterFire for
+//   kora-fitpe. The Google Services plugin is applied when the file exists, so
+//   a checkout without it still builds and tests; the Play bundle requires it
+//   and checks it belongs to the approved ID (docs/push/).
 // - Backend: every release build needs --dart-define=API_BASE_URL with a
 //   public https:// URL (CONFIGURACION_BACKEND_HTTPS.md).
 // - Play bundle: account deletion enabled and public https pages for deletion
@@ -29,8 +36,14 @@ val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
 }
 val hasReleaseKey = keystorePropertiesFile.exists()
-val exampleApplicationId = "com.example.fitsense_mobile"
-val koraApplicationId = (findProperty("kora.applicationId") as String?)?.trim()?.takeIf { it.isNotEmpty() } ?: exampleApplicationId
+/** Android application ID approved for Kora (IDENTIFICADOR_APLICACION.md). */
+val approvedApplicationId = "pe.fit.kora"
+val koraApplicationId = (findProperty("kora.applicationId") as String?)?.trim()?.takeIf { it.isNotEmpty() } ?: approvedApplicationId
+val googleServicesFile = file("google-services.json")
+val hasGoogleServices = googleServicesFile.exists()
+// Firebase configuration for push (kora-fitpe). Applied only when the file is
+// present: CI and fresh checkouts without it keep building (push stays off).
+if (hasGoogleServices) apply(plugin = "com.google.gms.google-services")
 
 /** Values passed with --dart-define (Flutter hands them to Gradle base64-encoded). */
 fun dartDefines(): Map<String, String> =
@@ -60,6 +73,9 @@ gradle.taskGraph.whenReady {
     val problems = mutableListOf<String>()
     val defines = dartDefines()
     val testUrlAllowed = (findProperty("kora.testBackendUrl") as String?) == "true"
+    // Android lint (lintVital*Release, never skipped) crashes on JDK 17 while
+    // analysing firebase_core (List.removeLast is JDK 21 API). Fail early with a clear message instead.
+    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) problems += "Las compilaciones release necesitan JDK 21 (el de Android Studio); Gradle usa JDK ${JavaVersion.current()}. Configuralo con: flutter config --jdk-dir=<ruta del JDK 21>."
     val url = defines["API_BASE_URL"].orEmpty().trim()
     val uri = runCatching { URI(url) }.getOrNull()
     when {
@@ -71,7 +87,11 @@ gradle.taskGraph.whenReady {
     }
     if (playBundle) {
         if (!hasReleaseKey) problems += "Falta android/key.properties: el AAB para Google Play no se firma con la clave debug."
-        if (koraApplicationId.startsWith("com.example")) problems += "applicationId de ejemplo ($koraApplicationId): define kora.applicationId con el identificador aprobado."
+        if (koraApplicationId.startsWith("com.example")) problems += "applicationId de ejemplo ($koraApplicationId): quita kora.applicationId; el aprobado ($approvedApplicationId) es el valor por defecto."
+        else if (koraApplicationId != approvedApplicationId) problems += "applicationId ($koraApplicationId) distinto del aprobado para Kora ($approvedApplicationId); en Play es permanente."
+        // Push notifications: the Play build must carry the Firebase config of the approved app.
+        if (!hasGoogleServices) problems += "Falta android/app/google-services.json (Firebase kora-fitpe, generado con FlutterFire): sin ese archivo no hay notificaciones push."
+        else if (!Regex("\"package_name\"\\s*:\\s*\"${Regex.escape(koraApplicationId)}\"").containsMatchIn(googleServicesFile.readText())) problems += "android/app/google-services.json no contiene la app Android $koraApplicationId (proyecto Firebase equivocado o desactualizado)."
         // Google Play: account deletion inside the app, a public web page to
         // request it, and a privacy policy (ELIMINACION_CUENTA_FLUTTER.md).
         if (defines["ACCOUNT_DELETION_ENABLED"] != "true") problems += "La eliminacion de cuenta esta desactivada: Play exige poder borrar la cuenta desde la app (ACCOUNT_DELETION_ENABLED=true cuando DELETE /users/me este en servicio)."
@@ -89,7 +109,7 @@ gradle.taskGraph.whenReady {
 }
 
 android {
-    namespace = "com.example.fitsense_mobile"
+    namespace = "pe.fit.kora"
     // compileSdk 37: flutter_local_notifications 23 compiles against API 37 and
     // its AAR metadata requires the app to do the same. Compile-time only: the
     // runtime behaviour is set by targetSdk, which stays at 36.

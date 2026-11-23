@@ -1,5 +1,8 @@
 # Firma de release y Android App Bundle (PR B)
 
+> **Identificador:** el aprobado es **`pe.fit.kora`** (Firebase `kora-fitpe`; ver `IDENTIFICADOR_APLICACION.md`). Las
+> menciones a `com.example.fitsense_mobile` o `pe.fitsense.kora` de este documento son el registro de lo que se probó entonces.
+
 ## Problema
 
 `buildTypes.release` firmaba con `signingConfigs.debug` (`CN=Android Debug`): no sirve para Play.

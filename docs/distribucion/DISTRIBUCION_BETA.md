@@ -9,18 +9,19 @@ que lo hagas desde tu cuenta.
 | # | Requisito | Por qué no se puede saltar |
 |---|---|---|
 | 1 | **Backend HTTPS accesible desde internet** (de pruebas o de producción) | Los teléfonos de los evaluadores no llegan a tu PC. El guardián de release rechaza `http://`, `localhost`, IP privadas y dominios `.test` (ver `CONEXION_BACKEND_PRODUCCION.md`). Es la dependencia principal: **sin despliegue no hay beta remota** |
-| 2 | **`applicationId` aprobado** (`pe.fitsense.kora` propuesto) | Firebase registra la app por su identificador. Cambiarlo después crea **otra** app: los evaluadores tendrían que desinstalar y perderían sesión y datos locales |
+| 2 | **`applicationId` aprobado: `pe.fit.kora`** (ya es el predeterminado) | Firebase registra la app por su identificador. Cambiarlo después crea **otra** app: los evaluadores tendrían que desinstalar y perderían sesión y datos locales |
 | 3 | **Clave de subida propia** (`android/key.properties`, `FIRMA_Y_AAB.md`) | Android solo instala una actualización firmada con **la misma clave**. Nunca uses la clave debug: es distinta en cada computadora y rompería las actualizaciones. Es la misma clave que usarás para el AAB de Play |
 | 4 | **Política de privacidad y página de eliminación** publicadas (https) | La app las enlaza, los evaluadores son participantes de un estudio y Play las pedirá igual |
 | 5 | **Aprobación ética y consentimiento** de los evaluadores, si son participantes reales | La beta recoge datos de salud y actividad. Hasta entonces, solo cuentas sintéticas del equipo |
 | 6 | Que la PR #13 (`flutter_secure_storage` 10) esté en todas las betas | La migración de la sesión debe pasar por la 10 antes de cualquier 11 (`ACTUALIZACION_NOTIFICACIONES_ALMACENAMIENTO.md`) |
 
-## 1. Crear el proyecto en Firebase (una sola vez)
+## 1. Proyecto Firebase `kora-fitpe` (una sola vez)
 
-1. En <https://console.firebase.google.com>, crea un proyecto, por ejemplo «Kora Beta». **No hace falta Analytics**:
-   Kora no lleva SDK de analítica.
-2. Añade una app **Android** con el `applicationId` aprobado. No hace falta descargar `google-services.json`:
-   App Distribution funciona sin el SDK de Firebase en la app, y así Kora no envía ningún dato a Google.
+1. Usa el proyecto **`kora-fitpe`**, el que ya creaste. **No crees otro.** La app Android `pe.fit.kora` ya está
+   registrada con FlutterFire CLI. Kora no usa Analytics.
+2. Para las notificaciones push, la app lleva el SDK de Firebase Cloud Messaging. `android/app/google-services.json` es
+   configuración de cliente, no un secreto, y va en el repositorio (`docs/push/`). Firebase recibe el token FCM del
+   teléfono para entregar los mensajes; no recibe datos de salud ni de entrenamiento.
 3. En **App Distribution**:
    - pulsa «Comenzar»;
    - crea el grupo `evaluadores`;
@@ -50,7 +51,7 @@ que lo hagas desde tu cuenta.
 3. **Compila y distribuye.** El script se niega si falta algo: clave, URL https, identificador aprobado, páginas o notas.
 
    ```
-   KORA_API_BASE_URL=https://TU-BACKEND/api/v1 KORA_APPLICATION_ID=pe.fitsense.kora KORA_ACCOUNT_DELETION_WEB_URL=https://TU-DOMINIO/eliminar-cuenta KORA_PRIVACY_POLICY_URL=https://TU-DOMINIO/privacidad FIREBASE_APP_ID=1:XXXX:android:YYYY tool/beta/distribuir_beta.sh notas.txt
+   KORA_API_BASE_URL=https://TU-BACKEND/api/v1 KORA_APPLICATION_ID=pe.fit.kora KORA_ACCOUNT_DELETION_WEB_URL=https://TU-DOMINIO/eliminar-cuenta KORA_PRIVACY_POLICY_URL=https://TU-DOMINIO/privacidad FIREBASE_APP_ID=1:XXXX:android:YYYY tool/beta/distribuir_beta.sh notas.txt
    ```
 
    - Con `KORA_PASSWORD_RECOVERY_ENABLED=1`, se activa «¿Olvidaste tu contraseña?». Solo si el backend tiene un correo
