@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_error.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
+import '../../push/presentation/push_controller.dart';
 import '../data/plan_generation_repository.dart';
 import '../data/welcome_store.dart';
 import '../domain/generation_operation.dart';
@@ -85,7 +86,7 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
       final stored = (await _store.load(userId)).operationId;
       GenerationOperation? operation;
       if (stored != null) operation = await _repository.find(stored);
-      operation ??= await _repository.start();
+      operation ??= await _startOperation();
       await _accept(userId, operation);
     } catch (e) {
       _onError(e);
@@ -102,7 +103,7 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
     _timer?.cancel();
     state = state.copyWith(clearError: true, problem: CheckProblem.none);
     try {
-      await _accept(userId, await _repository.start());
+      await _accept(userId, await _startOperation());
     } catch (e) {
       _onError(e);
     }
@@ -119,6 +120,17 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
     final userId = _userId;
     _timer?.cancel();
     if (userId != null) await _store.update(userId, (p) => p.copyWith(clearOperation: true));
+  }
+
+  /// Requests a new generation only after this phone's push registration
+  /// (FID + the backend's 200/201) ended, so the PLAN_GENERATED notification
+  /// finds an active device. Without permission, Firebase or backend it goes
+  /// on right away or after PushController.syncTimeout: never blocks.
+  Future<GenerationOperation> _startOperation() async {
+    try {
+      await ref.read(pushControllerProvider).ensureSynced();
+    } catch (_) {}
+    return _repository.start();
   }
 
   Future<void> _accept(int userId, GenerationOperation operation) async {
@@ -144,7 +156,7 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
     try {
       final operation = await _repository.find(id);
       // Unknown to the backend (e.g. database restored): ask again; idempotent.
-      await _accept(userId, operation ?? await _repository.start());
+      await _accept(userId, operation ?? await _startOperation());
     } catch (e) {
       _onError(e);
     }

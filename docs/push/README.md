@@ -28,7 +28,8 @@ Compatibilidad punto por punto e incompatibilidades encontradas: `COMPATIBILIDAD
 
 | Momento | Qué hace la app |
 |---|---|
-| **Inicio de sesión** y **cada arranque con sesión** | Si Android permite notificaciones, llama a `register()`. FCM entrega el FID por `onRegistered` (también si ya estaba registrado) y la app hace `PUT`. Respuestas: `201` la primera vez, `200` las siguientes |
+| **Inicio de sesión** y **cada arranque con sesión** (solo con la sesión confirmada y el JWT guardado; no tras crear la cuenta sin JWT) | Si Android permite notificaciones, llama a `register()`. FCM entrega el FID por `onRegistered` (también si ya estaba registrado) y la app hace `PUT`. Respuestas: `201` la primera vez, `200` las siguientes. El registro solo cuenta como hecho con esa respuesta, no al recibir el FID |
+| **Antes de la generación automática del primer plan** | `FirstPlanGenerationController` espera a que termine ese registro (`PushController.ensureSynced`, máximo 10 s) y solo después pide la generación. Así `PLAN_GENERATED` encuentra el teléfono activo. Sin permiso, sin Firebase o con el Backend fallando, no espera: la generación sigue y el registro se reintenta al volver a la app. Retomar una operación ya pedida no espera nada |
 | **`onRegistered` con un FID nuevo** | `PUT` con el nuevo |
 | **`onUnregistered(fid)` con sesión** | `DELETE` con ese FID |
 | **Cierre de sesión** (también por sesión caducada o cuenta eliminada) | Primero, `DELETE {"installationId": fid}` mientras el JWT sigue guardado. Después, `unregister()` con FCM: aunque el Backend no responda, el teléfono deja de recibir hasta el próximo inicio de sesión. La confirmación de ese `unregister()` nunca desvincula a la cuenta siguiente |
@@ -54,6 +55,20 @@ Ahora:
 
 **Preferencias**, en Perfil → Avisos en el teléfono: «Cambios en mi plan» (`planUpdates`) y «Avisos de seguridad de mi
 cuenta» (`accountNotices`). Se guardan en el Backend y son independientes entre sí y de los recordatorios.
+
+**Limitación para usuarios nuevos en Android 13 o posterior:** la hoja que pide el permiso sale **después** del
+onboarding, en el Inicio. Como la primera generación ocurre durante el onboarding, en una instalación nueva todavía no
+hay permiso ni dispositivo, y ese primer `PLAN_GENERATED` termina en `SIN_DISPOSITIVOS_ACTIVOS`. Desde que el usuario
+acepta, los avisos siguientes sí le llegan: `PLAN_ADAPTED`, `WEEKLY_PLAN_READY` y una regeneración. Para que también le
+llegue el del primer plan, la hoja tendría que mostrarse antes de pedir la generación. Es una decisión de producto
+pendiente.
+
+**Sin peticiones duplicadas:** un inicio de sesión, la vuelta a la app y un `onRegistered` repetido comparten el mismo
+registro en curso. El `PUT` del mismo usuario y FID se hace una sola vez.
+
+**Desvinculación fallida al cerrar sesión:** queda en el registro de depuración y en `PushController.lastResult`. El
+`unregister()` con FCM se hace igual, así que el teléfono deja de recibir. El Backend desvincula el FID en el siguiente
+envío (`UNREGISTERED`) o cuando otra cuenta lo registra.
 
 **Nada de esto bloquea el inicio de sesión:**
 - sin Firebase, sin conexión, con el Backend caído o con `400`, la app sigue igual;

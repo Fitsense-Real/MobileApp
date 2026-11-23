@@ -1,0 +1,26 @@
+# Registro temprano del dispositivo antes de la generación — Mobile PR #17 ↔ Backend PR #82 (7abf3a1, jar sin modificar), 2026-11-23.
+# Local: PostgreSQL 16, datos y FID sintéticos, sin Replicate, credenciales de servicio SINTETICAS y sin salida a Internet.
+
+== 1. App (PushController + FirstPlanGenerationController reales): login → FID → PUT → generación
+   00:00 +1: All tests passed!
+== 2. PostgreSQL: dispositivo de A registrado ANTES de pedir la generación, sin duplicados
+   dispositivo | FZR5… | pe.fit.kora | 1.0.0+1 | 2026-11-23 14:26:09.398653+00 | 2026-11-23 14:26:09.567783+00 | activo
+   operacion | PENDING | 2026-11-23 14:26:09.506015+00
+   registrado antes de la operación: t
+   filas de A: 1 (activas: 1); filas con ese FID: 1
+== 3. Control: cuenta C genera su plan SIN dispositivo registrado
+   POST generacion C 202
+== 4. Contrato push con el backend 7abf3a1 (cuentas D y E)
+   00:00 +1: All tests passed!
+== 5. Eventos PLAN_GENERATED (detector cada 30 s) y entregas
+   evento: A (con dispositivo) | PLAN_GENERATED | EN_ENVIO |  | 1
+   evento: C (control, sin dispositivo) | PLAN_GENERATED | SIN_DESTINO | SIN_DISPOSITIVOS_ACTIVOS | 1
+   entregas de C: 0
+== 5b. Estado tras el intento de envío
+   evento: temprano-a-<n>@e2e.local | PLAN_GENERATED | PENDIENTE | REINTENTO | 1
+   evento: control-c-<n>@e2e.local | PLAN_GENERATED | SIN_DESTINO | SIN_DISPOSITIVOS_ACTIVOS | 1
+   entrega: ERROR_TEMPORAL | UNKNOWN | FZR5… | t
+   operacion: COMPLETED | 2
+   operacion: COMPLETED | 1
+== 6. Registro del backend (envío)
+   2026-11-23T14:26:49.875Z  WARN 1075 --- Push       : FCM rechazo un envio a FZR5…: UNKNOWN (ERROR_TEMPORAL)

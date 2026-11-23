@@ -41,7 +41,9 @@ class _FitSenseAppState
     // Push notifications (Firebase kora-fitpe): the device is registered for
     // the signed-in user and a tapped notification opens its screen.
     pushRouter = AppRouter.router.go;
-    ref.listenManual(authViewModelProvider.select((s) => s.user?.id),
+    // Only a confirmed session (JWT stored): after login or a restored session,
+    // not the account just created by register (no JWT yet).
+    ref.listenManual(authViewModelProvider.select(pushSessionUserId),
         (_, userId) => ref.read(pushControllerProvider).onUser(userId), fireImmediately: true);
     // Back from the permission dialog, the phone settings or without network:
     // register what is still missing.

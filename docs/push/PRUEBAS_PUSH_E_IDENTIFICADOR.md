@@ -37,10 +37,25 @@ Por el hallazgo A de `COMPATIBILIDAD_BACKEND_PR82.md`, el Backend solo arrancó 
 
 Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
 
+## 2b. Registro del dispositivo antes de la generación (Backend `7abf3a1`)
+
+**Evidencia:** `evidencia/registro-temprano-backend-pr82.txt` (script: `registro-temprano-backend-pr82.sh`).
+
+**Condiciones:** el jar de la PR #82 en `7abf3a1`, sin ningún añadido; push encendido con credenciales sintéticas y sin
+salida a Internet.
+
+| Validación | Resultado |
+|---|---|
+| La primera generación ocurre después del registro | ✓ con el `PushController` y el `FirstPlanGenerationController` reales (`test/live/push_generation_live_test.dart`). En la app, `201 PUT /users/me/push-devices` llega antes de `POST /users/me/plan/generation`. En PostgreSQL, `push_devices.registered_at` es anterior a `plan_generation_operations.created_at` |
+| Sesión recuperada | ✓ vuelve a sincronizar: `200`, el mismo dispositivo y `lastSeenAt` actualizado |
+| Sin registros duplicados | ✓ una sola fila para la cuenta y el FID |
+| `PLAN_GENERATED` con dispositivo registrado y activo | ✓ ya **no** da `SIN_DISPOSITIVOS_ACTIVOS`: el evento pasa a envío y la entrega va a ese FID (`ERROR_TEMPORAL` porque no hay Internet). La cuenta de control, que generó su plan sin dispositivo, sí da `SIN_DESTINO` / `SIN_DISPOSITIVOS_ACTIVOS` |
+| Contrato HTTP con `7abf3a1` | ✓ `test/live/push_backend_live_test.dart` pasa igual |
+
 ## 3. Prueba integral en Android (pendiente: teléfono o emulador)
 
 **Requisitos:**
-- **Backend con el hallazgo A corregido**, o lanzado con `google-http-client-jackson2` en el classpath;
+- Backend de la PR #82 en `7abf3a1` o posterior (el arranque con push activo ya funciona);
 - el Backend con `FITSENSE_PUSH_ENABLED=true` y la cuenta de servicio **real** de `kora-fitpe` en
   `FITSENSE_FIREBASE_CREDENTIALS_BASE64`, como **secreto**, nunca en un archivo del repositorio. Ver el
   `CONFIGURACION_RAILWAY.md` del Backend;
@@ -81,7 +96,15 @@ Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
    SELECT left(installation_id,4), app_id, revoked_at FROM push_devices d JOIN users u USING (user_id) WHERE u.email = '<correo de prueba>';
    ```
 
-5. **Genera el primer plan** en modo asíncrono, con una cuenta nueva y datos sintéticos.
+5. **Genera el primer plan** en modo asíncrono, con una cuenta nueva y datos sintéticos, **con la sesión abierta**. En el
+   log de depuración, `FCM installation ID (registered)` debe aparecer **antes** de que empiece la generación. En la base,
+   comprueba que el dispositivo se registró antes de la operación:
+
+   ```sql
+   SELECT (SELECT min(registered_at) FROM push_devices WHERE user_id = <id>) < (SELECT min(created_at) FROM plan_generation_operations WHERE user_id = <id>);
+   ```
+
+   Debe dar `t`. Además, el evento no debe tener `status_reason = 'SIN_DISPOSITIVOS_ACTIVOS'`.
 6. **Entrega.** Llega «Tu plan está listo» con la silueta de Kora. En la base:
 
    ```sql

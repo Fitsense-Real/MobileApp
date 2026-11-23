@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../../authentication/presentation/state/auth_state.dart';
 import '../../plans/data/plan_repository.dart';
 import '../../reminders/presentation/reminders_controller.dart';
 import '../../welcome/presentation/first_plan_generation_controller.dart';
@@ -129,7 +130,22 @@ class PushController {
     return true;
   }();
 
-  /// Called with the signed-in user's id (null when signed out).
+  /// How long the first-plan generation waits for this phone's registration
+  /// (FID from FCM + the backend's 200/201) before going on without it.
+  static Duration syncTimeout = const Duration(seconds: 10);
+
+  /// The registration attempt in progress for the signed-in user: completes
+  /// with the resulting [state] once the backend answered (or the attempt
+  /// ended without registering). Shared, so concurrent callers never start a
+  /// second one.
+  Future<PushState>? _sync;
+  Completer<PushState>? _waitingForFid;
+
+  /// PUT in flight, by `user:FID`: a repeated onRegistered joins it.
+  (String, Future<void>)? _putting;
+
+  /// Called with the user of a confirmed session, with its JWT stored (null
+  /// when signed out): after login and when a stored session is restored.
   Future<void> onUser(int? userId) async {
     if (userId != _userId) _registeredFor = null; // another account: register again
     _userId = userId;
@@ -137,35 +153,69 @@ class PushController {
       state = PushState.idle;
       return;
     }
-    await _ensureRegistered();
+    await _syncNow();
   }
 
   /// The app came back to the foreground: retry what is missing (permission
   /// granted from the system dialog or settings, network back).
   Future<void> onResumed() async {
     if (_userId == null || state == PushState.registered || state == PushState.unavailable) return;
-    await _ensureRegistered();
+    await _syncNow();
   }
 
-  Future<void> _ensureRegistered() async {
+  /// Waits for the registration that the session started (at most
+  /// [syncTimeout]) and returns how it ended. Used before the automatic
+  /// first-plan generation, so PLAN_GENERATED finds this phone registered.
+  /// Never starts Firebase by itself and never throws: without a session,
+  /// without permission or with Firebase or the backend failing it returns
+  /// at once (or at the timeout) and the app carries on.
+  Future<PushState> ensureSynced() async {
+    final sync = _sync;
+    if (_userId == null || sync == null) return state;
+    return sync.timeout(syncTimeout, onTimeout: () {
+      debugPrint('Registro push sin respuesta a tiempo (${state.name}); la app continúa y se reintentará.');
+      return state;
+    });
+  }
+
+  Future<PushState> _syncNow() => _sync = _register().catchError((Object e) {
+    debugPrint('Registro push no disponible: $e');
+    return state = PushState.notRegisteredWithFcm;
+  });
+
+  Future<PushState> _register() async {
+    if (!await _start()) return state = PushState.unavailable;
+    if (!await notifier.permitted()) {
+      debugPrint('Registro push pendiente: sin permiso de notificaciones.');
+      return state = PushState.permissionMissing;
+    }
+    // FCM answers through onRegistered (also when already registered); the
+    // attempt is only over once the backend answered the PUT.
+    final waiter = _waitingForFid ??= Completer<PushState>();
     try {
-      if (!await _start()) {
-        state = PushState.unavailable;
-        return;
-      }
-      if (!await notifier.permitted()) {
-        state = PushState.permissionMissing;
-        return;
-      }
-      // The FID comes back through onRegistered (also when already registered).
       await messaging.register();
     } catch (e) {
-      state = PushState.notRegisteredWithFcm;
+      if (identical(_waitingForFid, waiter)) _waitingForFid = null;
       debugPrint('Registro FCM no disponible: $e');
+      return state = PushState.notRegisteredWithFcm;
     }
+    return waiter.future;
   }
 
   Future<void> _onRegistered(String installationId) async {
+    final work = _registerInstallation(installationId);
+    // A new FID reported by Firebase on its own is also "the" sync to wait for.
+    if (_waitingForFid == null && _userId != null) _sync = work.then((_) => state, onError: (_) => state);
+    try {
+      await work;
+    } finally {
+      final waiter = _waitingForFid;
+      _waitingForFid = null;
+      if (waiter != null && !waiter.isCompleted) waiter.complete(state);
+    }
+  }
+
+  Future<void> _registerInstallation(String installationId) async {
     final userId = _userId;
     if (userId == null) return;
     if (!PushDeviceRepository.isInstallationId(installationId)) {
@@ -178,6 +228,18 @@ class PushController {
     _installationId = installationId;
     final key = '$userId:$installationId';
     if (_registeredFor == key && state == PushState.registered) return;
+    final putting = _putting;
+    if (putting != null && putting.$1 == key) return putting.$2; // same PUT in flight: join it
+    final put = _put(userId, installationId, key);
+    _putting = (key, put);
+    try {
+      await put;
+    } finally {
+      if (identical(_putting?.$2, put)) _putting = null;
+    }
+  }
+
+  Future<void> _put(int userId, String installationId, String key) async {
     final result = await devices.register(installationId: installationId, appVersion: appVersion);
     if (_userId != userId) return; // logged out meanwhile
     lastResult = result;
@@ -187,6 +249,7 @@ class PushController {
       await store.write(installationId);
     } else {
       state = PushState.backendError;
+      debugPrint('El backend no registró este teléfono (${result.status.name}${result.code == null ? '' : ' ${result.code}'}); se reintentará.');
     }
     // Debug builds only: the FID, to follow the end-to-end test
     // (docs/push/PRUEBAS_PUSH_E_IDENTIFICADOR.md). Never printed in release.
@@ -224,11 +287,18 @@ class PushController {
   Future<void> beforeLogout() async {
     _userId = null;
     _registeredFor = null;
+    _sync = null;
     state = PushState.idle;
     final installationId = _installationId ?? await store.read();
     _installationId = null;
     if (PushDeviceRepository.isInstallationId(installationId)) {
       lastResult = await devices.unregister(installationId!);
+      if (lastResult!.status != PushDeviceStatus.removed) {
+        // Recorded so the failure is visible; the phone still stops receiving:
+        // FCM unregister below, and the backend unlinks the FID on the next
+        // send (UNREGISTERED) or when another account registers it.
+        debugPrint('No se pudo desvincular este teléfono en el backend (${lastResult!.status.name}); se anula el registro en FCM.');
+      }
     }
     await store.clear();
     // Whatever the backend answered, FCM stops delivering to this phone until
@@ -267,6 +337,11 @@ class _RecentIds {
     return true;
   }
 }
+
+/// The user whose phone push registers: only a confirmed session, with its
+/// JWT stored (login or restored session). The account just created by
+/// register has no JWT yet, so nothing is sent for it until it logs in.
+int? pushSessionUserId(AuthState auth) => auth.isAuthenticated ? auth.user?.id : null;
 
 /// Overridden in tests; the real one talks to Firebase (Android only).
 final pushMessagingProvider = Provider<PushMessaging>((ref) => FirebasePushMessaging());
