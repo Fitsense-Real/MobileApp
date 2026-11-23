@@ -1,0 +1,10 @@
+# Backend PR #82 (cc703fb), jar tal cual (mvn package), push activado con credenciales SINTETICAS legibles.
+# Resultado: no arranca (sin 'Started FitsenseApplication'). Ver COMPATIBILIDAD_BACKEND_PR82.md, hallazgo A.
+
+Factory method 'transportePush' threw exception with message: com/google/api/client/json/jackson2/JacksonFactory
+Caused by: java.lang.NoClassDefFoundError: com/google/api/client/json/jackson2/JacksonFactory
+Started FitsenseApplication: 0 veces
+
+# Con google-http-client-jackson2-2.2.0.jar en el classpath (solo la prueba):
+2026-11-23T01:42:23.196Z  INFO 4984 ---            : Notificaciones push activas: proyecto kora-fitpe, paquete pe.fit.kora, destino por FID.
+2026-11-23T01:42:23.971Z  INFO 4984 --- tion       : Started FitsenseApplication in 6.622 seconds (process running for 6.892)

@@ -1,0 +1,28 @@
+# Prueba integral Mobile ↔ Backend PR #82 (cc703fb), local, 2026-11-23. Datos sintéticos; sin Replicate; sin salida a Internet.
+# Backend arrancado con run.sh (incluye google-http-client-jackson2 por el hallazgo A). Script: prueba-integral-backend-pr82.sh
+
+== Cuentas sintéticas (A con perfil, B sin plan)
+registro 201
+registro 201
+perfil A 201
+usuario A = 5, FID sintético = PNi6… (22 caracteres)
+== Código Mobile (PushDeviceRepository) contra el backend real
+   00:00 +1: All tests passed!
+== PostgreSQL: dispositivo asociado al usuario
+notification_deliveries
+notification_events
+notification_preferences
+push_devices
+   7 | push-a-<n>@e2e.local | PNi6… | FID | ANDROID | pe.fit.kora | 1.0.0+1 | 2026-11-23 01:50:22.196126+00 | CAMBIO_DE_CUENTA
+   8 | push-b-<n>@e2e.local | PNi6… | FID | ANDROID | pe.fit.kora |  | 2026-11-23 01:50:22.21301+00 | DESVINCULADO
+   9 | push-a-<n>@e2e.local | PNi6… | FID | ANDROID | pe.fit.kora | 1.0.0+1 | activo | 
+   FID guardado = FID enviado por la app: 1 fila activa de A
+== Generación asíncrona del primer plan de A (motor de reglas, IA apagada)
+   POST generacion asincrona 202
+   plan actual 200
+   eaaee2b2-2691-4aa7-a74c-4e4e0c3518a2 | COMPLETED | 2
+== Detector push (cada 30 s) y emisor
+   evento: PLAN_GENERATED | PLAN | 2 | WEEKLY_PLAN | plan_generation_operations | PLAN:2 | PENDIENTE | REINTENTO | 1
+   entrega: ERROR_TEMPORAL | UNKNOWN | 9 | PNi6… | t
+== Registro del backend (envío)
+   2026-11-23T01:50:40.121Z  WARN 4984 --- [Fitsense] [   scheduling-1] m.w.s.f.n.i.FirebaseTransportePush       : FCM rechazo un envio a PNi6…: UNKNOWN (ERROR_TEMPORAL)

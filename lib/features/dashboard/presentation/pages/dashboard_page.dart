@@ -12,6 +12,7 @@ import '../../../workouts/presentation/planned_workout_page.dart';
 import '../../../pain/presentation/pain_exclusions_sheet.dart';
 import '../../../reminders/presentation/reminders_controller.dart';
 import '../../../reminders/presentation/reminders_sheet.dart';
+import '../../../push/presentation/push_preferences_sheet.dart';
 import '../../../welcome/presentation/welcome_routes.dart';
 import '../dashboard_tour_targets.dart';
 import '../../../../app/router/app_routes.dart';
@@ -1194,6 +1195,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     builder: (_) => const SafeArea(child: RemindersSheet()),
   );
 
+  void pushPreferences() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => const SafeArea(child: PushPreferencesSheet()),
+  );
+
   void painExclusions() => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -1326,6 +1334,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             menuRow(Icons.notifications_none, 'Notificaciones', notifications),
             const Divider(height: 1),
             menuRow(Icons.alarm, 'Recordatorios', reminders, key: widget.tourTargets?.reminders),
+            const Divider(height: 1),
+            menuRow(Icons.phone_android, 'Avisos en el teléfono', pushPreferences),
             const Divider(height: 1),
             menuRow(Icons.history, 'Historial de planes', planHistory),
             const Divider(height: 1),

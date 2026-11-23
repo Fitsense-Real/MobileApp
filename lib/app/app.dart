@@ -41,12 +41,18 @@ class _FitSenseAppState
     pushRouter = AppRouter.router.go;
     ref.listenManual(authViewModelProvider.select((s) => s.user?.id),
         (_, userId) => ref.read(pushControllerProvider).onUser(userId), fireImmediately: true);
+    // Back from the permission dialog, the phone settings or without network:
+    // register what is still missing.
+    _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
   }
+
+  AppLifecycleListener? _lifecycle;
 
   @override
   void dispose() {
     AuthInterceptor.onSessionExpired = null;
     pushRouter = null;
+    _lifecycle?.dispose();
     super.dispose();
   }
 

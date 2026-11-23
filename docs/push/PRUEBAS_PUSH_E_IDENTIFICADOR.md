@@ -1,175 +1,133 @@
-# Pruebas: identificador `pe.fit.kora` y notificaciones push
+# Pruebas: identificador `pe.fit.kora` y notificaciones push por FID
 
 ## 1. Verificado en el entorno de compilación (Linux, sin teléfono)
-
-Evidencia completa: matriz `rel-matrix-fcm` (salida en la descripción de la PR).
 
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` (reglas estrictas, sin desactivar ninguna) | ✓ sin problemas |
-| `flutter test` | ✓ **270** pruebas, de las que 16 son nuevas: eventos, rutas, controlador push con dobles, repositorio de dispositivos e identificador Android |
-| APK debug: `aapt dump badging` | ✓ `package: name='pe.fit.kora'` |
-| APK release de prueba (`backend.example.test` + `-Pkora.testBackendUrl=true`) | ✓ con **JDK 21**: `pe.fit.kora`, compileSdk 37, targetSdk 36, minSdk 24, no depurable, `ic_stat_kora` incluido, alineación de 16 KB |
-| APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint (`lintVitalAnalyzeRelease`, sin omitir) falla al analizar `firebase_core` con JDK 17 (`List.removeLast` es API de JDK 21). **Las compilaciones release y el AAB se hacen con JDK 21**, el de Android Studio. El APK debug y el CI siguen con 17 |
-| Manifiesto | ✓ ícono `ic_stat_kora` y canal `kora_avisos` para los mensajes FCM en segundo plano |
-| Sin `google-services.json` | ✓ el APK compila y la app arranca sin push (antes de `62083b2`, así compilaba el CI) |
-| Con un `google-services.json` **ficticio** de `pe.fit.kora`, solo local y borrado después | ✓ el plugin de Google Services genera los recursos de Firebase. El AAB solo queda bloqueado por la firma |
-| Con el `google-services.json` **real** de `kora-fitpe` (`62083b2`) | ✓ 270 pruebas y análisis limpio. APK debug (JDK 17) y release de prueba (JDK 21) con `pe.fit.kora` y los recursos de Firebase (`google_app_id`, `gcm_defaultSenderId`, `project_id` = `kora-fitpe`). El AAB solo queda bloqueado por la firma. Evidencia: `docs/push/evidencia/configuracion-real-kora-fitpe.txt` |
+| `flutter test` | ✓ **291** pruebas. Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
+| APK debug (JDK 17) y APK release de prueba (JDK 21) con la configuración real de `kora-fitpe` | ✓ `package: name='pe.fit.kora'`, `firebase_messaging_installation_id_enabled=true`, canal por defecto `kora_planes`, `project_id` = `kora-fitpe`, alineación de 16 KB (`evidencia/apk-fid.txt`) |
+| APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint falla con `firebase_core` en JDK 17. **Las compilaciones release y el AAB se hacen con JDK 21** (el de Android Studio) |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
+| Protecciones del AAB de Google Play | ✓ sin cambios: identificador `pe.fit.kora`, `google-services.json` de esa app, firma propia, HTTPS, eliminación de cuenta y páginas públicas (`evidencia/matriz-release-identificador-fcm.txt`) |
 
-### Protecciones de Google Play: AAB
+## 2. Prueba integral con el Backend real (PR #82), en local
 
-Ningún caso se firmó ni se subió.
+**Evidencia:** `evidencia/prueba-integral-backend-pr82.txt`.
 
-| Caso | Bloqueado por |
+**Condiciones:**
+- Backend `cc703fb` compilado desde la PR, **sin modificarla**, sobre PostgreSQL 16 local y una base aislada;
+- IA apagada, **sin Replicate**;
+- cuentas y FID **sintéticos**;
+- push encendido con una **cuenta de servicio sintética** (clave RSA generada en local que no vale para Google);
+- **sin salida a Internet** para el proceso Java: nada llegó a Google.
+
+Por el hallazgo A de `COMPATIBILIDAD_BACKEND_PR82.md`, el Backend solo arrancó añadiendo
+`google-http-client-jackson2` al classpath de la prueba.
+
+| Paso de la orden | Resultado |
 |---|---|
-| Sin `google-services.json` | Falta firma + falta `google-services.json` |
-| `-Pkora.applicationId=com.example.fitsense_mobile` | Falta firma + identificador de ejemplo + falta `google-services.json` |
-| `-Pkora.applicationId=pe.otro.kora` | Falta firma + distinto del aprobado + falta `google-services.json` |
-| `google-services.json` de otra app (`pe.otro.kora`) | Falta firma + «no contiene la app Android pe.fit.kora» |
-| `google-services.json` de `pe.fit.kora` | Solo falta la firma (`key.properties`): ninguna clave real se creó ni se versionó |
+| 1. Iniciar sesión | ✓ JWT de `POST /api/v1/auth/login` (cuentas A y B) |
+| 2. Registrar el FID en el Backend | ✓ **con el código del Mobile** (`PushDeviceRepository`, `test/live/push_backend_live_test.dart`): `201`, renovación `200` con el mismo `deviceId`, `GET` solo con la pista del FID, preferencias, `IDENTIFICADOR_PUSH_INVALIDO` para un token FCM, `401` sin JWT, cambio de cuenta y `DELETE` idempotente |
+| 3. Comprobar en PostgreSQL que quedó asociado al usuario | ✓ `push_devices`: fila activa de A con `identifier_type=FID`, `platform=ANDROID`, `app_id=pe.fit.kora` y el FID exacto que envió la app. También quedan el vínculo revocado por `CAMBIO_DE_CUENTA` y el de B, `DESVINCULADO` |
+| 4. Generar un plan con datos sintéticos | ✓ generación asíncrona → `plan_generation_operations.status = COMPLETED` |
+| 5. Verificar que el Backend envía el evento | ✓ `notification_events`: `PLAN_GENERATED`, `WEEKLY_PLAN`, `PLAN:<id>`. `notification_deliveries`: el emisor intentó el envío **a ese FID**. Falló con `ERROR_TEMPORAL` (sin red ni credenciales reales), como se esperaba |
+| 6. Firebase entrega la notificación | **Pendiente:** necesita credenciales reales en el Backend, el arreglo del hallazgo A y un teléfono |
+| 7. Pulsar la notificación y comprobar la navegación | **Pendiente en el teléfono.** Cubierto en las pruebas automáticas (`push_notifications_test.dart`: arranque en frío, segundo plano y app abierta) |
 
-Siguen activas, sin cambios, las protecciones anteriores:
-- HTTPS obligatorio;
-- sin hosts locales ni IP privadas;
-- bandera explícita para el backend de prueba;
-- eliminación de cuenta;
-- páginas públicas.
+Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
 
-### Lo que **no** se pudo verificar aquí
-
-| Pendiente | Por qué |
-|---|---|
-| Que Firebase entregue mensajes al teléfono | La configuración real de `kora-fitpe` ya está en la rama (`62083b2`) y compila. Lo que falta es la recepción, que solo se comprueba en un dispositivo |
-| Recepción de push en un teléfono o emulador | Este entorno no tiene teléfono ni aceleración para el emulador. Necesita la sección 2 |
-| Envío desde el backend | El backend no tiene el endpoint ni el envío, y esta PR no lo modifica (ver `CONTRATO_PUSH_BACKEND.md`) |
-| Disponibilidad de `pe.fit.kora` en Play | Solo Play Console lo confirma, al crear la app |
-
-## 2. Prueba en el teléfono o el emulador (Windows, PowerShell)
+## 3. Prueba integral en Android (pendiente: teléfono o emulador)
 
 **Requisitos:**
-- **JDK 21** para compilaciones release o AAB. Compruébalo con `flutter doctor -v`, en la línea «Java version». Si
-  muestra 17, ejecuta `flutter config --jdk-dir="C:\Program Files\Android\Android Studio\jbr"`;
-- los tres archivos de FlutterFire incorporados en la rama (`INCORPORAR_CONFIGURACION_FIREBASE.md`);
-- backend local con `adb reverse tcp:8080 tcp:8080`, como en `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`;
-- **en emulador**, una imagen **con Google Play** o **Google APIs** («Google Play» en el Device Manager). Sin Google
-  Play Services, FCM no funciona: el token no llega y aparece `SERVICE_NOT_AVAILABLE` en el log.
+- **Backend con el hallazgo A corregido**, o lanzado con `google-http-client-jackson2` en el classpath;
+- el Backend con `FITSENSE_PUSH_ENABLED=true` y la cuenta de servicio **real** de `kora-fitpe` en
+  `FITSENSE_FIREBASE_CREDENTIALS_BASE64`, como **secreto**, nunca en un archivo del repositorio. Ver el
+  `CONFIGURACION_RAILWAY.md` del Backend;
+- un teléfono con **Google Play services 26.12 o posterior** (Ajustes → Apps → Google Play services → versión). En
+  emulador, una imagen **con Google Play** actualizada;
+- JDK 21 para compilaciones release.
 
-### 2.1 Instalar `pe.fit.kora`
+### Pasos (Windows, PowerShell; con el Backend local, como en `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md` §1)
 
-1. Compila la versión de depuración:
+1. **Compila e instala.** Con el teléfono por USB:
 
    ```
-   flutter build apk --debug
+   flutter build apk --debug --dart-define=API_BASE_URL=http://localhost:8080/api/v1 --dart-define=ALLOW_INSECURE_API=true
    ```
 
-2. Instálala:
+   ```
+   adb reverse tcp:8080 tcp:8080
+   ```
 
    ```
    adb install -r build\app\outputs\flutter-apk\app-debug.apk
    ```
 
-3. Comprueba que el paquete es el aprobado:
+2. **Inicia sesión** con una cuenta de prueba. Concede el permiso de notificaciones: Kora lo pide al activar Perfil →
+   Recordatorios. Sin permiso, Kora no registra el teléfono; al concederlo, lo registra al volver a la app.
+3. **Registro del FID.** En una compilación de depuración, el log muestra el estado y el FID:
 
    ```
-   adb shell pm list packages pe.fit.kora
+   adb logcat -d -s flutter | Select-String "FCM installation ID"
    ```
 
-   Debe responder `package:pe.fit.kora`.
+   Esperado: `FCM installation ID (registered): <FID de 22 caracteres>`. Con `backendNotReady`, el Backend no tiene la
+   PR #82; con `rejected`, se ve el código. **No pegues el FID en GitHub ni en chats.**
+4. **PostgreSQL.** Debe haber una fila activa de esa cuenta:
 
-Si tenías la app antigua `com.example.fitsense_mobile`, seguirá instalada al lado: es otra app. Ver la transición en
-`docs/preparacion_google_play/IDENTIFICADOR_APLICACION.md`.
-
-### 2.2 Obtener el token de registro FCM
-
-Solo en las compilaciones de **depuración**, Kora escribe el token en el log al iniciar sesión.
-
-1. Abre Kora e inicia sesión.
-2. Lee el log:
-
-   ```
-   adb logcat -d -s flutter | Select-String "FCM token"
+   ```sql
+   SELECT left(installation_id,4), app_id, revoked_at FROM push_devices d JOIN users u USING (user_id) WHERE u.email = '<correo de prueba>';
    ```
 
-   Verás `FCM token (backendNotReady): <token>`, porque el backend aún no tiene el endpoint. Eso es lo esperado y no es
-   un error. Copia el token, que es largo. **No lo pegues en GitHub ni en chats**: identifica tu teléfono.
+5. **Genera el primer plan** en modo asíncrono, con una cuenta nueva y datos sintéticos.
+6. **Entrega.** Llega «Tu plan está listo» con la silueta de Kora. En la base:
 
-### 2.3 Enviar un mensaje de prueba desde la consola de Firebase
+   ```sql
+   SELECT status, fcm_message_id FROM notification_deliveries ORDER BY attempted_at DESC LIMIT 1;
+   ```
 
-1. Abre Firebase Console → proyecto **`kora-fitpe`** → *Messaging* → *Crear tu primera campaña* → *Mensajes de Firebase
-   Notifications*.
-2. Escribe:
-   - título: `Prueba Kora`;
-   - texto: `Mensaje de prueba`.
-3. En *Opciones adicionales* → *Datos personalizados*, añade la clave `type` con el valor `PLAN_ADAPTED`.
-4. Pulsa *Enviar mensaje de prueba*, pega el token y envía.
+   Esperado: `ENVIADO` y un `fcm_message_id`.
+7. **Navegación:**
 
-**Comprueba:**
+   | # | Estado de la app | Al tocar |
+   |---|---|---|
+   | 1 | **Abierta** | Aparece el aviso de Kora; tocarlo abre «Preparación de cuenta», que lleva al resultado o al Inicio |
+   | 2 | **En segundo plano** | Aviso del sistema en el canal «Tu plan»; tocarlo abre lo mismo |
+   | 3 | **Cerrada** (deslizada desde recientes) | Igual que el 2 |
+   | 4 | `PLAN_ADAPTED` / `WEEKLY_PLAN_READY` (ciclo semanal) | Inicio |
+   | 5 | `ACCOUNT_NOTICE` (recuperar la contraseña desde otra sesión) | Canal «Avisos de tu cuenta»; abre Perfil. La sesión anterior vuelve al inicio de sesión |
+   | 6 | Ajustes de Android → Apps → Kora → Notificaciones | Canales «Recordatorios de entrenamiento», «Tu plan» y «Avisos de tu cuenta» |
 
-| # | Estado de la app | Esperado |
-|---|---|---|
-| 1 | **Abierta** en Inicio | Aparece el aviso con la silueta de Kora. Tocarlo abre Progreso |
-| 2 | **En segundo plano** (botón Inicio de Android) | Llega el aviso del sistema con la silueta de Kora, en el canal «Avisos de Kora». Tocarlo abre Kora en Progreso |
-| 3 | **Cerrada** (deslizada desde recientes) | Igual que el 2. Tocarlo abre Kora y luego Progreso |
-| 4 | Repite con `type` = `WEEKLY_PLAN_READY`, `ACCOUNT_NOTICE` y `PLAN_GENERATED` | Abren Inicio, Perfil y «Preparación de cuenta» |
-| 5 | Ajustes de Android → Apps → Kora → Notificaciones | Hay dos canales: «Recordatorios de entrenamiento» y «Avisos de Kora» |
+8. **Cierre de sesión.** Cierra sesión y repite la consulta del paso 4: el vínculo queda con
+   `revoke_reason = DESVINCULADO`. Un plan nuevo de esa cuenta ya no llega al teléfono.
+9. **Preferencias.** En Perfil → Avisos en el teléfono, desactiva «Cambios en mi plan». Un plan nuevo no llega: el
+   evento queda `DESCARTADO`.
+10. **Resto de la app:**
+    - [ ] Inicio de sesión y cierre de sesión, sin errores en el log.
+    - [ ] Rutinas y favoritas.
+    - [ ] Recordatorios locales: llega uno a la hora fijada.
+    - [ ] Sesión en vivo.
 
 **Limitaciones de Android, que no son errores de Kora:**
-- **«Forzar detención» desde Ajustes:** Android no entrega FCM a una app detenida a la fuerza hasta que el usuario la
-  vuelve a abrir. Deslizarla desde recientes no la detiene.
-- **Ahorro de batería de Samsung:** si Kora está en «Apps en suspensión profunda», los avisos pueden retrasarse.
-- **Sin permiso de notificaciones (Android 13+):** el token se obtiene igual, pero no se muestra ningún aviso.
+- **«Forzar detención»:** Android no entrega FCM a una app detenida a la fuerza hasta que se vuelve a abrir.
+- **Ahorro de batería de Samsung:** puede retrasar los avisos.
+- **La consola de Firebase:** «Enviar mensaje de prueba» espera un token de registro y puede no aceptar un FID. La
+  prueba válida es la del Backend.
 
-### 2.4 Comprobar que el resto sigue funcionando
+### Actualizar `pe.fit.kora` a `pe.fit.kora`
 
-- [ ] Inicio de sesión y cierre de sesión. Al cerrar sesión, el log no muestra errores y el token se borra en el teléfono.
-- [ ] Rutinas: lista y detalle.
-- [ ] Favoritas: marcar, desmarcar, y que se conserven al cerrar y abrir la app.
-- [ ] Recordatorios locales: activarlos, recibir uno a la hora fijada con la silueta de Kora, y que tocarlo abra la
-      rutina del día.
-- [ ] Sesión en vivo y registro, como en `PRUEBA_ANDROID_WINDOWS_PENDIENTE.md`.
+1. Con la app instalada y la sesión iniciada, cambia `version: 1.0.0+1` a `1.0.0+2` en `pubspec.yaml`. **Solo en local.**
+2. Vuelve a compilar e instala encima con `adb install -r`.
+3. Comprueba con `adb shell dumpsys package pe.fit.kora | Select-String "versionCode"`.
+4. Se conservan la sesión, las favoritas, los recordatorios y el recorrido. El FID no cambia y el `PUT` del arranque lo
+   renueva (`200`).
+5. Deshaz el cambio con `git checkout -- pubspec.yaml`.
 
-### 2.5 Actualizar `pe.fit.kora` a `pe.fit.kora`
+## 4. Qué hacer con el resultado
 
-Es la versión real de la prueba de actualización, con el identificador nuevo.
-
-1. Con la app instalada y la sesión iniciada (2.1), cambia `version: 1.0.0+1` a `1.0.0+2` en `pubspec.yaml`. **Solo en
-   local, no lo subas.**
-2. Compila otra vez:
-
-   ```
-   flutter build apk --debug
-   ```
-
-3. Instálala encima:
-
-   ```
-   adb install -r build\app\outputs\flutter-apk\app-debug.apk
-   ```
-
-4. Comprueba la versión. Debe mostrar `versionCode=2`:
-
-   ```
-   adb shell dumpsys package pe.fit.kora | Select-String "versionCode"
-   ```
-
-5. Comprueba que se conservan:
-   - la sesión;
-   - las favoritas;
-   - los recordatorios;
-   - el recorrido.
-
-   El token FCM no cambia, y si cambia, se vuelve a registrar.
-6. Deshaz el cambio de versión:
-
-   ```
-   git checkout -- pubspec.yaml
-   ```
-
-## 3. Qué hacer con el resultado
-
-Anota en la PR qué casos pasaron. Si un caso falla, adjunta:
-- el número del caso;
+Anota en la PR qué pasos pasaron. Si uno falla, adjunta:
+- el número del paso;
 - el modelo del teléfono o la imagen del emulador;
-- `adb logcat -d -s flutter FirebaseMessaging > kora-push.txt`, después de revisar que no contiene el token completo
-  ni datos personales.
+- la versión de Google Play services;
+- `adb logcat -d -s flutter FirebaseMessaging > kora-push.txt`, después de quitar el FID y cualquier dato personal.

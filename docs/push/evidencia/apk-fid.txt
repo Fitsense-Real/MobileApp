@@ -1,0 +1,20 @@
+# APK con FID (2026-11-23). Líneas del manifiesto: 1) default_notification_channel_id  2) firebase_messaging_installation_id_enabled (0x12 0xffffffff = true)
+HEAD 2525ff3 + cambios sin commit
+--- JDK: java-17-openjdk-amd64
+   ✓ Built build/app/outputs/flutter-apk/app-debug.apk
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   targetSdkVersion:'36'
+           A: android:value(0x01010024)="kora_planes" (Raw: "kora_planes")
+           A: android:value(0x01010024)=(type 0x12)0xffffffff
+   project_id = (string8) "kora-fitpe"
+   zipalign 16 KB: ok
+--- JDK: java-21-openjdk-amd64
+   ✓ Built build/app/outputs/flutter-apk/app-release.apk (24.6MB)
+   package: name='pe.fit.kora' versionCode='1' versionName='1.0.0' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+   targetSdkVersion:'36'
+           A: android:value(0x01010024)="kora_planes" (Raw: "kora_planes")
+           A: android:value(0x01010024)=(type 0x12)0xffffffff
+   project_id = (string8) "kora-fitpe"
+   zipalign 16 KB: ok
+   ✓ Built build/web
+--- JDK: java-17-openjdk-amd64

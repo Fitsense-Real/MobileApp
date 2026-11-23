@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fitsense_mobile/features/push/data/push_notifier.dart';
+import 'package:fitsense_mobile/features/push/data/push_device_repository.dart';
+import 'package:fitsense_mobile/features/push/domain/push_event.dart';
 
 /// Kora's definitive Android identity (pe.fit.kora, Firebase kora-fitpe) and
 /// the push configuration Android uses while the app is in the background.
@@ -33,7 +34,19 @@ void main() {
     final manifest = read('android/app/src/main/AndroidManifest.xml');
     expect(manifest, contains('com.google.firebase.messaging.default_notification_icon'));
     expect(manifest, contains('android:resource="@drawable/ic_stat_kora"'));
-    expect(manifest, contains('android:value="${LocalPushNotifier.channelId}"'));
+    expect(manifest, contains('android:value="${PushChannels.plans}"'), reason: 'default channel = a channel of the backend contract');
+  });
+
+  test('FCM registers by Firebase Installation ID, for the app id the backend accepts', () {
+    final manifest = read('android/app/src/main/AndroidManifest.xml');
+    // Without it the native SDK refuses FirebaseMessaging.register() ("API disabled").
+    expect(manifest, contains('android:name="firebase_messaging_installation_id_enabled"'));
+    expect(RegExp(r'firebase_messaging_installation_id_enabled"\s*android:value="true"').hasMatch(manifest), isTrue);
+    expect(read('android/app/build.gradle.kts'), contains('val approvedApplicationId = "${PushDeviceRepository.appId}"'));
+    final code = read('lib/features/push/data/push_messaging.dart').split('\n').where((l) => !l.trim().startsWith('//')).join('\n');
+    for (final legacy in ['getToken(', 'onTokenRefresh', 'deleteToken(']) {
+      expect(code.contains(legacy), isFalse, reason: 'registration-token API $legacy must not be used');
+    }
   });
 
   test('no Firebase admin credentials or temporary files are versioned', () {

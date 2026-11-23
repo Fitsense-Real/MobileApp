@@ -7,13 +7,21 @@ import '../domain/push_event.dart';
 /// What the app needs from the push provider. Abstract so tests, web and
 /// builds without Firebase configuration never touch the native plugin.
 abstract class PushMessaging {
-  /// False when push is not available (no google-services.json, web, no
-  /// Google Play services): the rest of the app keeps working.
+  /// False when push is not available (no Firebase configuration, web): the
+  /// rest of the app keeps working.
   Future<bool> start();
 
-  /// FCM registration token of this installation (not the Installation ID).
-  Future<String?> token();
-  Stream<String> get onTokenRefresh;
+  /// Registers this installation with FCM. The Firebase Installation ID (FID)
+  /// arrives through [onRegistered], on the first registration and on every
+  /// later call (FCM re-delivers the current one).
+  Future<void> register();
+
+  /// Unregisters this installation from FCM: no message reaches it until the
+  /// next [register]. The FID arrives through [onUnregistered].
+  Future<void> unregister();
+
+  Stream<String> get onRegistered;
+  Stream<String> get onUnregistered;
 
   /// Messages received while the app is in the foreground (FCM does not show
   /// them by itself).
@@ -24,21 +32,16 @@ abstract class PushMessaging {
 
   /// The notification that launched the app from terminated, if any.
   Future<PushEvent?> initialEvent();
-
-  /// After logout or account deletion: the old token stops working.
-  Future<void> deleteToken();
 }
 
-/// Firebase Cloud Messaging (project kora-fitpe). Android only: the app is
-/// published for Android and the web build is used for testing.
+/// Firebase Cloud Messaging (project kora-fitpe), Android only.
 ///
-/// Tokens: Kora sends the backend the FCM **registration token**
-/// (`getToken`/`onTokenRefresh`), the target of FCM HTTP v1 and of the
-/// Firebase Admin SDK used from Spring Boot. firebase_messaging 17 deprecates
-/// them in favour of `register()`/`onRegistered`, but those return the
-/// Firebase Installation ID for the new direct-send mode, which is a
-/// different identifier and not what the backend contract uses. Hence the
-/// three targeted `deprecated_member_use` ignores below.
+/// Registration by **Firebase Installation ID**, as the backend requires
+/// (Backend PR #82): `register()`, `onRegistered`, `unregister()` and
+/// `onUnregistered` of firebase_messaging 17. The registration-token APIs
+/// (`getToken`, `onTokenRefresh`, `deleteToken`) are never used; with
+/// `firebase_messaging_installation_id_enabled` in the manifest the native SDK
+/// disables them anyway.
 class FirebasePushMessaging implements PushMessaging {
   bool _ready = false;
 
@@ -50,12 +53,9 @@ class FirebasePushMessaging implements PushMessaging {
     if (!supported) return false;
     try {
       // On Android the configuration comes from google-services.json (the
-      // Google Services Gradle plugin turns it into resources). Without that
-      // file this throws and push simply stays off.
+      // Google Services Gradle plugin turns it into resources).
       if (Firebase.apps.isEmpty) await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-      // Notification permission (Android 13+) is asked once by Kora's
-      // reminders flow; FCM uses the same POST_NOTIFICATIONS permission.
       _ready = true;
       return true;
     } catch (e) {
@@ -67,12 +67,20 @@ class FirebasePushMessaging implements PushMessaging {
   PushEvent _event(RemoteMessage m) => PushEvent.fromMessage(m.data, title: m.notification?.title, body: m.notification?.body);
 
   @override
-  // ignore: deprecated_member_use (registration token on purpose, see the class doc)
-  Future<String?> token() async => _ready ? FirebaseMessaging.instance.getToken() : null;
+  Future<void> register() async {
+    if (_ready) await FirebaseMessaging.instance.register();
+  }
 
   @override
-  // ignore: deprecated_member_use (registration token on purpose, see the class doc)
-  Stream<String> get onTokenRefresh => _ready ? FirebaseMessaging.instance.onTokenRefresh : const Stream.empty();
+  Future<void> unregister() async {
+    if (_ready) await FirebaseMessaging.instance.unregister();
+  }
+
+  @override
+  Stream<String> get onRegistered => _ready ? FirebaseMessaging.instance.onRegistered : const Stream.empty();
+
+  @override
+  Stream<String> get onUnregistered => _ready ? FirebaseMessaging.instance.onUnregistered : const Stream.empty();
 
   @override
   Stream<PushEvent> get onForegroundMessage => _ready ? FirebaseMessaging.onMessage.map(_event) : const Stream.empty();
@@ -86,17 +94,11 @@ class FirebasePushMessaging implements PushMessaging {
     final m = await FirebaseMessaging.instance.getInitialMessage();
     return m == null ? null : _event(m);
   }
-
-  @override
-  Future<void> deleteToken() async {
-    // ignore: deprecated_member_use (invalidates the registration token, see the class doc)
-    if (_ready) await FirebaseMessaging.instance.deleteToken();
-  }
 }
 
 /// Runs in a background isolate when a message arrives with the app in the
 /// background or terminated. Messages with a `notification` part are shown by
-/// Android itself (icon and channel from the manifest); nothing else to do.
+/// Android itself (channel from the message, icon from the manifest).
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (Firebase.apps.isEmpty) await Firebase.initializeApp();

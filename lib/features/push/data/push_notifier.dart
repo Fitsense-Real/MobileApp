@@ -4,11 +4,16 @@ import '../domain/push_event.dart';
 
 /// Shows a push message while Kora is open (FCM only displays it by itself
 /// when the app is in the background). Same plugin, icon and tap routing as
-/// the workout reminders.
+/// the workout reminders, which it does not touch.
 abstract class PushNotifier {
-  /// Creates the Android channel that background messages also use
-  /// (`default_notification_channel_id` in the manifest).
+  /// Creates the Android channels of the backend contract (`kora_planes`,
+  /// `kora_cuenta`), which background messages also use.
   Future<void> prepare();
+
+  /// Whether Android lets Kora show notifications (POST_NOTIFICATIONS on
+  /// Android 13+, the app's notification switch before that).
+  Future<bool> permitted();
+
   Future<void> show(PushEvent event);
 }
 
@@ -19,15 +24,25 @@ class LocalPushNotifier implements PushNotifier {
   final void Function(String? payload)? onTap;
   Future<bool>? _initialized;
 
-  /// Must match android/app/src/main/AndroidManifest.xml.
-  static const channelId = 'kora_avisos';
-  static const channelName = 'Avisos de Kora';
-  static const channelDescription = 'Tu plan listo, ajustes de la semana y avisos de tu cuenta.';
+  /// The plan channel is also `default_notification_channel_id` in
+  /// android/app/src/main/AndroidManifest.xml.
+  static const channels = [
+    AndroidNotificationChannel(PushChannels.plans, 'Tu plan',
+        description: 'Tu plan listo, los ajustes y la nueva semana.'),
+    AndroidNotificationChannel(PushChannels.account, 'Avisos de tu cuenta',
+        description: 'Avisos de seguridad de tu cuenta de Kora.', importance: Importance.high),
+  ];
 
-  static const _details = NotificationDetails(
-    android: AndroidNotificationDetails(channelId, channelName, channelDescription: channelDescription,
-        importance: Importance.defaultImportance, priority: Priority.defaultPriority),
-  );
+  /// Channel created by earlier test builds of this feature; removed so the
+  /// phone's settings only list the channels in use.
+  static const legacyChannel = 'kora_avisos';
+
+  /// Stable ids, one per grouping: a newer notice replaces the previous one
+  /// of its kind, like the backend's collapseKey/tag.
+  static int notificationId(PushEvent event) => event.isAccountNotice ? 900000002 : 900000001;
+
+  AndroidFlutterLocalNotificationsPlugin? get _android =>
+      _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
   Future<bool> _ensureInitialized() => _initialized ??= () async {
     try {
@@ -46,23 +61,37 @@ class LocalPushNotifier implements PushNotifier {
   Future<void> prepare() async {
     if (!await _ensureInitialized()) return;
     try {
-      await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(
-        const AndroidNotificationChannel(channelId, channelName, description: channelDescription),
-      );
+      for (final channel in channels) {
+        await _android?.createNotificationChannel(channel);
+      }
+      await _android?.deleteNotificationChannel(channelId: legacyChannel);
     } catch (_) {}
+  }
+
+  @override
+  Future<bool> permitted() async {
+    if (!await _ensureInitialized()) return false;
+    try {
+      return await _android?.areNotificationsEnabled() ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   Future<void> show(PushEvent event) async {
     if (event.title == null && event.body == null) return; // data-only: nothing to show
     if (!await _ensureInitialized()) return;
+    final channel = channels.firstWhere((c) => c.id == event.channelId);
     try {
       await _plugin.show(
-        // Above the reminder ids, unique enough for a few messages a week.
-        id: 900000000 + DateTime.now().millisecondsSinceEpoch % 100000000,
+        id: notificationId(event),
         title: event.title,
         body: event.body,
-        notificationDetails: _details,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(channel.id, channel.name,
+              channelDescription: channel.description, importance: channel.importance, tag: event.tag),
+        ),
         payload: event.payload,
       );
     } catch (e) {

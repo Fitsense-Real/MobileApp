@@ -50,13 +50,13 @@ Basado en el código de la app. Revisarlo con el backend desplegado y con la pol
 
 | Pregunta | Respuesta propuesta |
 |---|---|
-| ¿Recoge o comparte datos? | Recoge. **No comparte** con terceros: sin analítica ni publicidad. Usa **Firebase Cloud Messaging** (Google) como proveedor que solo entrega las notificaciones push, con el token FCM del dispositivo; en Play eso es un proveedor de servicio, no «compartir» |
+| ¿Recoge o comparte datos? | Recoge. **No comparte** con terceros: sin analítica ni publicidad. Usa **Firebase Cloud Messaging** (Google) como proveedor que solo entrega las notificaciones push, con el Firebase Installation ID (FID) del dispositivo; en Play eso es un proveedor de servicio, no «compartir» |
 | Cifrado en tránsito | Sí, HTTPS obligatorio en release |
 | ¿El usuario puede pedir que se borren? | Sí, dentro de la app y en la web |
 | Información personal | Nombre, correo |
 | Salud y fitness | Datos de salud: sexo biológico (opcional), fecha de nacimiento, estatura, peso, notas de salud, limitaciones de movimiento y exclusiones por dolor. Datos de fitness: nivel, objetivo, días y minutos disponibles, equipamiento, entrenamientos realizados, esfuerzo y satisfacción |
 | Actividad en la app | Interacciones con el plan: entrenamientos completados u omitidos y sus motivos |
-| Identificadores del dispositivo u otros | **Sí:** token de registro FCM, para enviar las notificaciones push de la app. Se guarda en el backend asociado a la cuenta y se borra al cerrar sesión o eliminar la cuenta |
+| Identificadores del dispositivo u otros | **Sí:** Firebase Installation ID (FID), para enviar las notificaciones push de la app (finalidad: funcionalidad de la app). Se guarda en el backend asociado a la cuenta, se desvincula al cerrar sesión y se borra al eliminar la cuenta. Coincide con el inventario del Backend (PR #82, `INVENTARIO_PRIVACIDAD_GOOGLE_PLAY.md`) |
 | Ubicación, contactos, fotos, audio, archivos, mensajes, calendario, identificadores de publicidad | **No** |
 | Finalidad | Funcionalidad de la app (plan personalizado) e investigación del estudio. No publicidad ni marketing |
 | ¿Obligatorios u opcionales? | La cuenta y el perfil son necesarios para el plan; el sexo biológico y las notas de salud son opcionales |

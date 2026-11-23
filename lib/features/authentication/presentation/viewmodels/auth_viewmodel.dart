@@ -104,8 +104,8 @@ class AuthViewModel extends Notifier<AuthState> {
     try {
       await ref.read(reminderSchedulerProvider).cancelAll();
     } catch (_) {}
-    // Push notifications too: unregister and delete this phone's FCM token
-    // while the session can still authenticate the request.
+    // Push notifications too: unlink this phone's Firebase Installation ID
+    // while the JWT can still authenticate the DELETE, then unregister from FCM.
     try {
       await ref.read(pushControllerProvider).beforeLogout();
     } catch (_) {}

@@ -100,7 +100,7 @@ En la carpeta del repositorio:
    ```
 
 7. **Compila y prueba en local** (opcional pero recomendado). En la salida de `adb logcat` de una compilación debug
-   aparece `FCM token (…)`:
+   aparece `FCM installation ID (…)`:
 
    ```
    flutter analyze
