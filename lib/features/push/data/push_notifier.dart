@@ -14,6 +14,10 @@ abstract class PushNotifier {
   /// Android 13+, the app's notification switch before that).
   Future<bool> permitted();
 
+  /// Shows Android's permission dialog (Android 13+). True when granted;
+  /// before Android 13 it reflects the app's notification switch.
+  Future<bool> requestPermission();
+
   Future<void> show(PushEvent event);
 }
 
@@ -73,6 +77,16 @@ class LocalPushNotifier implements PushNotifier {
     if (!await _ensureInitialized()) return false;
     try {
       return await _android?.areNotificationsEnabled() ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> requestPermission() async {
+    if (!await _ensureInitialized()) return false;
+    try {
+      return await _android?.requestNotificationsPermission() ?? false;
     } catch (_) {
       return false;
     }

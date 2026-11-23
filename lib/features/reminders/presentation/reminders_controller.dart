@@ -5,6 +5,7 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../app/router/app_router.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../plans/data/plan_repository.dart';
+import '../../push/presentation/push_permission_prompt.dart';
 import '../data/reminder_scheduler.dart';
 import '../domain/reminder_planner.dart';
 
@@ -92,8 +93,14 @@ final reminderSyncProvider = FutureProvider.autoDispose<int>((ref) async {
   try {
     final settings = await settingsFuture;
     if (!settings.configured) {
-      // First time with a plan: ask once; the answer is remembered.
-      await ref.read(remindersControllerProvider.notifier).save(settings);
+      // First time with a plan: ask once; the answer is remembered. The OS
+      // permission is shared with push notifications, whose explanation comes
+      // first (once per phone): if the user already said no there, reminders
+      // start off instead of showing the system dialog a second time. They can
+      // be turned on later in Perfil → Recordatorios.
+      final push = await ref.read(pushPermissionPromptProvider).ask();
+      final refused = push.refused || push == PushPermissionOutcome.askedBefore;
+      await ref.read(remindersControllerProvider.notifier).save(refused ? settings.copyWith(enabled: false) : settings);
       return 0; // the settings change triggers a new sync
     }
     final plan = await planFuture;

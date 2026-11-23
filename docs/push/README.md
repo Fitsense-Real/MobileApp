@@ -19,6 +19,8 @@ Compatibilidad punto por punto e incompatibilidades encontradas: `COMPATIBILIDAD
 | `lib/features/push/data/push_notifier.dart` | Crea los canales `kora_planes` y `kora_cuenta` del contrato. Muestra el aviso con la app abierta (FCM no lo hace), con la misma agrupación que el Backend: `plan_semana` y `aviso_cuenta` |
 | `lib/features/push/domain/push_event.dart` | Lee `schemaVersion`, `eventType`, `eventId`, `resourceType`, `resourceId`, `targetScreen`, `createdAt` y `noticeCode`. Traduce `targetScreen` a rutas |
 | `lib/features/push/presentation/push_preferences_sheet.dart` | Perfil → **Avisos en el teléfono**: dos interruptores, «Cambios en mi plan» (`planUpdates`) y «Avisos de seguridad de mi cuenta» (`accountNotices`) |
+| `lib/features/push/presentation/push_permission_prompt.dart` | Hoja explicativa y petición del permiso, una vez por teléfono, después del onboarding |
+| `lib/features/push/data/notification_settings.dart` + `MainActivity.kt` | Abre los ajustes de notificaciones de Kora en Android, tras un rechazo |
 | `AndroidManifest.xml` | `firebase_messaging_installation_id_enabled=true`: sin esta línea, el SDK nativo rechaza `register()`. Además, el ícono `ic_stat_kora` y el canal por defecto `kora_planes` |
 | `lib/app/app.dart` | Escucha el usuario con sesión y reintenta al volver la app al primer plano |
 
@@ -33,6 +35,24 @@ Compatibilidad punto por punto e incompatibilidades encontradas: `COMPATIBILIDAD
 | **Otra cuenta en el mismo teléfono** | `PUT` con el mismo FID. El Backend revoca el vínculo anterior (`CAMBIO_DE_CUENTA`) |
 | **Cambio de contraseña** | El JWT anterior da `401` y la app vuelve al inicio de sesión. El nuevo inicio de sesión repite el `PUT` y el dispositivo vuelve a recibir |
 | **Sin permiso de notificaciones** | No se registra nada. Al volver a la app (después del diálogo o de los ajustes), se comprueba otra vez |
+
+## Permiso de notificaciones: independiente de los recordatorios
+
+Android tiene **un solo permiso** de notificaciones (`POST_NOTIFICATIONS`, Android 13+) para los avisos push y para los
+recordatorios. Antes solo lo pedía el flujo de recordatorios, así que quien no los activaba no recibía avisos push.
+Ahora:
+
+| Momento | Qué pasa |
+|---|---|
+| **Primera vez en el Inicio real** (después del onboarding y del recorrido de Kapi; nunca durante el recorrido) | Si Android aún no da el permiso, Kora muestra una hoja que explica para qué sirve: plan listo o actualizado y avisos de seguridad de la cuenta, sin datos de salud. Botones: **Activar avisos**, que abre el diálogo de Android y registra el teléfono al momento, y **Ahora no** |
+| **Siguientes inicios de sesión y arranques** | No se vuelve a preguntar: la respuesta queda guardada en el teléfono, aunque cambie la cuenta (`PushPermissionPrompt`, `kora_push_permission_prompted`) |
+| **Permiso ya concedido** (Android < 13, o concedido antes) | No se muestra nada |
+| **Si lo rechaza** | Kora funciona igual. En Perfil → **Avisos en el teléfono** aparece «Las notificaciones de Kora están desactivadas en este teléfono» con **Activar notificaciones**, que vuelve a pedir el permiso si Android lo permite o abre los ajustes del sistema para Kora (`MainActivity.kt`, canal `pe.fit.kora/settings`). Al volver, el teléfono se registra |
+| **Recordatorios desactivados** | Los avisos push funcionan igual: solo dependen del permiso y de las preferencias de la cuenta |
+| **Primera configuración de los recordatorios** (llega en el mismo momento) | Espera a la respuesta de la hoja: un solo diálogo de Android para los dos. Si el usuario dijo «Ahora no» o rechazó el permiso, los recordatorios empiezan desactivados, sin un segundo diálogo, y se pueden activar en Perfil → Recordatorios. Sus horarios, días y programación no cambian |
+
+**Preferencias**, en Perfil → Avisos en el teléfono: «Cambios en mi plan» (`planUpdates`) y «Avisos de seguridad de mi
+cuenta» (`accountNotices`). Se guardan en el Backend y son independientes entre sí y de los recordatorios.
 
 **Nada de esto bloquea el inicio de sesión:**
 - sin Firebase, sin conexión, con el Backend caído o con `400`, la app sigue igual;

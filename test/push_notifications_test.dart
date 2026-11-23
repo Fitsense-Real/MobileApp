@@ -124,6 +124,8 @@ class FakeNotifier implements PushNotifier {
   @override
   Future<bool> permitted() async => allowed;
   @override
+  Future<bool> requestPermission() async => allowed = true;
+  @override
   Future<void> show(PushEvent event) async => shown.add(event);
 }
 

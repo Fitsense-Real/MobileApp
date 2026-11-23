@@ -5,7 +5,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` (reglas estrictas, sin desactivar ninguna) | ✓ sin problemas |
-| `flutter test` | ✓ **291** pruebas. Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
+| `flutter test` | ✓ **306** pruebas. Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
 | APK debug (JDK 17) y APK release de prueba (JDK 21) con la configuración real de `kora-fitpe` | ✓ `package: name='pe.fit.kora'`, `firebase_messaging_installation_id_enabled=true`, canal por defecto `kora_planes`, `project_id` = `kora-fitpe`, alineación de 16 KB (`evidencia/apk-fid.txt`) |
 | APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint falla con `firebase_core` en JDK 17. **Las compilaciones release y el AAB se hacen con JDK 21** (el de Android Studio) |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
@@ -64,8 +64,9 @@ Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
    adb install -r build\app\outputs\flutter-apk\app-debug.apk
    ```
 
-2. **Inicia sesión** con una cuenta de prueba. Concede el permiso de notificaciones: Kora lo pide al activar Perfil →
-   Recordatorios. Sin permiso, Kora no registra el teléfono; al concederlo, lo registra al volver a la app.
+2. **Inicia sesión** con una cuenta de prueba **con los recordatorios desactivados**. Al llegar al Inicio, después del
+   onboarding, aparece la hoja «¿Te avisamos cuando haya novedades?»: pulsa **Activar avisos** y concede el permiso en el
+   diálogo de Android. Cierra sesión y vuelve a entrar: la hoja **no** debe volver a aparecer.
 3. **Registro del FID.** En una compilación de depuración, el log muestra el estado y el FID:
 
    ```
@@ -101,9 +102,14 @@ Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
 
 8. **Cierre de sesión.** Cierra sesión y repite la consulta del paso 4: el vínculo queda con
    `revoke_reason = DESVINCULADO`. Un plan nuevo de esa cuenta ya no llega al teléfono.
-9. **Preferencias.** En Perfil → Avisos en el teléfono, desactiva «Cambios en mi plan». Un plan nuevo no llega: el
+9. **Rechazo y activación posterior.** Con otra instalación limpia, pulsa **Ahora no**:
+   - Kora funciona con normalidad;
+   - en Perfil → Avisos en el teléfono aparece «Las notificaciones de Kora están desactivadas en este teléfono»;
+   - **Activar notificaciones** abre el diálogo o los ajustes de Android para Kora;
+   - al activarlas y volver, el log muestra `FCM installation ID (registered)`.
+10. **Preferencias.** En Perfil → Avisos en el teléfono, desactiva «Cambios en mi plan». Un plan nuevo no llega: el
    evento queda `DESCARTADO`.
-10. **Resto de la app:**
+11. **Resto de la app:**
     - [ ] Inicio de sesión y cierre de sesión, sin errores en el log.
     - [ ] Rutinas y favoritas.
     - [ ] Recordatorios locales: llega uno a la hora fijada.
