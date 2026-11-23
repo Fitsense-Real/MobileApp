@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/router/app_router.dart';
@@ -64,14 +65,14 @@ class SecurePushPromptStore implements PushPromptStore {
 /// «Ahora no», null when it could not be shown.
 typedef PushPromptPresenter = Future<bool?> Function();
 
-/// Asks for Android's notification permission once per phone, after the
-/// onboarding (first time on the real Inicio), explaining first what push
-/// notifications are for. Independent of the workout reminders: a user with
-/// reminders off still gets plan and account notices.
+/// Asks for Android's notification permission once per phone, at the end of
+/// the profile setup and before the first plan is requested, explaining first
+/// what push notifications are for, so the PLAN_GENERATED notice of the first
+/// plan can reach this phone. Independent of the workout reminders: a user
+/// with reminders off still gets plan and account notices, and the answer
+/// never changes the reminders' settings.
 ///
-/// The same permission is shared with the reminders; [ask] is idempotent per
-/// run, so whichever needs it first shows the one explanation and the one
-/// system dialog, and the other just reads the outcome.
+/// [ask] is idempotent per run: one explanation and one system dialog.
 class PushPermissionPrompt {
   PushPermissionPrompt({
     required this.notifier,
@@ -99,6 +100,22 @@ class PushPermissionPrompt {
     } catch (_) {
       return false;
     }
+  }
+
+  /// End of the profile setup, right before the first generation is
+  /// requested. Never shown while a generation is already under way (it
+  /// would interrupt it). With the permission already granted nothing is
+  /// shown and this phone is synchronised at once. The generation itself
+  /// then waits for the backend's 200/201 (FirstPlanGenerationController).
+  Future<PushPermissionOutcome> beforeFirstPlan({bool generationStarted = false}) async {
+    if (generationStarted) return PushPermissionOutcome.notShown;
+    final outcome = await ask();
+    if (outcome == PushPermissionOutcome.alreadyGranted) {
+      try {
+        await onGranted();
+      } catch (_) {}
+    }
+    return outcome;
   }
 
   Future<PushPermissionOutcome> ask() => _asking ??= _ask().then((value) {
@@ -180,7 +197,10 @@ final pushPermissionPromptProvider = Provider<PushPermissionPrompt>((ref) => Pus
   store: ref.read(pushPromptStoreProvider),
   presenter: ref.read(pushPromptPresenterProvider),
   // Register this phone right away instead of waiting for the next start.
-  onGranted: () => ref.read(pushControllerProvider).onResumed(),
+  // Started, not awaited: the profile setup goes on to the generation screen,
+  // and the generation request itself waits for the backend's 200/201
+  // (PushController.ensureSynced).
+  onGranted: () async => unawaited(ref.read(pushControllerProvider).onResumed()),
 ));
 
 /// Whether Android currently lets Kora show notifications (shared by push

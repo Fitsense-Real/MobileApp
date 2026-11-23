@@ -299,6 +299,9 @@ void main() {
 
     test('first plan, «Activar avisos»: one system dialog, and the reminders are NOT turned on by it', () async {
       final c = container();
+      // End of the profile setup, before the first plan.
+      expect(await c.read(pushPermissionPromptProvider).beforeFirstPlan(), PushPermissionOutcome.granted);
+      // Then Inicio, with the plan: the reminders' first run.
       c.listen(reminderSyncProvider, (_, _) {});
       await settle();
       expect(presenter.shown, 1);
@@ -360,6 +363,7 @@ void main() {
 
     test('first plan, «Ahora no»: no second dialog from the reminders, which start off', () async {
       final c = container(answer: false);
+      expect(await c.read(pushPermissionPromptProvider).beforeFirstPlan(), PushPermissionOutcome.declined);
       c.listen(reminderSyncProvider, (_, _) {});
       await settle();
       expect(presenter.shown, 1);
@@ -369,7 +373,14 @@ void main() {
       expect(reminders.value?.enabled, isFalse);
     });
 
-    test('first plan when the explanation cannot be shown: reminders ask as before', () async {
+    test('Inicio never shows the push explanation: the reminders only read whether it was shown', () async {
+      final c = container();
+      c.listen(reminderSyncProvider, (_, _) {});
+      await settle();
+      expect(presenter.shown, 0, reason: 'moved to the end of the profile setup');
+    });
+
+    test('first plan when the explanation was never shown on this phone: reminders ask as before', () async {
       final c = container(answer: null);
       c.listen(reminderSyncProvider, (_, _) {});
       await settle();

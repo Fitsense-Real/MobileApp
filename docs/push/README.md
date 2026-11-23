@@ -19,7 +19,7 @@ Compatibilidad punto por punto e incompatibilidades encontradas: `COMPATIBILIDAD
 | `lib/features/push/data/push_notifier.dart` | Crea los canales `kora_planes` y `kora_cuenta` del contrato. Muestra el aviso con la app abierta (FCM no lo hace), con la misma agrupación que el Backend: `plan_semana` y `aviso_cuenta` |
 | `lib/features/push/domain/push_event.dart` | Lee `schemaVersion`, `eventType`, `eventId`, `resourceType`, `resourceId`, `targetScreen`, `createdAt` y `noticeCode`. Traduce `targetScreen` a rutas |
 | `lib/features/push/presentation/push_preferences_sheet.dart` | Perfil → **Avisos en el teléfono**: dos interruptores, «Cambios en mi plan» (`planUpdates`) y «Avisos de seguridad de mi cuenta» (`accountNotices`) |
-| `lib/features/push/presentation/push_permission_prompt.dart` | Hoja explicativa y petición del permiso, una vez por teléfono, después del onboarding |
+| `lib/features/push/presentation/push_permission_prompt.dart` | Hoja explicativa y petición del permiso, una vez por teléfono, al final de la configuración del perfil y antes del primer plan |
 | `lib/features/push/data/notification_settings.dart` + `MainActivity.kt` | Abre los ajustes de notificaciones de Kora en Android, tras un rechazo |
 | `AndroidManifest.xml` | `firebase_messaging_installation_id_enabled=true`: sin esta línea, el SDK nativo rechaza `register()`. Además, el ícono `ic_stat_kora` y el canal por defecto `kora_planes` |
 | `lib/app/app.dart` | Escucha el usuario con sesión y reintenta al volver la app al primer plano |
@@ -45,9 +45,10 @@ Ahora:
 
 | Momento | Qué pasa |
 |---|---|
-| **Primera vez en el Inicio real** (después del onboarding y del recorrido de Kapi; nunca durante el recorrido) | Si Android aún no da el permiso, Kora muestra una hoja que explica para qué sirve: plan listo o actualizado y avisos de seguridad de la cuenta, sin datos de salud. Botones: **Activar avisos**, que abre el diálogo de Android y registra el teléfono al momento, y **Ahora no** |
+| **Final de la configuración del perfil**, al pulsar «Generar mi plan», **antes** de pedir la primera generación | Si Android aún no da el permiso, Kora muestra una hoja que explica para qué sirve: plan listo o actualizado y avisos de seguridad de la cuenta, sin datos de salud. **Activar avisos** abre el diálogo de Android; con el permiso, la app registra el FID con el JWT de la sesión, y la generación espera el `200`/`201` del Backend, así que el `PLAN_GENERATED` del primer plan puede llegar al teléfono. **Ahora no**, un rechazo o un fallo de Firebase no detienen nada: la generación sigue normalmente. La pantalla de 30 s empieza al responder la hoja |
+| **Permiso ya concedido** (Android 12 o anterior, o concedido antes) | No se muestra la hoja: el teléfono se sincroniza directamente y la generación espera el `200`/`201` |
+| **Generación ya iniciada** (reintento tras un fallo, o app reabierta durante una generación) | La hoja no se muestra, para no interrumpirla. El Inicio no la muestra nunca |
 | **Siguientes inicios de sesión y arranques** | No se vuelve a preguntar: la respuesta queda guardada en el teléfono, aunque cambie la cuenta (`PushPermissionPrompt`, `kora_push_permission_prompted`) |
-| **Permiso ya concedido** (Android < 13, o concedido antes) | No se muestra nada |
 | **Si lo rechaza** | Kora funciona igual. En Perfil → **Avisos en el teléfono** aparece «Las notificaciones de Kora están desactivadas en este teléfono» con **Activar notificaciones**, que vuelve a pedir el permiso si Android lo permite o abre los ajustes del sistema para Kora (`MainActivity.kt`, canal `pe.fit.kora/settings`). Al volver, el teléfono se registra |
 | **Recordatorios desactivados** | Los avisos push funcionan igual: solo dependen del permiso y de las preferencias de la cuenta |
 | **Recordatorios ya guardados** | La hoja de push **nunca** los modifica ni los borra, sea cual sea la respuesta: días, hora, aviso de las 20:00 y el interruptor general quedan igual. Si el permiso está desactivado y los recordatorios activados, Perfil → Recordatorios muestra «Activa las notificaciones para recibir tus recordatorios», aclara que sus días, su horario y sus preferencias se conservan, y ofrece **Activar notificaciones**. Llegan en cuanto se activa el permiso |
@@ -55,13 +56,6 @@ Ahora:
 
 **Preferencias**, en Perfil → Avisos en el teléfono: «Cambios en mi plan» (`planUpdates`) y «Avisos de seguridad de mi
 cuenta» (`accountNotices`). Se guardan en el Backend y son independientes entre sí y de los recordatorios.
-
-**Limitación para usuarios nuevos en Android 13 o posterior:** la hoja que pide el permiso sale **después** del
-onboarding, en el Inicio. Como la primera generación ocurre durante el onboarding, en una instalación nueva todavía no
-hay permiso ni dispositivo, y ese primer `PLAN_GENERATED` termina en `SIN_DISPOSITIVOS_ACTIVOS`. Desde que el usuario
-acepta, los avisos siguientes sí le llegan: `PLAN_ADAPTED`, `WEEKLY_PLAN_READY` y una regeneración. Para que también le
-llegue el del primer plan, la hoja tendría que mostrarse antes de pedir la generación. Es una decisión de producto
-pendiente.
 
 **Sin peticiones duplicadas:** un inicio de sesión, la vuelta a la app y un `onRegistered` repetido comparten el mismo
 registro en curso. El `PUT` del mismo usuario y FID se hace una sola vez.

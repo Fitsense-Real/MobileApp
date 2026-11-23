@@ -5,7 +5,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` (reglas estrictas, sin desactivar ninguna) | ✓ sin problemas |
-| `flutter test` | ✓ **314** pruebas. Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
+| `flutter test` | ✓ **337** pruebas (2 en vivo omitidas sin Backend). Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
 | APK debug (JDK 17) y APK release de prueba (JDK 21) con la configuración real de `kora-fitpe` | ✓ `package: name='pe.fit.kora'`, `firebase_messaging_installation_id_enabled=true`, canal por defecto `kora_planes`, `project_id` = `kora-fitpe`, alineación de 16 KB (`evidencia/apk-fid.txt`) |
 | APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint falla con `firebase_core` en JDK 17. **Las compilaciones release y el AAB se hacen con JDK 21** (el de Android Studio) |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
@@ -52,6 +52,22 @@ salida a Internet.
 | `PLAN_GENERATED` con dispositivo registrado y activo | ✓ ya **no** da `SIN_DISPOSITIVOS_ACTIVOS`: el evento pasa a envío y la entrega va a ese FID (`ERROR_TEMPORAL` porque no hay Internet). La cuenta de control, que generó su plan sin dispositivo, sí da `SIN_DESTINO` / `SIN_DISPOSITIVOS_ACTIVOS` |
 | Contrato HTTP con `7abf3a1` | ✓ `test/live/push_backend_live_test.dart` pasa igual |
 
+## 2c. Hoja de notificaciones antes del primer plan (Backend `7abf3a1`)
+
+**Evidencia:** `evidencia/hoja-antes-del-primer-plan-backend-pr82.txt` (script: `hoja-antes-del-primer-plan-backend-pr82.sh`).
+
+**Código:** los reales del Mobile (`PushPermissionPrompt`, `PushController`, `FirstPlanGenerationController`), con la
+sesión iniciada sin interrupción desde el login hasta la generación.
+
+| Caso | Resultado |
+|---|---|
+| **A** · permiso ya concedido | Sin hoja. `201` antes de pedir la generación. `registered_at` anterior a la operación. Al recuperar la sesión: `200`, una sola fila. El `PLAN_GENERATED` llega a la entrega, a su FID |
+| **B** · usuario nuevo que acepta la hoja | Permiso, `201` y solo después la generación. `registered_at` anterior a la operación. El `PLAN_GENERATED` llega a la entrega, a su FID |
+| **C** · usuario nuevo que pulsa «Ahora no» | La generación sigue con normalidad (`COMPLETED`) y no se registra ningún dispositivo. `PLAN_GENERATED` → `SIN_DESTINO` / `SIN_DISPOSITIVOS_ACTIVOS`, como corresponde |
+
+En A y B la entrega termina en `ERROR_TEMPORAL` porque no hay salida a Internet ni credenciales reales. **La entrega real
+a un celular sigue pendiente.**
+
 ## 3. Prueba integral en Android (pendiente: teléfono o emulador)
 
 **Requisitos:**
@@ -79,9 +95,10 @@ salida a Internet.
    adb install -r build\app\outputs\flutter-apk\app-debug.apk
    ```
 
-2. **Inicia sesión** con una cuenta de prueba **con los recordatorios desactivados**. Al llegar al Inicio, después del
-   onboarding, aparece la hoja «¿Te avisamos cuando haya novedades?»: pulsa **Activar avisos** y concede el permiso en el
-   diálogo de Android. Cierra sesión y vuelve a entrar: la hoja **no** debe volver a aparecer.
+2. **Inicia sesión** con una cuenta **nueva** (sin perfil) y **no cierres sesión** hasta terminar. Completa el perfil y
+   pulsa «Generar mi plan»: **antes** de la pantalla de 30 s aparece la hoja «¿Te avisamos cuando haya novedades?». Pulsa
+   **Activar avisos** y concede el permiso en el diálogo de Android. En otra prueba, cierra sesión y vuelve a entrar: la
+   hoja **no** debe volver a aparecer.
 3. **Registro del FID.** En una compilación de depuración, el log muestra el estado y el FID:
 
    ```
@@ -125,8 +142,8 @@ salida a Internet.
 
 8. **Cierre de sesión.** Cierra sesión y repite la consulta del paso 4: el vínculo queda con
    `revoke_reason = DESVINCULADO`. Un plan nuevo de esa cuenta ya no llega al teléfono.
-9. **Rechazo y activación posterior.** Con otra instalación limpia, pulsa **Ahora no**:
-   - Kora funciona con normalidad;
+9. **Rechazo y activación posterior.** Con otra instalación limpia, pulsa **Ahora no** en la hoja del final del perfil:
+   - la generación sigue con normalidad y Kora funciona igual;
    - en Perfil → Avisos en el teléfono aparece «Las notificaciones de Kora están desactivadas en este teléfono»;
    - **Activar notificaciones** abre el diálogo o los ajustes de Android para Kora;
    - al activarlas y volver, el log muestra `FCM installation ID (registered)`.

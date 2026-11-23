@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/auth_interceptor.dart';
 import '../features/authentication/presentation/providers/auth_provider.dart';
 import '../features/push/presentation/push_controller.dart';
-import '../features/push/presentation/push_permission_prompt.dart';
-import 'router/app_routes.dart';
 
 import '../shared/theme/app_theme.dart';
 import 'router/app_router.dart';
@@ -48,18 +46,8 @@ class _FitSenseAppState
     // Back from the permission dialog, the phone settings or without network:
     // register what is still missing.
     _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
-    // After the onboarding (first time on the real Inicio, never during the
-    // tour): explain push notifications and ask for the permission, once per
-    // phone and independently of the workout reminders.
-    AppRouter.router.routerDelegate.addListener(_maybeAskPushPermission);
-  }
-
-  void _maybeAskPushPermission() {
-    final path = AppRouter.router.routerDelegate.currentConfiguration.uri.path;
-    if (path != AppRoutes.dashboard || ref.read(authViewModelProvider).user == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(pushPermissionPromptProvider).ask();
-    });
+    // The push permission explanation is shown at the end of the profile
+    // setup, before the first plan (OnboardingPage), not on Inicio.
   }
 
   AppLifecycleListener? _lifecycle;
@@ -69,7 +57,6 @@ class _FitSenseAppState
     AuthInterceptor.onSessionExpired = null;
     pushRouter = null;
     _lifecycle?.dispose();
-    AppRouter.router.routerDelegate.removeListener(_maybeAskPushPermission);
     super.dispose();
   }
 

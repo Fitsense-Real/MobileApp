@@ -95,16 +95,15 @@ final reminderSyncProvider = FutureProvider.autoDispose<int>((ref) async {
     if (!settings.configured) {
       // First time with a plan, nothing saved yet: ask once; the answer is
       // remembered. The OS permission is shared with push notifications, whose
-      // explanation comes first (once per phone). That explanation is only
+      // explanation came first (once per phone, before the first plan). It is only
       // about push: whatever the answer («Activar avisos» or «Ahora no»), it
       // never turns the workout reminders on, and the reminders do not show
       // the system dialog a second time. They start off and stay the user's
       // own choice in Perfil → Recordatorios. A configuration already saved
       // never reaches this branch, so it is never changed here.
-      final prompt = ref.read(pushPermissionPromptProvider);
-      final push = await prompt.ask();
-      final explainedPush = push != PushPermissionOutcome.notShown &&
-          (push != PushPermissionOutcome.alreadyGranted || await prompt.shownOnThisPhone());
+      // The explanation is shown at the end of the profile setup, never from
+      // here: this only reads whether it was ever shown on this phone.
+      final explainedPush = await ref.read(pushPermissionPromptProvider).shownOnThisPhone();
       await ref.read(remindersControllerProvider.notifier).save(explainedPush ? settings.copyWith(enabled: false) : settings);
       return 0; // the settings change triggers a new sync
     }
