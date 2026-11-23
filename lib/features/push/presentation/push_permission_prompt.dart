@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/router/app_router.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../data/notification_settings.dart';
 import '../data/push_messaging.dart';
 import '../data/push_notifier.dart';
 import 'push_controller.dart';
@@ -91,6 +92,15 @@ class PushPermissionPrompt {
   /// Last outcome of this run, if any.
   PushPermissionOutcome? outcome;
 
+  /// Whether the explanation was ever shown on this phone (any answer).
+  Future<bool> shownOnThisPhone() async {
+    try {
+      return await store.asked();
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<PushPermissionOutcome> ask() => _asking ??= _ask().then((value) {
     outcome = value;
     // Not shown (no screen yet): allow a later attempt in this run.
@@ -172,3 +182,21 @@ final pushPermissionPromptProvider = Provider<PushPermissionPrompt>((ref) => Pus
   // Register this phone right away instead of waiting for the next start.
   onGranted: () => ref.read(pushControllerProvider).onResumed(),
 ));
+
+/// Whether Android currently lets Kora show notifications (shared by push
+/// and the workout reminders).
+final notificationPermissionProvider = FutureProvider.autoDispose<bool>((ref) => ref.read(pushNotifierProvider).permitted());
+
+/// «Activar notificaciones» (Perfil → Avisos en el teléfono, Perfil →
+/// Recordatorios): Android's dialog when it may still be shown; after a
+/// refusal Android only allows it from the system settings, opened instead.
+/// Only the OS permission changes: no reminder or push preference is touched.
+Future<void> enableNotificationPermission(WidgetRef ref) async {
+  final granted = await ref.read(pushNotifierProvider).requestPermission();
+  if (granted) {
+    await ref.read(pushControllerProvider).onResumed();
+  } else {
+    await ref.read(notificationSettingsLauncherProvider).open();
+  }
+  ref.invalidate(notificationPermissionProvider);
+}

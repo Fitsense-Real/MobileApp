@@ -1,11 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/notification_settings.dart';
 import '../data/push_device_repository.dart';
 import 'push_controller.dart';
-
-/// Whether Android currently lets Kora show notifications.
-final notificationPermissionProvider = FutureProvider.autoDispose<bool>((ref) => ref.read(pushNotifierProvider).permitted());
+import 'push_permission_prompt.dart';
 
 /// Perfil → Avisos en el teléfono: whether the phone lets Kora notify, and
 /// which push notifications the account receives (the backend applies the
@@ -32,18 +29,6 @@ class _PushPreferencesSheetState extends ConsumerState<PushPreferencesSheet> {
   void dispose() {
     _lifecycle.dispose();
     super.dispose();
-  }
-
-  /// Android's dialog when it may still be shown; after a refusal Android
-  /// only allows it from the system settings, which are opened instead.
-  Future<void> _enable() async {
-    final granted = await ref.read(pushNotifierProvider).requestPermission();
-    if (granted) {
-      await ref.read(pushControllerProvider).onResumed();
-    } else {
-      await ref.read(notificationSettingsLauncherProvider).open();
-    }
-    ref.invalidate(notificationPermissionProvider);
   }
 
   Future<void> _save(NotificationPreferences next) async {
@@ -78,7 +63,7 @@ class _PushPreferencesSheetState extends ConsumerState<PushPreferencesSheet> {
             const Text('Las notificaciones de Kora están desactivadas en este teléfono.', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             const Text('Kora funciona igual, pero no podrá avisarte. Puedes activarlas cuando quieras.'),
-            TextButton(onPressed: _enable, child: const Text('Activar notificaciones')),
+            TextButton(onPressed: () => enableNotificationPermission(ref), child: const Text('Activar notificaciones')),
           ]),
         ),
       ],

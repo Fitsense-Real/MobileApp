@@ -5,7 +5,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `flutter analyze` (reglas estrictas, sin desactivar ninguna) | ✓ sin problemas |
-| `flutter test` | ✓ **306** pruebas. Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
+| `flutter test` | ✓ **314** pruebas. Incluyen el permiso independiente de los recordatorios (`push_permission_test.dart`). Las de push y del identificador cubren eventos y rutas, el contrato HTTP byte a byte con los ejemplos reales de la PR #82, el ciclo de sesión del controlador, los canales Android y el manifiesto |
 | APK debug (JDK 17) y APK release de prueba (JDK 21) con la configuración real de `kora-fitpe` | ✓ `package: name='pe.fit.kora'`, `firebase_messaging_installation_id_enabled=true`, canal por defecto `kora_planes`, `project_id` = `kora-fitpe`, alineación de 16 KB (`evidencia/apk-fid.txt`) |
 | APK release con **JDK 17** | Bloqueado por el guardián con un mensaje claro. Android lint falla con `firebase_core` en JDK 17. **Las compilaciones release y el AAB se hacen con JDK 21** (el de Android Studio) |
 | `flutter build web` | ✓ (Firebase Messaging no se inicializa fuera de Android) |
@@ -107,9 +107,16 @@ Para repetirla, el script está en `evidencia/prueba-integral-backend-pr82.sh`.
    - en Perfil → Avisos en el teléfono aparece «Las notificaciones de Kora están desactivadas en este teléfono»;
    - **Activar notificaciones** abre el diálogo o los ajustes de Android para Kora;
    - al activarlas y volver, el log muestra `FCM installation ID (registered)`.
-10. **Preferencias.** En Perfil → Avisos en el teléfono, desactiva «Cambios en mi plan». Un plan nuevo no llega: el
+10. **Recordatorios independientes.** Con recordatorios **guardados** (por ejemplo, activados a las 06:15 y sin el aviso
+    de las 20:00), pulsa **Ahora no** en la hoja de push:
+    - en Perfil → Recordatorios siguen igual;
+    - con el permiso desactivado aparece «Activa las notificaciones para recibir tus recordatorios»;
+    - al activarlo, llegan a la hora guardada.
+
+    En otra instalación limpia, acepta los avisos push: los recordatorios **no** se activan solos.
+11. **Preferencias.** En Perfil → Avisos en el teléfono, desactiva «Cambios en mi plan». Un plan nuevo no llega: el
    evento queda `DESCARTADO`.
-11. **Resto de la app:**
+12. **Resto de la app:**
     - [ ] Inicio de sesión y cierre de sesión, sin errores en el log.
     - [ ] Rutinas y favoritas.
     - [ ] Recordatorios locales: llega uno a la hora fijada.

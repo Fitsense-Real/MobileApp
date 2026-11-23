@@ -20,6 +20,7 @@ import 'package:fitsense_mobile/features/push/presentation/push_preferences_shee
 import 'package:fitsense_mobile/features/reminders/data/reminder_scheduler.dart';
 import 'package:fitsense_mobile/features/reminders/domain/reminder_planner.dart';
 import 'package:fitsense_mobile/features/reminders/presentation/reminders_controller.dart';
+import 'package:fitsense_mobile/features/reminders/presentation/reminders_sheet.dart';
 
 // Push permission independent of the workout reminders. Everything simulated.
 
@@ -296,15 +297,65 @@ void main() {
       expect(reminders.value, off);
     });
 
-    test('first plan: one explanation and one system dialog for push and reminders', () async {
+    test('first plan, «Activar avisos»: one system dialog, and the reminders are NOT turned on by it', () async {
       final c = container();
       c.listen(reminderSyncProvider, (_, _) {});
       await settle();
       expect(presenter.shown, 1);
       expect(notifier.requests, 1, reason: 'the push explanation asked');
-      // Reminders configured as before (on), their own request finds the permission granted.
-      expect(reminders.value, const ReminderSettings(configured: true));
+      expect(scheduler.permissionRequests, 0, reason: 'no second dialog');
+      expect(reminders.value, const ReminderSettings(enabled: false, configured: true), reason: 'push acceptance never enables reminders');
+      expect(scheduler.scheduled, isEmpty);
+    });
+
+    test('push accepted on an earlier run, reminders configured later: still not turned on automatically', () async {
+      final c = container(asked: true);
+      notifier.allowed = true; // granted back then
+      c.listen(reminderSyncProvider, (_, _) {});
+      await settle();
+      expect(presenter.shown, 0);
+      expect(reminders.value, const ReminderSettings(enabled: false, configured: true));
+    });
+
+    test('permission already allowed without any push explanation (Android 12): reminders keep their own first run', () async {
+      final c = container();
+      notifier.allowed = true;
+      c.listen(reminderSyncProvider, (_, _) {});
+      await settle();
+      expect(presenter.shown, 0);
+      expect(reminders.value, const ReminderSettings(configured: true), reason: 'unchanged approved behaviour');
       expect(scheduler.scheduled, isNotEmpty);
+    });
+
+    for (final (label, answer, grant) in [('«Ahora no»', false, true), ('Android refused', true, false)]) {
+      test('$label never deletes or changes saved reminders: days, time and preferences kept', () async {
+        const saved = ReminderSettings(enabled: true, hour: 6, minute: 15, dueWarning: false, configured: true);
+        final c = container(settings: saved, answer: answer, grant: grant);
+        c.listen(reminderSyncProvider, (_, _) {});
+        await settle();
+        expect(await c.read(pushPermissionPromptProvider).ask(), answer ? PushPermissionOutcome.denied : PushPermissionOutcome.declined);
+        await settle();
+        expect(reminders.value, saved);
+        expect(scheduler.permissionRequests, 0);
+        // Still planned at 06:15 on the plan's workout day: they show as soon as the permission is on.
+        expect(scheduler.scheduled!.where((r) => r.payload == 'workout:21').map((r) => (r.at.hour, r.at.minute)), contains((6, 15)));
+        expect(devices.registered, isEmpty);
+      });
+    }
+
+    test('accepting push keeps saved reminders exactly as they were (off stays off, on stays on)', () async {
+      for (final saved in const [
+        ReminderSettings(enabled: false, hour: 18, minute: 45, dueWarning: false, configured: true),
+        ReminderSettings(enabled: true, hour: 7, minute: 30, dueWarning: true, configured: true),
+      ]) {
+        final c = container(settings: saved);
+        c.listen(reminderSyncProvider, (_, _) {});
+        await settle();
+        expect(await c.read(pushPermissionPromptProvider).ask(), PushPermissionOutcome.granted);
+        await settle();
+        expect(reminders.value, saved);
+        expect(scheduler.permissionRequests, 0);
+      }
     });
 
     test('first plan, «Ahora no»: no second dialog from the reminders, which start off', () async {
@@ -370,6 +421,64 @@ void main() {
       await open(tester, allowed: true);
       expect(find.byKey(const Key('push-permission-off')), findsNothing);
       expect(find.byType(SwitchListTile), findsNWidgets(2));
+    });
+  });
+
+  group('Perfil → Recordatorios with the shared permission off', () {
+    Future<(FakeNotifier, FakeLauncher, ReminderStore, FakeScheduler)> open(WidgetTester tester,
+        {required ReminderSettings settings, bool allowed = false, bool grant = false}) async {
+      final notifier = FakeNotifier(allowed: allowed, grant: grant);
+      final launcher = FakeLauncher();
+      final store = ReminderStore(settings);
+      final scheduler = FakeScheduler();
+      final devices = FakeDevices();
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authViewModelProvider.overrideWith(SignedIn.new),
+          reminderSchedulerProvider.overrideWithValue(scheduler),
+          reminderSettingsStoreProvider.overrideWithValue(store),
+          pushNotifierProvider.overrideWithValue(notifier),
+          notificationSettingsLauncherProvider.overrideWithValue(launcher),
+          pushControllerProvider.overrideWith((ref) => PushController(
+            messaging: FakeMessaging(), devices: devices, notifier: notifier, store: MemoryInstallationStore(),
+            onPlanChanged: () {}, open: (_) {})),
+        ],
+        child: const MaterialApp(home: Scaffold(body: RemindersSheet())),
+      ));
+      await tester.pumpAndSettle();
+      return (notifier, launcher, store, scheduler);
+    }
+
+    const saved = ReminderSettings(enabled: true, hour: 6, minute: 15, dueWarning: false, configured: true);
+
+    testWidgets('reminders on, permission off: says to enable it, and keeps their days, time and preferences', (tester) async {
+      final (notifier, launcher, store, scheduler) = await open(tester, settings: saved);
+      expect(find.text('Activa las notificaciones para recibir tus recordatorios'), findsOneWidget);
+      expect(find.textContaining('Tus días, tu horario y tus preferencias se conservan'), findsOneWidget);
+      expect(find.text('06:15'), findsOneWidget);
+      expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Recordarme mis entrenamientos')).value, isTrue);
+      await tester.tap(find.text('Activar notificaciones'));
+      await tester.pumpAndSettle();
+      expect(notifier.requests, 1);
+      expect(launcher.opened, 1, reason: 'after a refusal, the system settings');
+      expect(store.value, saved, reason: 'only the OS permission is involved');
+      expect(scheduler.permissionRequests, 0);
+    });
+
+    testWidgets('granted from the notice: it disappears and the reminders are unchanged', (tester) async {
+      final (_, launcher, store, _) = await open(tester, settings: saved, grant: true);
+      await tester.tap(find.text('Activar notificaciones'));
+      await tester.pumpAndSettle();
+      expect(launcher.opened, 0);
+      expect(find.byKey(const Key('reminders-permission-off')), findsNothing);
+      expect(store.value, saved);
+    });
+
+    testWidgets('reminders off, or permission on: no notice', (tester) async {
+      await open(tester, settings: const ReminderSettings(enabled: false, configured: true));
+      expect(find.byKey(const Key('reminders-permission-off')), findsNothing);
+      await open(tester, settings: saved, allowed: true);
+      expect(find.byKey(const Key('reminders-permission-off')), findsNothing);
     });
   });
 

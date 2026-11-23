@@ -93,14 +93,19 @@ final reminderSyncProvider = FutureProvider.autoDispose<int>((ref) async {
   try {
     final settings = await settingsFuture;
     if (!settings.configured) {
-      // First time with a plan: ask once; the answer is remembered. The OS
-      // permission is shared with push notifications, whose explanation comes
-      // first (once per phone): if the user already said no there, reminders
-      // start off instead of showing the system dialog a second time. They can
-      // be turned on later in Perfil → Recordatorios.
-      final push = await ref.read(pushPermissionPromptProvider).ask();
-      final refused = push.refused || push == PushPermissionOutcome.askedBefore;
-      await ref.read(remindersControllerProvider.notifier).save(refused ? settings.copyWith(enabled: false) : settings);
+      // First time with a plan, nothing saved yet: ask once; the answer is
+      // remembered. The OS permission is shared with push notifications, whose
+      // explanation comes first (once per phone). That explanation is only
+      // about push: whatever the answer («Activar avisos» or «Ahora no»), it
+      // never turns the workout reminders on, and the reminders do not show
+      // the system dialog a second time. They start off and stay the user's
+      // own choice in Perfil → Recordatorios. A configuration already saved
+      // never reaches this branch, so it is never changed here.
+      final prompt = ref.read(pushPermissionPromptProvider);
+      final push = await prompt.ask();
+      final explainedPush = push != PushPermissionOutcome.notShown &&
+          (push != PushPermissionOutcome.alreadyGranted || await prompt.shownOnThisPhone());
+      await ref.read(remindersControllerProvider.notifier).save(explainedPush ? settings.copyWith(enabled: false) : settings);
       return 0; // the settings change triggers a new sync
     }
     final plan = await planFuture;
