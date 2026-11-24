@@ -1,0 +1,8 @@
+# D-M1 — prueba en vivo contra el Backend generation (e46dbe1; mismo código que 7abf3a1), 2026-11-24.
+# Local: PostgreSQL 16, cuentas y planes sintéticos (motor de reglas, IA apagada), sin Replicate, sin salida a Internet.
+# Código real del Mobile: WorkoutRepository + prescribedResult. Script de cuenta: d-m1-cuenta-sintetica.sh
+
+COMPLETA workout=7 ejercicio=55 3x90 s: una serie (90s) → 33.33 % PARTIAL; todas (270s) → 100.0 % COMPLETED; sesión 100.0 % COMPLETED
+PARCIAL workout=9 ejercicio=68: 75/120 s → 62.5 % PARTIAL; sesión 95.31 % COMPLETED (media de 8 ejercicios = 95.31 %)
+REPORTE workout=8: 3x90=270s, 3x90=270s, 3x90=270s, 2x30=60s → sesión 100.0 %
+00:00 +3: All tests passed!
