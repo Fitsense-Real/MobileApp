@@ -55,6 +55,12 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
   late String? outcome = unsafe ? 'none' : null;
   String? message;
   late String? reason = widget.existing?['skipReason'] as String?;
+  /// The amounts on screen were filled in by «Lo completé» / «No lo hice»,
+  /// not typed by the user nor loaded from a saved result.
+  bool autoFilled = false;
+  /// Work fields cleared when moving to a partial result (the load is a
+  /// prescription, not executed work, so it stays).
+  static const workFields = ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'];
   @override
   void dispose() { for (final controller in controllers.values) { controller.dispose(); } super.dispose(); }
   void choose(String value) => setState(() {
@@ -62,6 +68,13 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     if (value == 'complete' || value == 'none') {
       final defaults = prescribedResult(widget.exercise);
       for (final entry in controllers.entries) { entry.value.text = value == 'none' ? '0' : '${defaults[entry.key] ?? ''}'; }
+      autoFilled = true;
+    } else if (value == 'partial' && autoFilled) {
+      // A partial result is what was really done: never keep the plan's full
+      // amounts (or the zeros of «No lo hice») that were only filled in for
+      // another choice, or unexecuted time would be recorded as done.
+      for (final key in workFields) { controllers[key]!.clear(); }
+      autoFilled = false;
     }
     if (value == 'complete') reason = null;
   });
@@ -81,6 +94,15 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
         setState(() => message = duration
             ? 'Indica cuántos segundos hiciste en total: sin ellos se guardaría como no realizado.'
             : 'Indica cuántas repeticiones hiciste en total: sin ellas se guardaría como no realizado.');
+        return;
+      }
+      // Reaching the whole prescription is not partial: the backend would store
+      // it as completed. Ask for the right choice instead of guessing.
+      final planned = plannedTotal(widget.exercise);
+      if (planned > 0 && volume >= planned) {
+        setState(() => message = duration
+            ? 'Eso es todo lo indicado en tu plan ($planned s en total). Si lo hiciste completo, elige «Lo completé».'
+            : 'Eso es todo lo indicado en tu plan ($planned repeticiones en total). Si lo hiciste completo, elige «Lo completé».');
         return;
       }
     }
