@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fitsense_mobile/core/api/json.dart';
+import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/workouts/data/workout_repository.dart';
 import 'package:fitsense_mobile/features/workouts/domain/workout_rules.dart' show plannedTotal;
 import 'package:fitsense_mobile/features/workouts/presentation/exercise_result_dialog.dart';
@@ -176,12 +177,14 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final repository = ReportFake();
+      final workout = {
+        'plannedWorkoutId': 21, 'workoutName': 'Fuerza y core', 'status': 'SKIPPED', 'expiresAt': '2026-01-01T23:59:00-05:00',
+        'exercises': [squat, plank],
+      };
       await tester.pumpWidget(ProviderScope(
-        overrides: [workoutRepositoryProvider.overrideWithValue(repository)],
-        child: const MaterialApp(home: PlannedWorkoutPage(workout: {
-          'plannedWorkoutId': 21, 'workoutName': 'Fuerza y core', 'status': 'SKIPPED', 'expiresAt': '2026-01-01T23:59:00-05:00',
-          'exercises': [squat, plank],
-        })),
+        // The page reads the routine again before sending (O20): the backend still has it as it was.
+        overrides: [workoutRepositoryProvider.overrideWithValue(repository), planRepositoryProvider.overrideWithValue(PlanFake({'planId': 3, 'workouts': [workout]}))],
+        child: MaterialApp(home: PlannedWorkoutPage(workout: workout)),
       ));
       await tester.pumpAndSettle();
       await tap(tester, find.text('Ya lo hice · registrar entrenamiento'));
@@ -244,4 +247,11 @@ class ReportFake extends WorkoutRepository {
     body = data;
     return {'sessionId': 18, 'plannedWorkoutId': workoutId, 'completionPercentage': 100, 'exercises': data['exercises']};
   }
+}
+
+class PlanFake extends PlanRepository {
+  PlanFake(this.plan) : super(Dio());
+  final Json plan;
+  @override
+  Future<Json?> current() async => plan;
 }

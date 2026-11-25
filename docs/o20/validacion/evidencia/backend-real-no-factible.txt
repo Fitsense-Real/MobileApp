@@ -1,0 +1,2 @@
+O20 S11 GET /plan/adaptations semana 2026-12-07: resultado=NO_FACTIBLE_POR_SEGURIDAD estado=NO_FACTIBLE motivoTexto=«No pudimos preparar una alternativa segura para la sesión en la que registraste molestias.» → Flutter: «Kora no ha podido adaptar esa parte del entrenamiento debido a las restricciones actuales. No vuelve a proponer lo que te dolió ni lo sustituye por algo que no sea seguro. No pudimos preparar una alternativa segura para la sesión en la que registraste molestias.»
+O20 S11 GET /plan/current → 404 (sin plan esta semana)

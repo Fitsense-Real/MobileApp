@@ -1,0 +1,2 @@
+plan 42 semana 2026-12-14: derivadas vigentes {899: 'PRECAUTION'}; prescritas de ellas: []; de todo /effective: []
+plan 31 semana 2026-12-14: derivadas vigentes {13: 'EQUIVALENT', 957: 'EQUIVALENT'}; prescritas de ellas: []; de todo /effective: []

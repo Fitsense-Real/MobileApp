@@ -1,0 +1,22 @@
+ user_id | new_week_start_date |     decision      |   status    |                                                     motivo                                                     |         reason_codes          
+---------+---------------------+-------------------+-------------+----------------------------------------------------------------------------------------------------------------+-------------------------------
+       1 | 2026-12-07          | INSUFFICIENT_DATA | SIN_ORDEN   |                                                                                                                | 
+       2 | 2026-12-07          | ADAPT_EXPANDED    | NO_FACTIBLE | Sin respuesta de la IA no se puede resolver el dolor de las sesiones [4, 5]: conservarlas volveria a publicar  | {DOLOR_SIN_RESOLUCION_SEGURA}
+       3 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+       4 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 498 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+       5 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+       6 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 498 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+       7 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+       8 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 900 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+       9 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+      10 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 498 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+      11 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+      12 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 498 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+      13 | 2026-12-07          | ADAPT_EXPANDED    | NO_FACTIBLE | Sin respuesta de la IA no se puede resolver el dolor de las sesiones [37, 38]: conservarlas volveria a publica | {DOLOR_SIN_RESOLUCION_SEGURA}
+      14 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+      15 | 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE | V24: el ejercicio 498 del 2026-12-07 no lleva la dosis de ninguna capacidad de GENERAL_FITNESS. Usa exactament | {SEMANA_NO_VALIDA}
+      16 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+      17 | 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |                                                                                                                | 
+      18 | 2026-12-07          | ADAPT_EXPANDED    | NO_FACTIBLE | V17: el entrenamiento del 2026-12-09 declara 42 minutos pero su contenido dura unos 31 (desvio de 35 %, maximo | {SEMANA_NO_VALIDA}
+(18 rows)
+

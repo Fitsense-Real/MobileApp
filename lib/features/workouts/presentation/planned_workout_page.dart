@@ -43,25 +43,43 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     // In the background: the screen is usable at once and updates when the
     // backend answers (a slow network never blocks registering).
     Future.microtask(() async { await refreshWorkout(); if (mounted) setState(() {}); });
+    // Back from the background: the routine may have changed meanwhile.
+    lifecycle = AppLifecycleListener(onResume: () async {
+      await refreshWorkout();
+      if (mounted) setState(() {});
+    });
+  }
+
+  AppLifecycleListener? lifecycle;
+
+  @override
+  void dispose() {
+    lifecycle?.dispose();
+    super.dispose();
   }
 
   /// Re-reads the routine from the current plan (`GET /users/me/plan/current`).
   /// The open session and its records come from the backend too, so a
-  /// refresh never duplicates executions.
-  Future<void> refreshWorkout() async {
+  /// refresh never duplicates executions. Returns the drafts it dropped
+  /// because their exercise is now blocked. With [limit], a slow network
+  /// does not hold the user: the app goes on and the backend, which checks
+  /// every record, has the last word.
+  Future<Set<Object>> refreshWorkout({Duration? limit}) async {
+    final dropped = <Object>{};
     final Json? plan;
     try {
-      plan = await ref.read(planRepositoryProvider).current();
+      final read = ref.read(planRepositoryProvider).current();
+      plan = await (limit == null ? read : read.timeout(limit));
     } catch (_) {
-      return; // without connection: keep what is on screen; the backend still checks every record
+      return dropped; // without connection: keep what is on screen; the backend still checks every record
     }
     final fresh = jsonRows(plan?['workouts'] ?? []).where((w) => w['plannedWorkoutId'] == workout['plannedWorkoutId']).firstOrNull;
-    if (!mounted) return;
+    if (!mounted) return dropped;
     if (fresh == null) {
       // Only an open routine can leave the active plan (a new version
       // replaced it); a closed one keeps its history as it was.
       outdated = isOpenWorkout(workout) && plan != null;
-      return;
+      return dropped;
     }
     workout = fresh;
     outdated = false;
@@ -70,8 +88,10 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       final draft = drafts[e['plannedExerciseId']];
       if (isUnsafeExercise(e) && draft != null && ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].any((k) => (draft[k] as num? ?? 0) > 0)) {
         drafts.remove(e['plannedExerciseId']);
+        dropped.add(e['plannedExerciseId']);
       }
     }
+    return dropped;
   }
 
   Future<void> act(Future<void> Function() action) async {
@@ -119,8 +139,19 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (mounted) await record(exercise);
   }
   Future<void> report() async {
+    if (jsonRows(workout['exercises'] ?? []).isEmpty || jsonRows(workout['exercises'] ?? []).any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
+      setState(() => error = 'Indica el resultado de cada ejercicio antes de guardar.'); return;
+    }
+    // The routine on screen may be older than a pain report: read it again
+    // before sending results with work done.
+    final dropped = await refreshWorkout(limit: const Duration(seconds: 8));
+    if (!mounted) return;
+    if (dropped.isNotEmpty) {
+      setState(() => error = 'Un ejercicio de esta rutina tiene ahora una restricción por seguridad. Regístralo como no realizado antes de guardar.');
+      return;
+    }
     final exercises = jsonRows(workout['exercises'] ?? []);
-    if (exercises.isEmpty || exercises.any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
+    if (exercises.any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
       setState(() => error = 'Indica el resultado de cada ejercicio antes de guardar.'); return;
     }
     final body = await showDialog<Json>(context: context, builder: (_) => const FinishDialog(reporting: true));

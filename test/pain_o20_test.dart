@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fitsense_mobile/core/api/json.dart';
+import 'package:fitsense_mobile/features/authentication/domain/entities/user.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/providers/auth_provider.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/state/auth_state.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/viewmodels/auth_viewmodel.dart';
 import 'package:fitsense_mobile/features/pain/data/pain_exclusion_repository.dart';
 import 'package:fitsense_mobile/features/pain/domain/pain_safety.dart';
 import 'package:fitsense_mobile/features/pain/presentation/pain_confirmation_sheet.dart';
@@ -110,6 +114,22 @@ class FakeWorkouts extends WorkoutRepository {
   }
   @override
   Future<void> skip(Object workoutId, String reason, {String? lackOfTimeContext, int? availableMinutes}) async => skipped.add(reason);
+  final reported = <Json>[];
+  @override
+  Future<Json> report(Object workoutId, Json body) async { reported.add(body); return {'completionPercentage': 50}; }
+}
+
+/// Signed in as user 7; `signOut` and `signIn` move between the two states as
+/// a logout and a new login do.
+class Switchable extends AuthViewModel {
+  static const user = User(id: 7, firstName: 'Ana', lastName: 'Demo', email: 'ana7@example.com', timezone: 'America/Lima');
+  @override
+  AuthState build() {
+    super.build();
+    return const AuthState(isAuthenticated: true, user: user);
+  }
+  void signOut() => state = const AuthState();
+  void signIn() => state = const AuthState(isAuthenticated: true, user: user);
 }
 
 DioException http(int status, String message) {
@@ -420,6 +440,90 @@ void main() {
       expect(recentNotFeasibleAdaptation([{'weekStartDate': '2026-01-19', 'resultado': 'NO_FACTIBLE'}, {'weekStartDate': '2026-01-12', 'resultado': 'ADAPTACION_APLICADA'}], now: now), isNotNull);
       expect(recentNotFeasibleAdaptation([{'weekStartDate': '2025-12-01', 'resultado': 'NO_FACTIBLE'}], now: now), isNull, reason: 'an old one is not shown');
       expect(recentNotFeasibleAdaptation([{'weekStartDate': '2026-01-19', 'resultado': 'ADAPTACION_APLICADA'}, {'weekStartDate': '2026-01-12', 'resultado': 'NO_FACTIBLE'}], now: now), isNull, reason: 'superseded');
+    });
+  });
+
+  group('Mobile cannot bypass O20 (regressions)', () {
+    late FakePain pain;
+    late FakePlans plans;
+    late FakeWorkouts workouts;
+    final allowed = exercise(42, 578, 'Sentadilla', order: 2);
+    final staleBlocked = exercise(41, 537, 'Elevación frontal con mancuerna');
+    final nowBlocked = exercise(41, 537, 'Elevación frontal con mancuerna', block: 'dolor_registrado');
+    List<Override> overrides() => [
+      painExclusionRepositoryProvider.overrideWithValue(pain),
+      planRepositoryProvider.overrideWithValue(plans),
+      workoutRepositoryProvider.overrideWithValue(workouts),
+    ];
+    setUp(() {
+      pain = FakePain(effective: [effectiveRow(537, 'Elevación frontal con mancuerna', 'DIRECT', source: 9100, date: '2026-11-23')]);
+      plans = FakePlans({'planId': 1, 'workouts': [workoutWith([staleBlocked, allowed])]});
+      workouts = FakeWorkouts();
+    });
+
+    testWidgets('back from the background, an open routine is read again and shows the new block', (tester) async {
+      workouts.session = {'sessionId': 77, 'plannedWorkoutId': 9123, 'startedAt': DateTime.now().toIso8601String(), 'exercises': <Json>[]};
+      await pumpPage(tester, PlannedWorkoutPage(workout: workoutWith([staleBlocked, allowed])), overrides());
+      expect(find.byKey(const Key('blocked-41')), findsNothing);
+      // Meanwhile the user reported pain elsewhere: the backend blocks 41.
+      plans.plan = {'planId': 1, 'workouts': [workoutWith([nowBlocked, allowed])]};
+      for (final state in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused,
+                           AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('blocked-41')), findsOneWidget);
+      await tap(tester, find.text('Registrar ejercicio').at(0));
+      expect(find.text('Lo completé'), findsNothing, reason: 'only «No lo hice»');
+    });
+
+    testWidgets('a retroactive report prepared on an old copy is not sent with work on an exercise blocked since', (tester) async {
+      await pumpPage(tester, PlannedWorkoutPage(workout: workoutWith([staleBlocked, allowed])), overrides());
+      await tap(tester, find.text('Ya lo hice · registrar entrenamiento'));
+      for (final i in [0, 1]) {
+        await tap(tester, find.text('Registrar ejercicio').at(i));
+        await tap(tester, find.text('Lo completé'));
+        await tap(tester, find.text('Usar resultado'));
+      }
+      plans.plan = {'planId': 1, 'workouts': [workoutWith([nowBlocked, allowed])]}; // the backend has blocked 41
+      await tap(tester, find.text('Guardar entrenamiento'));
+      expect(workouts.reported, isEmpty, reason: 'nothing sent with work on the blocked exercise');
+      expect(find.textContaining('tiene ahora una restricción por seguridad'), findsOneWidget);
+      expect(find.byKey(const Key('blocked-41')), findsOneWidget);
+      expect(find.text('Sin registrar'), findsOneWidget, reason: 'its draft with work was dropped; the other one is kept');
+      // It can only be recorded as not done now.
+      await tap(tester, find.text('Registrar ejercicio').at(0));
+      expect(find.text('Lo completé'), findsNothing);
+    });
+
+    testWidgets('logout and a new login: the exclusions come back from the backend, not from the screen', (tester) async {
+      late Switchable auth;
+      await pumpPage(tester, const Scaffold(body: PainExclusionsSheet()), [
+        ...overrides(),
+        authViewModelProvider.overrideWith(() => auth = Switchable()),
+      ]);
+      expect(find.byKey(const Key('effective-537')), findsOneWidget);
+      final reads = pain.effectiveReads;
+      auth.signOut();
+      await tester.pumpAndSettle();
+      auth.signIn();
+      await tester.pumpAndSettle();
+      expect(pain.effectiveReads, greaterThan(reads), reason: 'read again from the backend after the new login');
+      expect(find.byKey(const Key('effective-537')), findsOneWidget, reason: 'still excluded');
+    });
+
+    testWidgets('equivalents and precautions cannot be reactivated from the app', (tester) async {
+      pain = FakePain(effective: [
+        effectiveRow(537, 'Elevación frontal con mancuerna', 'DIRECT', confirmed: true),
+        effectiveRow(538, 'Elevación frontal versión 2', 'EQUIVALENT', confirmed: true, from: 537, fromName: 'Elevación frontal con mancuerna'),
+        effectiveRow(988, 'Elevación frontal inclinada', 'PRECAUTION', confirmed: true, from: 537, fromName: 'Elevación frontal con mancuerna'),
+        effectiveRow(600, 'Remo', 'DIRECT', confirmed: true, canReactivate: false),
+      ]);
+      await pumpPage(tester, const Scaffold(body: PainExclusionsSheet()), overrides());
+      expect(find.text('Ya no me duele'), findsOneWidget, reason: 'only where the backend says canReactivate');
+      for (final id in [538, 988, 600]) {
+        expect(find.descendant(of: find.byKey(Key('effective-$id')), matching: find.text('Ya no me duele')), findsNothing);
+      }
     });
   });
 }

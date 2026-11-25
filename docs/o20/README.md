@@ -112,3 +112,7 @@ KORA_LIVE_API_BASE_URL=http://localhost:8080/api/v1 KORA_LIVE_EMAIL_A=... KORA_L
 - Sin prueba en dispositivo físico ni emulador en esta orden: solo pruebas de widgets y la prueba real contra el Backend local.
 - La prueba real no llega a `confirmationRequired=true`, porque necesita dos semanas con plan. Ese caso está cubierto con datos simulados (escenario 9).
 - En las capturas, el texto de los botones rellenos se dibuja con Poppins. En el dispositivo usa la fuente del sistema, porque el tema no la fija; esto no se cambió.
+
+## Validación final
+
+La validación de la orden «VALIDACIÓN FINAL O20 Y CIERRE DE PR #19» está en `validacion/INFORME_VALIDACION_O20.md`, con la evidencia del Backend real, las capturas dibujadas con respuestas reales y la guía para probar en Android.

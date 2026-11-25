@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/auth_interceptor.dart';
 import '../features/authentication/presentation/providers/auth_provider.dart';
+import '../features/pain/presentation/pain_confirmation_sheet.dart';
 import '../features/push/presentation/push_controller.dart';
 
 import '../shared/theme/app_theme.dart';
@@ -45,7 +46,12 @@ class _FitSenseAppState
         (_, userId) => ref.read(pushControllerProvider).onUser(userId), fireImmediately: true);
     // Back from the permission dialog, the phone settings or without network:
     // register what is still missing.
-    _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
+    // O20: back from the background, the plan and the pain exclusions are
+    // read again: a block that arrived meanwhile shows up at once.
+    _lifecycle = AppLifecycleListener(onResume: () {
+      ref.read(pushControllerProvider).onResumed();
+      if (ref.read(authViewModelProvider).isAuthenticated) refreshPainSafety(ref);
+    });
     // The push permission explanation is shown at the end of the profile
     // setup, before the first plan (OnboardingPage), not on Inicio.
   }

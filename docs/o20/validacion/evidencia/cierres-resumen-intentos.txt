@@ -1,0 +1,9 @@
+ new_week_start_date |     decision      |   status    | count 
+---------------------+-------------------+-------------+-------
+ 2026-12-07          | ADAPT_EXPANDED    | NO_FACTIBLE |     3
+ 2026-12-07          | ADAPT_LOCALIZED   | NO_FACTIBLE |     6
+ 2026-12-07          | ADAPT_LOCALIZED   | RESPALDO    |     8
+ 2026-12-07          | INSUFFICIENT_DATA | SIN_ORDEN   |     1
+ 2026-12-14          | INSUFFICIENT_DATA | SIN_ORDEN   |    11
+(5 rows)
+

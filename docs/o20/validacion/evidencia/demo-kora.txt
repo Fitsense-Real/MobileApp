@@ -1,0 +1,9 @@
+O20 DEMO /effective: [DIRECT 1025 «Aperturas de pecho sentado con palanca» confirmado=true → «Lo marcaste con dolor.»]
+O20 DEMO plan vigente 910000003 (2026-11-23, ACTIVE): 5 entrenamientos, 0 prescripciones bloqueadas; contiene el 1025: false
+O20 DEMO /plans: [910000003 2026-11-23 ACTIVE, 910000002 2026-11-16 COMPLETED, 910000001 2026-11-09 COMPLETED, 910000000 2026-11-02 COMPLETED]
+O20 DEMO /plan/adaptations: [2026-11-09 REGENERACION_SEGURA_SUSTITUCION, 2026-11-16 SIN_ADAPTACION, 2026-11-23 PROGRESION_DEL_BACKEND]
+O20 DEMO /confirmation-requests: 0 pendientes
+O20 DEMO historial plan 910000003: {SCHEDULED: 5}
+O20 DEMO historial plan 910000002: {COMPLETED: 5}
+O20 DEMO historial plan 910000001: {COMPLETED: 5}
+O20 DEMO historial plan 910000000: {COMPLETED: 3, PARTIAL: 1, SKIPPED: 1}
