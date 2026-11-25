@@ -467,7 +467,10 @@ void main() {
       await tester.pumpWidget(app(PlannedWorkoutPage(workout: workout), overrides: [workoutRepositoryProvider.overrideWithValue(WorkoutRepository(dioWith(backend)))]));
       await tester.pumpAndSettle();
       expect(find.text('Esta sesión tiene un ejercicio que ya no es seguro para ti.'), findsOneWidget);
-      expect(find.textContaining('No es seguro para ti: suelo'), findsOneWidget);
+      // O20: the backend's reason in plain words, never the code itself.
+      expect(find.text('No disponible por ahora'), findsOneWidget);
+      expect(find.textContaining('No es compatible con lo que indicaste en tu perfil (trabajo en el suelo)'), findsOneWidget);
+      expect(find.textContaining(': suelo'), findsNothing);
       expect(find.text('Comenzar entrenamiento'), findsNothing);
       expect(tester.takeException(), isNull);
     });

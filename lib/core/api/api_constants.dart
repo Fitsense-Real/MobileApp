@@ -52,6 +52,12 @@ class ApiConstants {
   // Exclusiones por dolor
   static const painExclusions = '/users/me/pain-exclusions';
   static String reactivatePainExclusion(Object exerciseId) => '/users/me/pain-exclusions/$exerciseId/reactivation';
+  /// O20 (Backend PR #84): what is not prescribed today because of pain, and why.
+  static const effectivePainExclusions = '/users/me/pain-exclusions/effective';
+  /// O20: sessions with unidentified pain that wait for the user's answer.
+  static const painConfirmationRequests = '/users/me/pain-exclusions/confirmation-requests';
+  /// O20: "this was the exercise that hurt" (plus the ones that had nothing to do with it).
+  static String identifyPainExclusion(Object exerciseId) => '/users/me/pain-exclusions/$exerciseId/identification';
 
   // Ejecución
   static String startWorkout(Object id) => '/workouts/$id/start';
