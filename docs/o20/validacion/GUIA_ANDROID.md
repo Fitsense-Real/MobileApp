@@ -95,7 +95,16 @@ Si no puedes usar `adb reverse`:
    New-NetFirewallRule -DisplayName "Kora backend 8080" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
    ```
 
-4. En el §4 usa `http://IP_DEL_PC:8080/api/v1`.
+4. Comprueba que el Backend escucha en todas las interfaces, no solo en `127.0.0.1`:
+
+   ```powershell
+   netstat -ano | findstr :8080
+   ```
+
+   Debe aparecer `0.0.0.0:8080` o `[::]:8080` en estado `LISTENING`. Es lo normal en Spring Boot si no se configuró `server.address`. Si solo aparece `127.0.0.1:8080`, el teléfono no llegará por Wi-Fi.
+5. En el §4 usa `http://IP_DEL_PC:8080/api/v1`, con la IP **real** que muestra `ipconfig` en el adaptador Wi-Fi.
+
+**En el teléfono, `localhost` y `127.0.0.1` son el propio teléfono, no el PC.** Solo apuntan al PC cuando `adb reverse` está activo (opciones A y C).
 
 ### Opción C: ADB inalámbrico (Android 11 o superior, sin cable)
 
@@ -124,7 +133,39 @@ Si no puedes usar `adb reverse`:
 
 **No uses `10.0.2.2`:** esa dirección solo funciona en el emulador, nunca en un teléfono físico.
 
+### 3.1 Comprobar que el teléfono llega al Backend (antes de abrir Kora)
+
+En el **navegador del teléfono** (Chrome), abre la dirección que usarás en el §4 añadiendo `/catalog/body-parts`:
+
+- con `adb reverse` (opciones A y C): `http://127.0.0.1:8080/api/v1/catalog/body-parts`;
+- por Wi-Fi (opción B): `http://IP_DEL_PC:8080/api/v1/catalog/body-parts`.
+
+**Resultado esperado:** una respuesta JSON del Backend. Vale tanto una lista como un error `401` en JSON.
+
+Si el navegador dice «No se puede acceder a este sitio», el teléfono no llega al Backend:
+
+- revisa `adb reverse --list` (opciones A y C);
+- revisa la IP, el cortafuegos y `netstat` (opción B).
+
+No abras Kora hasta que esto funcione.
+
 ## 4. Ejecutar Kora en el teléfono
+
+### Desde Android Studio
+
+1. **Abre el proyecto:** File → Open → la carpeta `MobileApp`. Instala los plugins **Flutter** y **Dart** si los pide.
+2. **Configura Flutter:** Settings → Languages & Frameworks → Flutter → Flutter SDK path, apuntando a tu Flutter 3.50.1.
+3. **Elige el teléfono:** en la barra superior, en el selector de dispositivos, elige tu teléfono. Debe aparecer igual que en `adb devices`.
+4. **Pasa la URL del Backend:** Run → Edit Configurations… → `main.dart` → **Additional run args**:
+
+   ```
+   --dart-define=API_BASE_URL=http://127.0.0.1:8080/api/v1
+   ```
+
+   Por Wi-Fi, usa `http://IP_DEL_PC:8080/api/v1`.
+5. **Ejecuta:** Run ▶ (Mayús+F10), en modo debug. Los mensajes salen en la pestaña **Run**; los del sistema, en **Logcat**.
+
+### O desde PowerShell
 
 ```powershell
 flutter devices
@@ -136,17 +177,34 @@ En la opción B, la URL es `http://IP_DEL_PC:8080/api/v1`. En las opciones A y C
 - El modo debug permite HTTP local (`android/app/src/debug/AndroidManifest.xml`).
 - **Push:** sin `android/app/google-services.json` la app compila, pero sin notificaciones push. Para probarlas, incorpora los archivos según `docs/push/INCORPORAR_CONFIGURACION_FIREBASE.md`.
 
-## 5. Qué revisar con el usuario Demo Kora (solo mirar)
+## 5. Qué revisar con el usuario Demo Kora (solo lectura: no modifica nada)
 
-### 5.1 Antes: comprobar que el dataset sigue intacto
+### 5.1 Antes: comprobar que el dataset sigue intacto (solo lectura)
 
-Hazlo antes de abrir la app, con solo lectura. En DBeaver o pgAdmin, sobre tu base, ejecuta estas consultas de `docs/FitSense/dataset_demo_kora/06_VERIFICACION.sql` (rama `feature/dataset-demo-kora` del Backend):
+Hazlo antes de abrir la app. En DBeaver o pgAdmin, sobre tu base, ejecuta el script **`docs/o20/validacion/usuario48_verificacion_solo_lectura.sql`**:
 
-- **Consulta 1:** cuenta ACTIVE. Tu usuario 48 participa en el estudio; **no cambies ese valor**.
-- **Consulta 3:** **exactamente 4 planes**: 3 COMPLETED y 1 ACTIVE, ninguno con origen AI. Un quinto plan significa que un cierre automático alteró la demo: no sigas y avísame.
-- **Consulta 14:** `ok = t` en las comprobaciones de integridad.
+- Va entero dentro de `BEGIN TRANSACTION READ ONLY … ROLLBACK`: PostgreSQL rechaza cualquier escritura.
+- Usa las tablas y columnas reales del Backend (V65).
+- No lee contraseñas.
+- No cambia la participación ni el dataset.
 
-Si las tres salen bien, la prueba con el usuario 48 puede empezar.
+Revisa cada resultado con lo esperado, que está anotado en el propio script:
+
+| N.º | Comprobación | Esperado |
+|---|---|---|
+| 1 | Usuario | `user_id = 48`, ACTIVE |
+| 2 | Participación (solo se lee) | `is_study_participant = true`. **No la cambies** |
+| 3 | Planes | **Exactamente 4**: 3 COMPLETED y 1 ACTIVE, `con_ia = 0` |
+| 4 | Sesiones | 14: 13 COMPLETED y 1 PARTIAL. Entrenamientos de W-3: 3 COMPLETED, 1 PARTIAL y 1 SKIPPED |
+| 5 | Adaptaciones | 3 filas: ADAPT_LOCALIZED/RESPALDO (sustitución), NO_CHANGE/SIN_ORDEN y NO_CHANGE/SIN_ORDEN con `progressed_sessions` (progresión). `ai_calls = 0` |
+| 6 | Métricas | 3 semanas: 67,81 %, 100 % y 100 % |
+| 7 | Exclusión del 1025 | DOLOR_IDENTIFICADO, ACTIVA |
+| 8 | Perfil | GAIN_MUSCLE, INTERMEDIATE, GYM, 5 días, 60 min, 176 cm, 74 kg |
+
+- **Si la consulta 3 devuelve más de 4 planes** o aparece una adaptación nueva: un cierre automático alteró la demo. No sigas y avísame.
+- **Si todo coincide,** la prueba con el usuario 48 puede empezar.
+
+Las fechas concretas dependen de la semana en que se cargó el dataset.
 
 ### 5.2 En la app
 
@@ -170,7 +228,7 @@ Las fechas de la tabla son las de la copia validada (semana vigente del 23/11/20
 
 Capturas de referencia, hechas con las respuestas reales de una copia local de la demo: `capturas/D1…D5`.
 
-## 6. Qué probar con una cuenta sintética nueva (acciones)
+## 6. Qué probar con una cuenta sintética nueva (modifica registros: nunca con el usuario 48)
 
 1. Regístrala desde la app, con el consentimiento al estudio, en la base de pruebas.
 2. Completa el perfil y genera el primer plan. Con la IA apagada lo genera el motor de reglas.
@@ -192,8 +250,30 @@ Capturas de referencia, hechas con las respuestas reales de una copia local de l
 | S13 | Con un resultado «Pendiente de enviar» (modo avión), **cierra Kora del todo** (deslízala fuera de recientes) y quita el modo avión. Abre Kora y la misma rutina | El resultado reaparece como «Pendiente de enviar» y **no se envía solo**. Pulsa «Reintentar envío»: se envía una vez y desaparece |
 | S14 | Repite S13, pero antes de reabrir omite por dolor, desde otro dispositivo, una rutina con ese mismo ejercicio | Al reabrir: «Retenido: no se enviará», con el ejercicio bloqueado. «Descartar» lo quita |
 | S15 | Con un pendiente guardado, cierra sesión y entra con **otra cuenta** | La otra cuenta no ve nada. Al volver a la primera cuenta, dentro de 48 h, el resultado reaparece |
+| S16 (D-M1) | En un ejercicio por tiempo (por ejemplo, 3 × 120 s), «Lo completé» | Se guarda el total de la prescripción (360 s), no el de una serie |
+| S17 (D-M1) | En otro ejercicio, «Lo hice parcialmente» con menos de lo prescrito (por ejemplo, 2 series y 150 s), con un motivo. Luego intenta un parcial con la prescripción completa | El primero se guarda tal cual (2 series, 150 s). El segundo pide usar «Lo completé»: un parcial nunca cuenta como completo |
 
-## 7. Registros y evidencia si algo falla
+## 7. Lista de comprobación final
+
+| Comprobación | Cuenta | ¿Modifica registros? | Resultado esperado | Filas |
+|---|---|---|---|---|
+| Inicio de sesión | Usuario 48 | No | Entra a Inicio | D1 |
+| Perfil | Usuario 48 | No | Datos del perfil visibles | D9 |
+| Rutina vigente | Usuario 48 | No | 5 entrenamientos con sus ejercicios | D1, D2 |
+| Historial | Usuario 48 | No | 4 planes (si el §5.1 dio 4); la semana del 02/11 con completados, parcial y omitido | D5, D10 |
+| Adherencia | Usuario 48 | No | 67,8 % (3/5), 100 % y 100 %, coherente con el historial | D3 |
+| Adaptaciones (P2) | Usuario 48 | No | Textos comprensibles, sin códigos | D4b, D5 |
+| Exclusión (O20) | Usuario 48 | No | El 1025 aparece excluido y no figura en la rutina vigente | D6 |
+| Registro (D-M1) | Sintética | **Sí** | Duraciones totales y parciales correctas | S16, S17 |
+| Resultados pendientes (P1) | Sintética | **Sí** | Reaparece al reabrir y no se envía solo | S13 |
+| Seguridad | Sintética | **Sí** | Nunca se envían resultados de ejercicios bloqueados | S3, S11, S14 |
+| Cambio de cuenta | Sintética | **Sí** | Sin exposición de pendientes de otra cuenta | S15 |
+
+**Las filas que modifican registros** (D-M1, P1, seguridad y cambio de cuenta) se hacen **solo con la cuenta sintética**. Con el usuario 48 no se registra, no se omite, no se reactiva y no se genera nada sin una autorización específica.
+
+**El resultado de la prueba física queda PENDIENTE** hasta que se ejecute en tu teléfono.
+
+## 8. Registros y evidencia si algo falla
 
 ```powershell
 New-Item -ItemType Directory -Force evidencia-android | Out-Null
@@ -225,6 +305,6 @@ En la consola de `flutter run`, copia también los errores en rojo.
 
 Envíame:
 
-- la tabla del §5 y del §6 con OK o FALLA en cada fila;
+- la tabla del §7 (y las filas del §5 y del §6) con OK o FALLA en cada fila;
 - las capturas y `logcat.txt` de lo que falle;
 - el modelo del teléfono y la versión de Android.
