@@ -40,8 +40,10 @@ String resultLabel(Json? result) {
 }
 
 class ExerciseResultDialog extends StatefulWidget {
-  const ExerciseResultDialog({super.key, required this.exercise, this.existing, this.draft = false});
+  const ExerciseResultDialog({super.key, required this.exercise, this.existing, this.draft = false, this.blockReason});
   final Json exercise;
+  /// Plain explanation of the backend's block (`safetyBlockReason`), if any.
+  final String? blockReason;
   final Json? existing;
   final bool draft;
   @override
@@ -114,7 +116,7 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     const SizedBox(height: 12),
     Text(widget.draft ? 'Completa el resultado. Se enviará cuando guardes el entrenamiento.' : 'Guardar reemplaza el resultado anterior en tu sesión.'),
     const SizedBox(height: 12),
-    if (unsafe) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Este ejercicio ya no es seguro para ti (${widget.exercise['safetyBlockReason']}). Solo puedes registrarlo como no realizado.', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+    if (unsafe) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('No disponible por ahora. ${widget.blockReason ?? 'Tiene una restricción por seguridad.'} Solo puedes registrarlo como no realizado.', style: TextStyle(color: Theme.of(context).colorScheme.error))),
     Wrap(spacing: 8, children: [for (final entry in {'complete': 'Lo completé', 'partial': 'Lo hice parcialmente', 'none': 'No lo hice'}.entries) if (!unsafe || entry.key == 'none') ChoiceChip(label: Text(entry.value), selected: outcome == entry.key, onSelected: (_) => choose(entry.key))]),
     if (outcome == 'complete') const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Se usarán las cantidades de tu plan. Si hiciste menos, elige parcialmente.')),
     if (outcome != 'none') for (final entry in fields.entries) Padding(padding: const EdgeInsets.only(top: 12), child: TextFormField(
@@ -128,6 +130,10 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
     if (outcome == 'partial' || outcome == 'none') ...[
       const SizedBox(height: 12), DropdownButtonFormField<String>(initialValue: reason, isExpanded: true, decoration: const InputDecoration(labelText: 'Motivo'), items: [for (final e in skipReasons.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (value) => setState(() => reason = value), validator: (v) => v == null ? 'Selecciona un motivo' : null),
     ],
+    if (reason == 'PAIN_OR_DISCOMFORT' && outcome != 'complete') const Padding(
+      padding: EdgeInsets.only(top: 10),
+      child: Text('Si te duele, detén este ejercicio. Kora dejará de proponértelo, y también sus variantes equivalentes, en tus próximos planes.'),
+    ),
     if (message != null) Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: save, child: Text(widget.draft ? 'Usar resultado' : 'Guardar'))]);
 }

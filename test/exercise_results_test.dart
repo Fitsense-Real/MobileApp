@@ -2,6 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fitsense_mobile/core/api/json.dart';
+import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/workouts/data/workout_repository.dart';
 import 'package:fitsense_mobile/features/workouts/presentation/planned_workout_page.dart';
 import 'package:fitsense_mobile/features/dashboard/data/dashboard_repository.dart';
@@ -105,7 +107,9 @@ void main() {
     tester.view.physicalSize = const Size(600, 1100); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
     final repository = ReportFake();
-    await tester.pumpWidget(ProviderScope(overrides: [workoutRepositoryProvider.overrideWithValue(repository)], child: const MaterialApp(home: PlannedWorkoutPage(workout: {'plannedWorkoutId': 21, 'workoutName': 'Entrenamiento anterior', 'status': 'SKIPPED', 'expiresAt': '2026-01-01T23:59:00-05:00', 'exercises': [exercise]}))));
+    final workout = {'plannedWorkoutId': 21, 'workoutName': 'Entrenamiento anterior', 'status': 'SKIPPED', 'expiresAt': '2026-01-01T23:59:00-05:00', 'exercises': [exercise]};
+    // The page reads the routine again before sending (O20): the backend still has it as it was.
+    await tester.pumpWidget(ProviderScope(overrides: [workoutRepositoryProvider.overrideWithValue(repository), planRepositoryProvider.overrideWithValue(SamePlan({'planId': 3, 'workouts': [workout]}))], child: MaterialApp(home: PlannedWorkoutPage(workout: workout))));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ya lo hice · registrar entrenamiento')); await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar entrenamiento')); await tester.pumpAndSettle();
@@ -130,4 +134,11 @@ void main() {
     expect(find.text('Sesión guardada · 100% completado'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class SamePlan extends PlanRepository {
+  SamePlan(this.plan) : super(Dio());
+  final Json plan;
+  @override
+  Future<Json?> current() async => plan;
 }

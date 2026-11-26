@@ -1,0 +1,7 @@
+O20 check1: plan vigente 27 semana 2026-12-07 (CONSERVED); 2 planes en /plans
+O20 check1: /effective sigue con las 12 exclusiones de la sesión del 2026-11-30; el plan nuevo no prescribe ninguna (17 ejercicios prescritos)
+O20 check1: una semana con plan tras el dolor → confirmationRequired=false (Inicio no pregunta todavía)
+O20 check1 adaptación s9 semana 2026-12-07: resultado=REGENERACION_SEGURA_SUSTITUCION «»
+O20 check1 s9: plan vigente 27 2026-12-07
+O20 check1 adaptación s11 semana 2026-12-07: resultado=REGENERACION_SEGURA_REGLAS «»
+O20 check1 s11: plan vigente 28 2026-12-07

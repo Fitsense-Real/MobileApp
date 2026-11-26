@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "exerciseId": 1025,
+      "exerciseName": "Aperturas de pecho sentado con palanca",
+      "origin": "DIRECT",
+      "confirmed": true,
+      "provisional": false,
+      "confirmationRequired": false,
+      "derivedFromExerciseId": null,
+      "derivedFromExerciseName": null,
+      "equivalenceLevel": null,
+      "equivalenceGroup": null,
+      "equivalenceJustification": null,
+      "sourcePlannedWorkoutId": 910000003,
+      "eventDate": "2026-11-05",
+      "canIdentify": false,
+      "canReactivate": true
+    }
+  ]
+}

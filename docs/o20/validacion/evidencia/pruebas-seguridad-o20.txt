@@ -1,0 +1,52 @@
+== test/pain_o20_test.dart (26 pruebas, todas aprobadas)
+1–3 · why an exercise is blocked (no codes, no own interpretation) 1 · exercise blocked by pain
+1–3 · why an exercise is blocked (no codes, no own interpretation) 2 · a provisional equivalent never says that it hurt (not known yet)
+1–3 · why an exercise is blocked (no codes, no own interpretation) 2 · equivalent variant excluded
+1–3 · why an exercise is blocked (no codes, no own interpretation) 3 · precaution for a change of angle (provisional)
+1–3 · why an exercise is blocked (no codes, no own interpretation) pain plus a profile restriction; unknown codes stay generic; no block, no text
+4, 8, 12 · open routine 12 · reopening the app: block and records come back from the backend, without duplicates
+4, 8, 12 · open routine 4 · blocked and allowed in one session: the blocked one only as not done, the rest normally
+4, 8, 12 · open routine 8 · a 422 SESION_BLOQUEADA_POR_SEGURIDAD is explained and the routine is re-read from the backend
+5–7 · pain without an identified exercise 5 · skipping for pain re-reads the plan and offers, without insisting, to say which one
+5–7 · pain without an identified exercise 6 · later identification of the exercise that hurt
+5–7 · pain without an identified exercise 7 · the ones that had nothing to do with it; the backend can keep some
+5–7 · pain without an identified exercise 7 · the same rule before sending (the backend checks it again with 422)
+5–7 · pain without an identified exercise 8 · a 422 from /identification is shown and nothing is assumed lifted
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 10 · REACTIVACION_RECHAZADA_POR_SEGURIDAD as the real backend sends it: plain message, still excluded, read again
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 10 · a reactivation the backend refuses (422) keeps the exclusion
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 10 · declared «unrelated» but not lifted by the backend: the reason in plain words
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 10 · reactivation the backend authorizes: the exercise and its equivalents leave the list
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 11 · adaptation NO_FACTIBLE: a clear explanation instead of the code
+9–11 · exclusions over time, reactivation and NO_FACTIBLE 9 · after two weeks the exclusion is still there and Kora asks actively
+9–11 · exclusions over time, reactivation and NO_FACTIBLE an early request is listed in Perfil but not pushed on Inicio
+Mobile cannot bypass O20 (regressions) a retroactive report prepared on an old copy is not sent with work on an exercise blocked since
+Mobile cannot bypass O20 (regressions) back from the background, an open routine is read again and shows the new block
+Mobile cannot bypass O20 (regressions) equivalents and precautions cannot be reactivated from the app
+Mobile cannot bypass O20 (regressions) logout and a new login: the exclusions come back from the backend, not from the screen
+contract parsing (exact fields of the backend) /confirmation-requests and /identification answer
+contract parsing (exact fields of the backend) /effective: DIRECT and its provisional EQUIVALENT, as in the specification
+
+== test/o20_rutina_desactualizada_test.dart (19 pruebas, todas aprobadas)
+1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 1 · the connection fails
+1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 2 · the backend takes more than 8 seconds
+1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 3 · the plan request answers 401
+1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 4 · the plan request answers 422
+5 · the backend answers a plan different from the one on screen a blocked exercise on screen that the backend still allows: the dialog follows the backend
+5 · the backend answers a plan different from the one on screen the exercise was blocked meanwhile: work is not sent; only «No lo hice» is offered
+5 · the backend answers a plan different from the one on screen the routine left the plan (a new version): nothing is sent and it cannot be edited
+6 · lost answer: before repeating, the app asks the backend what it has the request had arrived: it is not sent again
+6 · lost answer: before repeating, the app asks the backend what it has the session cannot be checked: kept, not sent again
+6 · lost answer: before repeating, the app asks the backend what it has the session was closed meanwhile: the result is held, never sent
+6 · the connection drops while sending: kept, never duplicated when retried
+7 · the app goes to the background while the plan is being read: one dialog, one record
+8 · two actions on the same exercise at the same time two taps on «Registrar ejercicio» while the plan is being read: one dialog
+8 · two actions on the same exercise at the same time two taps on «Reintentar envío»: one record
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent a held result can be discarded
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent back from the background: the pending result is checked again and held, without sending
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent completed result
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent partial result
+retroactive report on a routine that cannot be confirmed no network or a slow answer: nothing sent, every draft kept; later it goes on
+
+== test/o20_demo_kora_app_test.dart (1 pruebas, todas aprobadas)
+Demo Kora: profile, current routine, four plans and their sessions, adherence, adaptations, exclusion 1025, refresh on return
+

@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "data": {
+    "userId": 1,
+    "birthDate": "1995-04-12",
+    "age": 31,
+    "biologicalSex": "MALE",
+    "heightCm": 176.0,
+    "currentWeightKg": 74.0,
+    "targetWeightKg": null,
+    "fitnessLevel": "INTERMEDIATE",
+    "goalType": "GAIN_MUSCLE",
+    "goalText": "Ganar masa muscular (usuario de demostracion de Kora)",
+    "trainingLocation": "GYM",
+    "daysPerWeek": 5,
+    "availableDays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "sessionMinutes": 60,
+    "equipmentCodes": [
+      "body weight",
+      "dumbbell",
+      "barbell",
+      "cable",
+      "leverage machine",
+      "bench",
+      "band",
+      "stationary bike",
+      "treadmill",
+      "kettlebell",
+      "ez barbell",
+      "smith machine",
+      "pull-up bar"
+    ],
+    "blockedExerciseIds": [],
+    "healthNotes": "Ninguna",
+    "allowHighImpact": true,
+    "allowFloorExercises": true,
+    "allowKneelingExercises": true,
+    "allowHangingExercises": true,
+    "allowOverheadExercises": true
+  }
+}

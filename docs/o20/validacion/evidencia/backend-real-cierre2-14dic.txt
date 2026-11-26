@@ -1,0 +1,10 @@
+O20 check2: plan vigente 43 semana 2026-12-14 (CONSERVED); 3 planes en /plans
+O20 check2: /effective sigue con las 12 exclusiones de la sesión del 2026-11-30; el plan nuevo no prescribe ninguna (17 ejercicios prescritos)
+O20 S9 check2: dos semanas con plan → GET /confirmation-requests confirmationRequired=true; /effective: 7 DIRECT con confirmationRequired=true, siguen excluidas; Inicio muestra «¿Recuerdas qué ejercicio te dolió el …?» (1 aviso)
+O20 check2 adaptación s9 semana 2026-12-07: resultado=REGENERACION_SEGURA_SUSTITUCION «»
+O20 check2 adaptación s9 semana 2026-12-14: resultado=SIN_ADAPTACION «»
+O20 check2 s9: plan vigente 43 2026-12-14
+O20 check2 adaptación s11 semana 2026-12-07: resultado=REGENERACION_SEGURA_REGLAS «»
+O20 check2 adaptación s11 semana 2026-12-14: resultado=SIN_ADAPTACION «»
+O20 check2 s11: plan vigente 45 2026-12-14
+O20 S9 /confirmation-requests: [49 2026-11-30 confirmationRequired=true]

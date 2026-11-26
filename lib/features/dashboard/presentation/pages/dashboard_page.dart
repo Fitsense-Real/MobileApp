@@ -13,6 +13,8 @@ import '../../../pain/presentation/pain_exclusions_sheet.dart';
 import '../../../reminders/presentation/reminders_controller.dart';
 import '../../../reminders/presentation/reminders_sheet.dart';
 import '../../../push/presentation/push_preferences_sheet.dart';
+import '../../../pain/domain/pain_safety.dart' show notFeasibleExplanation;
+import '../../../pain/presentation/pain_safety_notices.dart';
 import '../../../welcome/presentation/welcome_routes.dart';
 import '../dashboard_tour_targets.dart';
 import '../../../../app/router/app_routes.dart';
@@ -1031,7 +1033,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               style: const TextStyle(color: Kora.sage, fontSize: 10),
             ),
           ),
-        if (adaptation?['motivoTexto'] != null)
+        if (notFeasibleExplanation(adaptation) case final text?)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(text, style: const TextStyle(color: Kora.sage, fontSize: 10)),
+          )
+        else if (adaptation?['motivoTexto'] != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text('${adaptation!['motivoTexto']}', style: const TextStyle(color: Kora.sage, fontSize: 10)),
@@ -1586,6 +1593,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               if (plan.hasValue) todayRoutines(plan.value),
             ],
             if (tab == 1) ...[
+              if (!tour) const PainSafetyNotices(),
               if (!tour) planLimitations(),
               KeyedSubtree(
                 key: widget.tourTargets?.routines,

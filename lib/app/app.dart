@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/auth_interceptor.dart';
 import '../features/authentication/presentation/providers/auth_provider.dart';
+import '../features/pain/presentation/pain_confirmation_sheet.dart';
 import '../features/push/presentation/push_controller.dart';
 
 import '../shared/theme/app_theme.dart';
@@ -115,9 +116,11 @@ class _FitSenseAppState
           onThemeChanged:
           _setThemeMode,
 
-          child:
-          child ??
-              const SizedBox.shrink(),
+          // O20: back from the background, the plan and the pain exclusions
+          // are read again on every screen.
+          child: PainSafetyResumeRefresher(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

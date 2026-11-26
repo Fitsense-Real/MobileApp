@@ -1,0 +1,15 @@
+O20 omisión por dolor: entrenamiento 13 con ejercicios [938, 1054, 1094, 1098, 1202, 1259, 1315]
+O20 /effective: 7 DIRECT sin confirmar, 3 EQUIVALENT y 0 PRECAUTION provisionales
+O20   equivalent 13 «Escaladores»: Es una variante de «Escalador», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.
+O20   equivalent 957 «Flexión pliométrica con kettlebell»: Es una variante de «Flexión pliométrica», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.
+O20   equivalent 1097 «Flexión en pared»: Es una variante de «Flexión en pared versión 2», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.
+O20 /confirmation-requests: sesión 13 2026-11-30, confirmationRequired=false, 7 ejercicios
+O20 plan releído (5 v1): 2 entrenamientos abiertos, 1 prescripciones con dolor_registrado = exactamente las de /effective
+O20 explicación en la app: «Estaba en una sesión en la que reportaste dolor sin indicar qué ejercicio fue.»
+O20 trabajo en ejercicio bloqueado 110 → 422 SESION_BLOQUEADA_POR_SEGURIDAD
+O20 como no realizado → 200 (1 registro); permitido 105 → 200
+O20 identificado también como no relacionado → 422 «El ejercicio que te dolio no puede ser a la vez no relacionado.»
+O20 identificación (1315, no relacionados {1202}) → 200: levantados [1202], no levantados {}, siguen excluidos [938, 1054, 1094, 1098, 1259], equivalentes 0
+O20 identificar dos veces → 404
+O20 reactivación de 1315 → 200 (candidatoHoy=true); salen también sus 0 derivados; quedan 8 exclusiones efectivas
+00:00 +1: All tests passed!

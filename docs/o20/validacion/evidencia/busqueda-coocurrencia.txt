@@ -1,0 +1,35 @@
+Búsqueda en el Backend real (generation 98276a9, base aislada fitsense_val2, motor de reglas, IA apagada):
+cuentas sintéticas; en cada una se omite por dolor el primer entrenamiento abierto y se busca, en el resto de
+rutinas abiertas, una prescripción cuyo ejercicio sea una exclusión derivada (EQUIVALENT o PRECAUTION).
+Script: buscar-coocurrencia.py. Salida tal cual:
+
+gym60: 6 abiertos, 36 prescripciones, 2 derivadas; en rutinas abiertas: []
+(primera ejecución detenida: la cuenta gym5adv1 con 90 min no obtuvo plan; se ajustó a 60 min y se repitió)
+gym60: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym5adv1: 5 abiertos, 34 prescripciones, 0 derivadas; en rutinas abiertas: []
+home62: 6 abiertos, 36 prescripciones, 2 derivadas; en rutinas abiertas: []
+gym63: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym5adv4: 5 abiertos, 33 prescripciones, 5 derivadas; en rutinas abiertas: []
+home65: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym66: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym5adv7: 5 abiertos, 34 prescripciones, 0 derivadas; en rutinas abiertas: []
+home68: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym69: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym5adv10: 5 abiertos, 33 prescripciones, 5 derivadas; en rutinas abiertas: []
+home611: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym612: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym5adv13: 5 abiertos, 33 prescripciones, 5 derivadas; en rutinas abiertas: []
+home614: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym615: 6 abiertos, 36 prescripciones, 3 derivadas; en rutinas abiertas: []
+gym5adv16: 5 abiertos, 34 prescripciones, 1 derivadas; en rutinas abiertas: []
+home617: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym618: 6 abiertos, 36 prescripciones, 0 derivadas; en rutinas abiertas: []
+gym5adv19: 5 abiertos, 34 prescripciones, 3 derivadas; en rutinas abiertas: []
+home620: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym621: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+gym5adv22: 5 abiertos, 34 prescripciones, 2 derivadas; en rutinas abiertas: []
+home623: 6 abiertos, 36 prescripciones, 1 derivadas; en rutinas abiertas: []
+[]
+
+Junto con las 10 cuentas de la validación anterior (backend-real-escenarios de 89a7be9): 0 de 34 planes ponen en la
+misma semana una variante equivalente o una precaución del ejercicio que dolió.

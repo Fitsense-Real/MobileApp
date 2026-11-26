@@ -1,0 +1,3 @@
+O20 REACTIVACIÓN POST /pain-exclusions/460/reactivation (60 años, alto impacto «Flexión pliométrica con toque de pecho») → 422 REACTIVACION_RECHAZADA_POR_SEGURIDAD: el ejercicio 460 choca con una restriccion de seguridad vigente (alto_impacto). Tu confirmacion no puede levantarla.; sigue en /effective
+O20 REACTIVACIÓN por otra vía: identificar 1103 y declarar 460 «no relacionado» → noRelacionadosNoLevantados {460: «choca con una restriccion de seguridad vigente (alto_impacto)»}; sigue en /effective
+O20 REACTIVACIÓN historial: 7 filas (igual que antes), planes [28 ACTIVE] sin cambios

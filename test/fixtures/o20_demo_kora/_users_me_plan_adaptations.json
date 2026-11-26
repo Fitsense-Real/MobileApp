@@ -1,0 +1,66 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "attemptId": 910000000,
+      "weekStartDate": "2026-11-09",
+      "resultingPlanId": 910000001,
+      "resultado": "REGENERACION_SEGURA_SUSTITUCION",
+      "estado": "RESPALDO",
+      "decision": "ADAPT_LOCALIZED",
+      "llamadasIa": 0,
+      "motivos": [],
+      "sesiones": [
+        {
+          "origenPlannedWorkoutId": 910000003,
+          "intervencion": "SEGURIDAD_ANTE_DOLOR",
+          "resultado": "SIN_EFECTO"
+        }
+      ],
+      "estadoPublicacion": "PUBLICADO",
+      "motivoCodigo": null,
+      "motivoTexto": null,
+      "codigos": [],
+      "sesionAfectada": {
+        "plannedWorkoutId": 910000003,
+        "fecha": "2026-11-05",
+        "enfoque": "UPPER_BODY"
+      },
+      "restricciones": []
+    },
+    {
+      "attemptId": 910000001,
+      "weekStartDate": "2026-11-16",
+      "resultingPlanId": 910000002,
+      "resultado": "SIN_ADAPTACION",
+      "estado": "SIN_ORDEN",
+      "decision": "NO_CHANGE",
+      "llamadasIa": 0,
+      "motivos": [],
+      "sesiones": [],
+      "estadoPublicacion": "PUBLICADO",
+      "motivoCodigo": null,
+      "motivoTexto": null,
+      "codigos": [],
+      "sesionAfectada": null,
+      "restricciones": []
+    },
+    {
+      "attemptId": 910000002,
+      "weekStartDate": "2026-11-23",
+      "resultingPlanId": 910000003,
+      "resultado": "PROGRESION_DEL_BACKEND",
+      "estado": "SIN_ORDEN",
+      "decision": "NO_CHANGE",
+      "llamadasIa": 0,
+      "motivos": [],
+      "sesiones": [],
+      "estadoPublicacion": "PUBLICADO",
+      "motivoCodigo": null,
+      "motivoTexto": null,
+      "codigos": [],
+      "sesionAfectada": null,
+      "restricciones": []
+    }
+  ]
+}
