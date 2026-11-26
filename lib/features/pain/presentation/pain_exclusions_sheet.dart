@@ -56,7 +56,7 @@ class _PainExclusionsSheetState extends ConsumerState<PainExclusionsSheet> {
       message = '${result['nota'] ?? (result['candidatoHoy'] == true ? 'El ejercicio vuelve a ser candidato.' : 'Reactivación registrada.')}';
     } catch (e) {
       // e.g. 422 REACTIVACION_RECHAZADA_POR_SEGURIDAD: it stays excluded.
-      message = apiError(e);
+      message = reactivationRefusal(apiError(e), name) ?? apiError(e);
     } finally {
       if (mounted) setState(() => busyExercise = null);
       refreshPainSafety(ref);

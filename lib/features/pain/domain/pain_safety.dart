@@ -218,6 +218,33 @@ String? blockExplanation(Json exercise, {List<EffectiveExclusion> effective = co
   return parts.join(' ');
 }
 
+/// The restrictions a backend message names between parentheses, in plain words
+/// («… choca con una restriccion de seguridad vigente (alto_impacto) …» → «alto impacto»).
+List<String> _namedRestrictions(String message) => [
+  for (final group in RegExp(r'\(([a-z_+, ]+)\)').allMatches(message))
+    for (final code in group.group(1)!.split(RegExp(r'[+,]')).map((c) => c.trim()))
+      if (_restrictionLabels[code] case final label?) label,
+];
+
+String _restrictionSentence(String message) {
+  final labels = _namedRestrictions(message);
+  return labels.isEmpty
+      ? 'no es compatible con una restricción de seguridad vigente'
+      : 'no es compatible con una restricción de seguridad vigente (${labels.join(', ')})';
+}
+
+/// The backend refused a reactivation (`REACTIVACION_RECHAZADA_POR_SEGURIDAD`): what the user reads, without
+/// codes. Null for any other message.
+String? reactivationRefusal(String message, String name) {
+  if (!message.contains('REACTIVACION_RECHAZADA_POR_SEGURIDAD')) return null;
+  return 'Kora no puede volver a proponerte «$name» por ahora: ${_restrictionSentence(message)}. '
+      'Sigue excluido; tu confirmación no puede levantar esa restricción.';
+}
+
+/// Why the backend did not lift an exercise declared unrelated (`noRelacionadosNoLevantados`), in plain words.
+String notLiftedReason(String reason) =>
+    reason.contains('choca con') || _namedRestrictions(reason).isNotEmpty ? '${_restrictionSentence(reason)[0].toUpperCase()}${_restrictionSentence(reason).substring(1)}.' : reason;
+
 /// Results of an adaptation (`AdaptationOutcome.resultado`) that published
 /// nothing: the backend could not adapt the week within the current
 /// restrictions.

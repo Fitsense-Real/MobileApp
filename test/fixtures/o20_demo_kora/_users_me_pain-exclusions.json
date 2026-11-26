@@ -1,0 +1,18 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "exclusionId": 910000000,
+      "exerciseId": 1025,
+      "exerciseName": "Aperturas de pecho sentado con palanca",
+      "reason": "DOLOR_IDENTIFICADO",
+      "eventDate": "2026-11-05",
+      "sourcePlannedWorkoutId": 910000003,
+      "status": "ACTIVA",
+      "recordedAt": "2026-11-05T23:36:52.5Z",
+      "reactivatedAt": null,
+      "confirmed": true,
+      "identifiedAt": null
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "planId": 910000003,
+      "weekNumber": 4,
+      "weekStartDate": "2026-11-23",
+      "weekEndDate": "2026-11-29",
+      "planVersion": 1,
+      "plannedDaysCount": 5,
+      "status": "ACTIVE",
+      "generationSource": "CONSERVED",
+      "adjustmentApplied": null
+    },
+    {
+      "planId": 910000002,
+      "weekNumber": 3,
+      "weekStartDate": "2026-11-16",
+      "weekEndDate": "2026-11-22",
+      "planVersion": 1,
+      "plannedDaysCount": 5,
+      "status": "COMPLETED",
+      "generationSource": "CONSERVED",
+      "adjustmentApplied": null
+    },
+    {
+      "planId": 910000001,
+      "weekNumber": 2,
+      "weekStartDate": "2026-11-09",
+      "weekEndDate": "2026-11-15",
+      "planVersion": 1,
+      "plannedDaysCount": 5,
+      "status": "COMPLETED",
+      "generationSource": "CONSERVED",
+      "adjustmentApplied": "ADAPT_LOCALIZED"
+    },
+    {
+      "planId": 910000000,
+      "weekNumber": 1,
+      "weekStartDate": "2026-11-02",
+      "weekEndDate": "2026-11-08",
+      "planVersion": 1,
+      "plannedDaysCount": 5,
+      "status": "COMPLETED",
+      "generationSource": "RULE_ENGINE",
+      "adjustmentApplied": null
+    }
+  ]
+}

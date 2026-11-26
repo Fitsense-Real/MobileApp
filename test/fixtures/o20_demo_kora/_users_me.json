@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "data": {
+    "userId": 1,
+    "email": "usuario.demo.kora@example.com",
+    "firstName": "Usuario",
+    "lastName": "Demo Kora",
+    "timezone": "America/Lima",
+    "status": "ACTIVE",
+    "studyParticipant": false,
+    "participantCode": null,
+    "enrolledAt": null,
+    "withdrawnAt": null,
+    "lastLoginAt": "2026-11-26T04:00:43.523852Z",
+    "role": "USER"
+  }
+}

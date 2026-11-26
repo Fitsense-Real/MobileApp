@@ -41,6 +41,13 @@ class RecordedPain extends PainExclusionRepository {
   Future<List<EffectiveExclusion>> effective() async =>
       [for (final r in jsonRows(answer(account, 'pain_exclusions_effective') ?? [])) EffectiveExclusion.fromJson(r)];
   @override
+  Future<Json> reactivate(Object exerciseId, {String? comment}) async {
+    final refusal = answer(account, 'reactivation_422') as Json?;
+    if (refusal == null) return {'exerciseId': exerciseId, 'candidatoHoy': true};
+    final options = RequestOptions(path: '/users/me/pain-exclusions/$exerciseId/reactivation');
+    throw DioException(requestOptions: options, response: Response(requestOptions: options, statusCode: 422, data: refusal));
+  }
+  @override
   Future<List<PainConfirmationRequest>> confirmationRequests() async =>
       [for (final r in jsonRows(answer(account, 'pain_exclusions_confirmation_requests') ?? [])) PainConfirmationRequest.fromJson(r)];
 }
@@ -79,6 +86,9 @@ final shot = GlobalKey();
 
 // The filled button's text style names no font (a device uses its own): here, Poppins.
 final theme = AppTheme.light.copyWith(
+  snackBarTheme: AppTheme.light.snackBarTheme.copyWith(
+    contentTextStyle: (AppTheme.light.snackBarTheme.contentTextStyle ?? const TextStyle(color: Colors.white)).copyWith(fontFamily: 'Poppins'),
+  ),
   filledButtonTheme: FilledButtonThemeData(style: AppTheme.light.filledButtonTheme.style!.copyWith(
     textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
   )),
@@ -158,4 +168,42 @@ void main() {
     expect(find.byKey(const Key('not-feasible')), findsOneWidget);
     await capture(tester, 'R7-cuenta-a-inicio-no-factible');
   }, skip: skip || !has('nofactible'));
+
+  testWidgets('R8 S2/S3 · sesión abierta: la variante equivalente y la precaución, bloqueadas', (tester) async {
+    final workout = answer('equivalentes', 'workout')! as Json;
+    await pump(tester, 'equivalentes', PlannedWorkoutPage(workout: workout), size: const Size(400, 3300));
+    for (final e in jsonRows(workout['exercises']).where((e) => e['safetyBlockReason'] != null)) {
+      expect(find.byKey(Key('blocked-${e['plannedExerciseId']}')), findsOneWidget);
+    }
+    await capture(tester, 'R8-s2-s3-sesion-abierta-bloqueados');
+  }, skip: skip || !has('equivalentes'));
+
+  testWidgets('R9 S3 · registrar la precaución: solo «No lo hice»', (tester) async {
+    final workout = answer('equivalentes', 'workout')! as Json;
+    final precaution = jsonRows(workout['exercises']).firstWhere((e) => e['exerciseId'] == 899);
+    await pump(tester, 'equivalentes', PlannedWorkoutPage(workout: workout), size: const Size(400, 900));
+    final button = find.descendant(of: find.ancestor(of: find.byKey(Key('blocked-${precaution['plannedExerciseId']}')), matching: find.byType(Column)).first,
+        matching: find.text('Registrar ejercicio'));
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.text('Lo completé'), findsNothing);
+    expect(find.text('Lo hice parcialmente'), findsNothing);
+    await capture(tester, 'R9-s3-precaucion-solo-no-realizado');
+  }, skip: skip || !has('equivalentes'));
+
+  testWidgets('R10 · reactivación rechazada por el Backend (60 años, alto impacto)', (tester) async {
+    await pump(tester, 'rechazo', const Scaffold(body: SafeArea(child: PainExclusionsSheet())), size: const Size(400, 1500));
+    final target = find.text('Flexión pliométrica con toque de pecho');
+    expect(target, findsOneWidget);
+    final row = find.ancestor(of: target, matching: find.byType(Card)).first;
+    await tester.tap(find.descendant(of: row, matching: find.text('Ya no me duele')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ya no tengo dolor'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Kora no puede volver a proponerte «Flexión pliométrica con toque de pecho» por ahora'), findsOneWidget);
+    expect(target, findsOneWidget);
+    await capture(tester, 'R10-reactivacion-rechazada');
+  }, skip: skip || !has('rechazo'));
 }

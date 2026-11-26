@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_error.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart' show displayDate;
+import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../plans/data/plan_repository.dart';
 import '../data/pain_exclusion_repository.dart';
 import '../domain/pain_safety.dart';
@@ -15,6 +16,37 @@ void refreshPainSafety(WidgetRef ref) {
   ref.invalidate(painConfirmationRequestsProvider);
   ref.invalidate(currentPlanProvider);
   ref.invalidate(planAdaptationsProvider);
+}
+
+/// O20: back from the background, the plan, the pain exclusions and the
+/// requests are read again (for a signed-in user), so a block that arrived
+/// meanwhile shows up at once on any screen.
+class PainSafetyResumeRefresher extends ConsumerStatefulWidget {
+  const PainSafetyResumeRefresher({super.key, required this.child});
+  final Widget child;
+  @override
+  ConsumerState<PainSafetyResumeRefresher> createState() => _PainSafetyResumeRefresherState();
+}
+
+class _PainSafetyResumeRefresherState extends ConsumerState<PainSafetyResumeRefresher> {
+  late final AppLifecycleListener lifecycle = AppLifecycleListener(onResume: () {
+    if (ref.read(authViewModelProvider).isAuthenticated) refreshPainSafety(ref);
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    lifecycle; // starts listening
+  }
+
+  @override
+  void dispose() {
+    lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 Future<void> showPainConfirmation(BuildContext context, PainConfirmationRequest request) => showModalBottomSheet<void>(
@@ -124,7 +156,7 @@ class _PainConfirmationSheetState extends ConsumerState<PainConfirmationSheet> {
     if (done.unrelatedNotLifted.isNotEmpty) ...[
       const SizedBox(height: 12),
       const Text('Siguen sin proponerse por seguridad:', style: TextStyle(fontWeight: FontWeight.w800)),
-      for (final e in done.unrelatedNotLifted.entries) Text('• ${nameOf(e.key)}: ${e.value}'),
+      for (final e in done.unrelatedNotLifted.entries) Text('• ${nameOf(e.key)}: ${notLiftedReason(e.value)}'),
     ],
     if (done.stillExcludedFromSession.isNotEmpty) ...[
       const SizedBox(height: 12),

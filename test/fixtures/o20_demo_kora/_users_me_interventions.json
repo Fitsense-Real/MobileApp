@@ -1,0 +1,74 @@
+{
+  "status": 200,
+  "data": [
+    {
+      "interventionId": 910000002,
+      "sourcePlanId": 910000002,
+      "resultingPlanId": 910000003,
+      "triggerAdherencePct": 100.0,
+      "triggerSkipReason": null,
+      "adjustmentTypes": [
+        "NONE"
+      ],
+      "targetVolumeChangePct": 0.0,
+      "previousWeekVolume": 842,
+      "resultingWeekVolume": 845,
+      "actualVolumeChangePct": 0.36,
+      "daysChange": null,
+      "difficultyChange": null,
+      "durationChangePct": null,
+      "loadChangePct": 0.0,
+      "messageShown": "La semana pasada cumpliste el 100 % de lo previsto. Es un buen cumplimiento: mantenemos tu plan.",
+      "ruleVersion": "MVP-1.8",
+      "appliedAt": "2026-11-23T08:00:00Z",
+      "adherenceAfterPct": null,
+      "outcome": "PENDING"
+    },
+    {
+      "interventionId": 910000001,
+      "sourcePlanId": 910000001,
+      "resultingPlanId": 910000002,
+      "triggerAdherencePct": 100.0,
+      "triggerSkipReason": null,
+      "adjustmentTypes": [
+        "NONE"
+      ],
+      "targetVolumeChangePct": 0.0,
+      "previousWeekVolume": 842,
+      "resultingWeekVolume": 842,
+      "actualVolumeChangePct": 0.0,
+      "daysChange": null,
+      "difficultyChange": null,
+      "durationChangePct": null,
+      "loadChangePct": 0.0,
+      "messageShown": "La semana pasada cumpliste el 100 % de lo previsto. Es un buen cumplimiento: mantenemos tu plan.",
+      "ruleVersion": "MVP-1.8",
+      "appliedAt": "2026-11-16T08:00:00Z",
+      "adherenceAfterPct": 100.0,
+      "outcome": "UNCHANGED"
+    },
+    {
+      "interventionId": 910000000,
+      "sourcePlanId": 910000000,
+      "resultingPlanId": 910000001,
+      "triggerAdherencePct": 67.81,
+      "triggerSkipReason": "LACK_OF_TIME",
+      "adjustmentTypes": [
+        "NONE"
+      ],
+      "targetVolumeChangePct": 0.0,
+      "previousWeekVolume": 842,
+      "resultingWeekVolume": 842,
+      "actualVolumeChangePct": 0.0,
+      "daysChange": null,
+      "difficultyChange": null,
+      "durationChangePct": null,
+      "loadChangePct": 0.0,
+      "messageShown": "La semana pasada cumpliste el 68 % de lo previsto. Reportaste molestias. Revisaremos por seguridad los ejercicios de esa sesión. Si el dolor continúa, consulta a un profesional de la salud. Si ningún cambio es compatible con tu entrenamiento, la mantendremos como está.",
+      "ruleVersion": "MVP-1.8",
+      "appliedAt": "2026-11-09T08:00:00Z",
+      "adherenceAfterPct": 100.0,
+      "outcome": "IMPROVED"
+    }
+  ]
+}

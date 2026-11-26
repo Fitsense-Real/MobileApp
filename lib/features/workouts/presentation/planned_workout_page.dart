@@ -22,6 +22,9 @@ class PlannedWorkoutPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<PlannedWorkoutPage> createState() => _PlannedWorkoutPageState();
 }
+/// Result of confirming the routine with the backend before sending results.
+enum RoutineCheck { confirmed, unreachable, outdated }
+
 class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   Json? session;
   /// The routine as the backend sees it now. Starts with what the plan list
@@ -42,12 +45,9 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     Future.microtask(() => act(() async { session = await repository.current(); }));
     // In the background: the screen is usable at once and updates when the
     // backend answers (a slow network never blocks registering).
-    Future.microtask(() async { await refreshWorkout(); if (mounted) setState(() {}); });
+    Future.microtask(refreshWorkout);
     // Back from the background: the routine may have changed meanwhile.
-    lifecycle = AppLifecycleListener(onResume: () async {
-      await refreshWorkout();
-      if (mounted) setState(() {});
-    });
+    lifecycle = AppLifecycleListener(onResume: refreshWorkout);
   }
 
   AppLifecycleListener? lifecycle;
@@ -58,41 +58,72 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     super.dispose();
   }
 
+  /// Results entered while the routine could not be confirmed with the
+  /// backend: kept on this device and never sent until it is confirmed.
+  final pending = <Object, Json>{};
+
+  /// Exercises whose result is being confirmed or sent: a second action on
+  /// the same exercise waits instead of sending twice.
+  final sending = <Object>{};
+
+  /// How long the app waits for the plan before giving up (and not sending).
+  static const confirmLimit = Duration(seconds: 8);
+
   /// Re-reads the routine from the current plan (`GET /users/me/plan/current`).
   /// The open session and its records come from the backend too, so a
-  /// refresh never duplicates executions. Returns the drafts it dropped
-  /// because their exercise is now blocked. With [limit], a slow network
-  /// does not hold the user: the app goes on and the backend, which checks
-  /// every record, has the last word.
-  Future<Set<Object>> refreshWorkout({Duration? limit}) async {
-    final dropped = <Object>{};
+  /// refresh never duplicates executions.
+  ///
+  /// [RoutineCheck.unreachable]: no answer (no network, more than [limit],
+  /// 401, 422, 5xx...). Nothing on screen changes and nothing may be sent on
+  /// its basis: no answer never means «allowed».
+  /// [RoutineCheck.outdated]: the routine is no longer in the active plan.
+  Future<RoutineCheck> checkRoutine({Duration? limit}) async {
     final Json? plan;
     try {
       final read = ref.read(planRepositoryProvider).current();
       plan = await (limit == null ? read : read.timeout(limit));
     } catch (_) {
-      return dropped; // without connection: keep what is on screen; the backend still checks every record
+      return RoutineCheck.unreachable;
     }
+    if (!mounted) return RoutineCheck.unreachable;
     final fresh = jsonRows(plan?['workouts'] ?? []).where((w) => w['plannedWorkoutId'] == workout['plannedWorkoutId']).firstOrNull;
-    if (!mounted) return dropped;
     if (fresh == null) {
-      // Only an open routine can leave the active plan (a new version
-      // replaced it); a closed one keeps its history as it was.
-      outdated = isOpenWorkout(workout) && plan != null;
-      return dropped;
+      // A new plan version replaced it, or there is no plan this week. A
+      // closed routine keeps its history as it was; an open one can no
+      // longer be recorded.
+      outdated = isOpenWorkout(workout);
+      return RoutineCheck.outdated;
     }
     workout = fresh;
     outdated = false;
-    // A draft with work for an exercise that is now blocked cannot be sent.
-    for (final e in jsonRows(workout['exercises'] ?? [])) {
-      final draft = drafts[e['plannedExerciseId']];
-      if (isUnsafeExercise(e) && draft != null && ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].any((k) => (draft[k] as num? ?? 0) > 0)) {
-        drafts.remove(e['plannedExerciseId']);
-        dropped.add(e['plannedExerciseId']);
-      }
-    }
-    return dropped;
+    return RoutineCheck.confirmed;
   }
+
+  /// [checkRoutine] in the background (on open, back from the background,
+  /// after a 422): the screen shows the backend's routine as soon as it answers.
+  Future<void> refreshWorkout() async {
+    await checkRoutine();
+    if (mounted) setState(() {});
+  }
+
+  /// The exercise as the backend has it now in this routine, or null.
+  Json? freshExercise(Object plannedExerciseId) =>
+      jsonRows(workout['exercises'] ?? []).where((e) => e['plannedExerciseId'] == plannedExerciseId).firstOrNull;
+
+  static bool hasWork(Json body) => ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].any((k) => (body[k] as num? ?? 0) > 0);
+
+  /// Why a result cannot be sent with the routine just confirmed, or null.
+  String? refusal(Object plannedExerciseId, Json body) {
+    final exercise = freshExercise(plannedExerciseId);
+    if (exercise == null) return 'Este ejercicio ya no forma parte de tu rutina actualizada. No se envió el resultado.';
+    if (isUnsafeExercise(exercise) && hasWork(body)) {
+      return 'Este ejercicio tiene ahora una restricción por seguridad: solo puede registrarse como no realizado. No se envió el resultado con trabajo realizado.';
+    }
+    return null;
+  }
+
+  static const unreachableMessage = 'No pudimos confirmar con el servidor que tu rutina sigue vigente. '
+      'Tu resultado se guardó en este teléfono y no se ha enviado. Revisa tu conexión y vuelve a intentarlo.';
 
   Future<void> act(Future<void> Function() action) async {
     if (!mounted) return;
@@ -101,27 +132,102 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     catch (e) {
       if (!mounted) return;
       if (e is DioException && e.response?.statusCode == 422) {
-        // The backend refused it (e.g. SESION_BLOQUEADA_POR_SEGURIDAD: an
-        // exercise is no longer safe). Show why and its current state.
-        final blocked = apiError(e).contains('SESION_BLOQUEADA_POR_SEGURIDAD');
-        error = blocked
-            ? 'Este ejercicio ya no puede registrarse con trabajo realizado: tiene una restricción por seguridad. Puedes registrarlo como no realizado y seguir con el resto.'
-            : apiError(e);
-        refreshPainSafety(ref);
-        try { session = await repository.current(); await refreshWorkout(); } catch (_) {}
+        await onRefused(e);
       } else {
         error = apiError(e);
       }
     }
     finally { if (mounted) setState(() => busy = false); }
   }
+
+  /// The backend refused it (e.g. SESION_BLOQUEADA_POR_SEGURIDAD: an exercise
+  /// is no longer safe). Show why and read its current state again.
+  Future<void> onRefused(DioException e) async {
+    final blocked = apiError(e).contains('SESION_BLOQUEADA_POR_SEGURIDAD');
+    error = blocked
+        ? 'Este ejercicio ya no puede registrarse con trabajo realizado: tiene una restricción por seguridad. Puedes registrarlo como no realizado y seguir con el resto.'
+        : apiError(e);
+    refreshPainSafety(ref);
+    try { session = await repository.current(); } catch (_) {}
+    await checkRoutine();
+  }
+
   Future<void> record(Json exercise) async {
+    final id = exercise['plannedExerciseId'] as Object;
+    if (sending.contains(id)) return;
+    // Show the dialog with the routine as the backend has it now, when it answers.
+    setState(() { sending.add(id); busy = true; });
+    final RoutineCheck check;
+    try {
+      check = await checkRoutine(limit: confirmLimit);
+    } finally {
+      if (mounted) setState(() { sending.remove(id); busy = false; });
+    }
+    if (!mounted || outdated) return;
+    if (check == RoutineCheck.confirmed) exercise = freshExercise(id) ?? exercise;
     final records = reporting ? drafts.values.toList() : jsonRows(session?['exercises'] ?? []);
-    final existing = records.where((e) => e['plannedExerciseId'] == exercise['plannedExerciseId']).firstOrNull;
+    final existing = pending[id] ?? records.where((e) => e['plannedExerciseId'] == id).firstOrNull;
     final body = await showDialog<Json>(context: context, builder: (_) => ExerciseResultDialog(exercise: exercise, existing: existing, draft: reporting, blockReason: blockExplanation(exercise, effective: ref.read(effectivePainExclusionsProvider).asData?.value ?? const [])));
     if (body == null || !mounted) return;
-    if (reporting) { setState(() => drafts[exercise['plannedExerciseId']] = {...body, 'plannedExerciseId': exercise['plannedExerciseId']}); return; }
-    await act(() async { session = await repository.record(session!['sessionId'], exercise['plannedExerciseId'], body); });
+    if (reporting) { setState(() => drafts[id] = {...body, 'plannedExerciseId': id}); return; }
+    await send(id, body);
+  }
+
+  /// Sends one live result only after the backend confirms, just before, that
+  /// the routine is current and the exercise allows it. Otherwise it is kept
+  /// in [pending] (no answer) or refused (blocked, removed), never sent.
+  Future<void> send(Object id, Json body) async {
+    if (sending.contains(id)) return;
+    setState(() { sending.add(id); busy = true; error = null; });
+    try {
+      final check = await checkRoutine(limit: confirmLimit);
+      if (!mounted) return;
+      if (check == RoutineCheck.unreachable) {
+        pending[id] = body;
+        error = unreachableMessage;
+        return;
+      }
+      if (check == RoutineCheck.outdated) {
+        pending.remove(id);
+        error = 'Tu plan se actualizó y esta rutina ya no forma parte de él. No se envió el resultado.';
+        return;
+      }
+      final refused = refusal(id, body);
+      if (refused != null) {
+        pending.remove(id);
+        error = refused;
+        return;
+      }
+      try {
+        session = await repository.record(session!['sessionId'], id, body);
+        pending.remove(id);
+      } on DioException catch (e) {
+        if (!mounted) return;
+        if (e.response?.statusCode == 422) {
+          pending.remove(id);
+          await onRefused(e);
+        } else if (e.response == null) {
+          // The connection dropped while sending: kept to try again (a PUT
+          // replaces the result, so repeating it never duplicates).
+          pending[id] = body;
+          error = 'Se perdió la conexión al enviar el resultado. Se guardó en este teléfono y no se ha enviado; vuelve a intentarlo.';
+        } else {
+          pending[id] = body;
+          error = '${apiError(e)} Tu resultado se guardó en este teléfono y no se ha enviado.';
+        }
+      }
+    } finally {
+      if (mounted) setState(() { sending.remove(id); busy = false; });
+    }
+  }
+
+  /// Tries again every result kept while the routine could not be confirmed.
+  Future<void> retryPending() async {
+    for (final entry in [...pending.entries]) {
+      if (!mounted) return;
+      await send(entry.key, entry.value);
+      if (pending.containsKey(entry.key)) return; // still no answer: stop here
+    }
   }
   Future<void> prepareRecord(Json exercise) async {
     if (!ownSession && !reporting) {
@@ -142,12 +248,29 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (jsonRows(workout['exercises'] ?? []).isEmpty || jsonRows(workout['exercises'] ?? []).any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
       setState(() => error = 'Indica el resultado de cada ejercicio antes de guardar.'); return;
     }
-    // The routine on screen may be older than a pain report: read it again
-    // before sending results with work done.
-    final dropped = await refreshWorkout(limit: const Duration(seconds: 8));
+    // The routine on screen may be older than a pain report: confirm it with
+    // the backend before sending. Without an answer nothing is sent and the
+    // drafts stay on this device.
+    setState(() { busy = true; error = null; });
+    final check = await checkRoutine(limit: confirmLimit);
     if (!mounted) return;
-    if (dropped.isNotEmpty) {
-      setState(() => error = 'Un ejercicio de esta rutina tiene ahora una restricción por seguridad. Regístralo como no realizado antes de guardar.');
+    setState(() => busy = false);
+    if (check == RoutineCheck.unreachable) {
+      setState(() => error = 'No pudimos confirmar con el servidor que tu rutina sigue vigente. Tus resultados siguen guardados en este teléfono y no se han enviado. Revisa tu conexión y vuelve a pulsar «Guardar entrenamiento».');
+      return;
+    }
+    if (check == RoutineCheck.outdated) {
+      setState(() => error = 'Tu plan se actualizó y esta rutina ya no forma parte de él. No se enviaron los resultados.');
+      return;
+    }
+    // Only the drafts that cannot be valid any more are discarded: work on an
+    // exercise blocked since, or on one no longer in the routine.
+    final invalid = [for (final entry in drafts.entries) if (refusal(entry.key, entry.value) != null) entry.key];
+    if (invalid.isNotEmpty) {
+      setState(() {
+        for (final id in invalid) { drafts.remove(id); }
+        error = 'Un ejercicio de esta rutina tiene ahora una restricción por seguridad. Regístralo como no realizado antes de guardar. Los demás resultados se conservan.';
+      });
       return;
     }
     final exercises = jsonRows(workout['exercises'] ?? []);
@@ -250,6 +373,12 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       ].join(' · ')), const SizedBox(height: 20),
       if (busy) const LinearProgressIndicator(),
       if (error != null) KoraCard(child: Column(children: [Text(error!), TextButton(onPressed: busy ? null : () => act(() async { session = await repository.current(); }), child: const Text('Consultar estado de sesión'))])),
+      if (pending.isNotEmpty && !closed) KoraCard(key: const Key('pending-results'), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(pending.length == 1
+            ? '1 resultado guardado en este teléfono, sin enviar: falta confirmar tu rutina con el servidor.'
+            : '${pending.length} resultados guardados en este teléfono, sin enviar: falta confirmar tu rutina con el servidor.'),
+        TextButton(onPressed: busy ? null : retryPending, child: const Text('Reintentar envío')),
+      ])),
       if (session != null && !ownSession) const KoraCard(child: Text('Tienes otra sesión en curso. Regresa a esa rutina para terminarla o abandonarla.')),
       if (sessionClock case final clock?) SessionTimerBar(clock: clock),
       if (outdated) const KoraCard(child: Text('Tu plan se actualizó y esta rutina ya no forma parte de él. Vuelve al inicio para ver la versión actual.')),
@@ -292,7 +421,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
             ),
         ]),
         if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => showInstructions(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
-        Text(resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(pending.containsKey(exercise['plannedExerciseId']) ? 'Pendiente de enviar' : resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
         if (resultFor(exercise) case final result?) Text('Guardado: ${result['actualSets'] ?? '—'} series · ${result['actualRepsTotal'] ?? '—'} reps · ${result['actualDurationSeconds'] ?? '—'} s', style: const TextStyle(color: Kora.muted)),
         if (editable) Padding(padding: const EdgeInsets.only(top: 14), child: KoraButton(label: 'Registrar ejercicio', busy: busy, onPressed: session != null && !ownSession ? null : () => prepareRecord(exercise))),
       ]))),

@@ -261,12 +261,15 @@ void main() {
       // On screen the exercise still looks allowed (stale list); the backend already blocked it.
       final stale = workoutWith([exercise(41, 537, 'Elevación frontal con mancuerna'), allowed]);
       plans.plan = {'planId': 1, 'workouts': [stale]};
-      workouts.recordError = (pe, body) => pe == 41 && (body['actualSets'] as num) > 0
-          ? http(422, 'SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 41 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.')
-          : null;
+      // The block arrives between the app's last check and its request (a race):
+      // the backend refuses it and from then on the plan says blocked.
+      workouts.recordError = (pe, body) {
+        if (pe != 41 || (body['actualSets'] as num) == 0) return null;
+        plans.plan = {'planId': 1, 'workouts': [workoutWith([blocked, allowed])]};
+        return http(422, 'SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 41 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.');
+      };
       await pumpPage(tester, PlannedWorkoutPage(workout: stale), overrides());
       expect(find.byKey(const Key('blocked-41')), findsNothing);
-      plans.plan = {'planId': 1, 'workouts': [workoutWith([blocked, allowed])]}; // what the backend has now
       final readsBefore = plans.reads;
       await tap(tester, find.text('Registrar ejercicio').at(0));
       await tap(tester, find.text('Lo completé'));
@@ -427,7 +430,43 @@ void main() {
       await tap(tester, find.text('Ya no me duele'));
       await tap(tester, find.text('Ya no tengo dolor'));
       expect(find.byKey(const Key('effective-537')), findsOneWidget);
-      expect(find.textContaining('choca con una restriccion vigente'), findsOneWidget);
+      expect(find.textContaining('no es compatible con una restricción de seguridad vigente'), findsOneWidget);
+      expect(find.textContaining('REACTIVACION_RECHAZADA'), findsNothing);
+    });
+
+    // The messages below are the backend's, verbatim, from the live run (docs/o20/validacion/evidencia).
+    testWidgets('10 · REACTIVACION_RECHAZADA_POR_SEGURIDAD as the real backend sends it: plain message, still excluded, read again', (tester) async {
+      final pain = FakePain(effective: [effectiveRow(460, 'Flexión pliométrica con toque de pecho', 'DIRECT', source: 149, date: '2026-12-02')])
+        ..reactivateError = http(422, 'REACTIVACION_RECHAZADA_POR_SEGURIDAD: el ejercicio 460 choca con una restriccion de seguridad vigente (alto_impacto). Tu confirmacion no puede levantarla.');
+      await pumpPage(tester, const Scaffold(body: PainExclusionsSheet()), [painExclusionRepositoryProvider.overrideWithValue(pain), planRepositoryProvider.overrideWithValue(FakePlans(null))]);
+      final reads = pain.effectiveReads;
+      await tap(tester, find.text('Ya no me duele'));
+      await tap(tester, find.text('Ya no tengo dolor'));
+      expect(pain.reactivated, [460]);
+      expect(find.text('Kora no puede volver a proponerte «Flexión pliométrica con toque de pecho» por ahora: no es compatible con una '
+          'restricción de seguridad vigente (alto impacto). Sigue excluido; tu confirmación no puede levantar esa restricción.'), findsOneWidget);
+      expect(find.textContaining('REACTIVACION_RECHAZADA'), findsNothing);
+      expect(find.textContaining('alto_impacto'), findsNothing);
+      expect(find.byKey(const Key('effective-460')), findsOneWidget, reason: 'not shown as allowed');
+      expect(pain.effectiveReads, greaterThan(reads), reason: 'the exclusions are read again from the backend');
+    });
+
+    testWidgets('10 · declared «unrelated» but not lifted by the backend: the reason in plain words', (tester) async {
+      final pain = FakePain()..identifyAnswer = {
+        'noRelacionadosNoLevantados': {'460': 'choca con una restriccion de seguridad vigente (alto_impacto)'},
+        'otrosDeLaSesionSiguenExcluidos': [],
+      };
+      final request = PainConfirmationRequest.fromJson({'plannedWorkoutId': 149, 'eventDate': '2026-12-02', 'confirmationRequired': false, 'exercises': [
+        {'exerciseId': 1103, 'exerciseName': 'Remo con mancuerna'}, {'exerciseId': 460, 'exerciseName': 'Flexión pliométrica con toque de pecho'},
+      ]});
+      await pumpPage(tester, Scaffold(body: SingleChildScrollView(child: PainConfirmationSheet(request: request))), [
+        painExclusionRepositoryProvider.overrideWithValue(pain), planRepositoryProvider.overrideWithValue(FakePlans(null))]);
+      await tap(tester, find.byKey(const Key('painful-1103')));
+      await tap(tester, find.byKey(const Key('unrelated-460')));
+      await tap(tester, find.text('Enviar'));
+      expect(pain.identified.single, {'exerciseId': 1103, 'plannedWorkoutId': 149, 'unrelatedExerciseIds': [460]});
+      expect(find.textContaining('Flexión pliométrica con toque de pecho: No es compatible con una restricción de seguridad vigente (alto impacto).'), findsOneWidget);
+      expect(find.textContaining('alto_impacto'), findsNothing);
     });
 
     test('11 · adaptation NO_FACTIBLE: a clear explanation instead of the code', () {

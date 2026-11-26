@@ -1,28 +1,26 @@
-O20 cuenta A (casa, peso corporal): plan 13 semana 2026-11-30, 3 entrenamientos
-O20 S5 acción: omitir 37 por dolor → POST /workouts/37/skip {"reason":"PAIN_OR_DISCOMFORT"}
-O20 S5 GET /pain-exclusions/confirmation-requests → sesión 37 (2026-11-30), 8 ejercicios, confirmationRequired=false (aún no se pide de forma activa)
-O20 S5 GET /pain-exclusions/effective → 8 DIRECT sin confirmar, 1 derivadas
-O20 S1 GET /plan/current → entrenamiento 38: prescripción 276 «Gancho de izquierda (boxeo)» safetyBlockReason=dolor_registrado; safetyBlocked=false
+O20 cuenta A (casa, peso corporal): plan 29 semana 2026-11-30, 3 entrenamientos
+O20 S5 acción: omitir 152 por dolor → POST /workouts/152/skip {"reason":"PAIN_OR_DISCOMFORT"}
+O20 S5 GET /pain-exclusions/confirmation-requests → sesión 152 (2026-11-30), 8 ejercicios, confirmationRequired=false (aún no se pide de forma activa)
+O20 S5 GET /pain-exclusions/effective → 8 DIRECT sin confirmar, 5 derivadas
+O20 S1 GET /plan/current → entrenamiento 153: prescripción 953 «Gancho de izquierda (boxeo)» safetyBlockReason=dolor_registrado; safetyBlocked=false
 O20 S1 Flutter muestra: «No disponible por ahora. Estaba en una sesión en la que reportaste dolor sin indicar qué ejercicio fue.»
-O20 S8 POST /workouts/38/report con trabajo en el bloqueado → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 276 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.; el entrenamiento sigue SCHEDULED
-O20 S4 PUT /sessions/2/exercises/276 completo → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 276 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.
-O20 S4 PUT … mismo ejercicio parcial (1 serie, 3 reps) → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 276 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.
-O20 S4 PUT … como no realizado → 200 (PUT /sessions/2/exercises/276 {"actualSets":0,"actualRepsTotal":0,"actualDurationSeconds":0,"actualLoadKg":0,"skipReason":"PAIN_OR_DISCOMFORT"})
-O20 S4 6 permitidos completados → 200; finalizar → PARTIAL 75.0 % (8 registros, uno por ejercicio)
-O20 S12 nuevo inicio de sesión: /effective 9 exclusiones (las mismas); entrenamiento 38 sigue PARTIAL; 2 prescripciones abiertas siguen bloqueadas; plan 13 en /plans
+O20 S8 POST /workouts/153/report con trabajo en el bloqueado → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 953 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.; el entrenamiento sigue SCHEDULED
+O20 S4 PUT /sessions/2/exercises/953 completo → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 953 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.
+O20 S4 PUT … mismo ejercicio parcial (1 serie, 3 reps) → 422 SESION_BLOQUEADA_POR_SEGURIDAD: el ejercicio prescrito 953 ya no es seguro para ti (dolor_registrado). Solo puede registrarse como omitido.
+O20 S4 PUT … como no realizado → 200 (PUT /sessions/2/exercises/953 {"actualSets":0,"actualRepsTotal":0,"actualDurationSeconds":0,"actualLoadKg":0,"skipReason":"PAIN_OR_DISCOMFORT"})
+O20 S4 7 permitidos completados → 200; finalizar → COMPLETED 87.5 % (8 registros, uno por ejercicio)
+O20 S12 nuevo inicio de sesión: /effective 13 exclusiones (las mismas); entrenamiento 153 sigue COMPLETED; 3 prescripciones abiertas siguen bloqueadas; plan 29 en /plans
 O20 S8 identificado también como no relacionado: la app lo rechaza («El ejercicio que te dolió no puede ser a la vez uno que no tuvo que ver.»); si se enviara → 422 El ejercicio que te dolio no puede ser a la vez no relacionado.
-O20 S8 no relacionado de otra sesión (1308): la app lo rechaza; si se enviara → 422 El ejercicio 1308 no esta pendiente de confirmar en esa sesion: solo se pueden declarar no relacionados los demas ejercicios de la misma sesion.
-O20 S8 identificar un ejercicio que no es de esa sesión (1308) → 404 Dolor de sesion sin identificar del ejercicio no encontrado: 1308
-O20 S7 petición enviada: POST /users/me/pain-exclusions/507/identification {"confirmPain":true,"plannedWorkoutId":37,"unrelatedExerciseIds":[1118,1179]}
-O20 S6/S7 respuesta 200: levantados [1118, 1179], no levantados {}, siguen excluidos [853, 973, 1066, 1075, 1097], equivalentes [], nota «Queda confirmado: este ejercicio, sus variantes equivalentes y el mismo movimiento con otro angulo no vuelven a tus planes hasta que pidas reactivarlo. Los ejercicios que confirmaste como no relacionados vuelven a considerarse; los demas de esa sesion siguen excluidos hasta que lo confirmes.»
-O20 S6 /effective: 507 confirmado (canIdentify=false), explicación «Lo marcaste con dolor.»; S7 los no relacionados levantados ya no están; los no nombrados siguen; el plan releído sigue exactamente a /effective
-O20 S8 identificar dos veces → 404 Dolor de sesion sin identificar del ejercicio no encontrado: 507
+O20 S8 no relacionado de otra sesión (1334): la app lo rechaza; si se enviara → 422 El ejercicio 1334 no esta pendiente de confirmar en esa sesion: solo se pueden declarar no relacionados los demas ejercicios de la misma sesion.
+O20 S8 identificar un ejercicio que no es de esa sesión (1334) → 404 Dolor de sesion sin identificar del ejercicio no encontrado: 1334
+O20 S7 petición enviada: POST /users/me/pain-exclusions/1315/identification {"confirmPain":true,"plannedWorkoutId":152,"unrelatedExerciseIds":[1096,1118]}
+O20 S6/S7 respuesta 200: levantados [1096, 1118], no levantados {}, siguen excluidos [933, 938, 973, 1093, 1308], equivalentes [], nota «Queda confirmado: este ejercicio, sus variantes equivalentes y el mismo movimiento con otro angulo no vuelven a tus planes hasta que pidas reactivarlo. Los ejercicios que confirmaste como no relacionados vuelven a considerarse; los demas de esa sesion siguen excluidos hasta que lo confirmes.»
+O20 S6 /effective: 1315 confirmado (canIdentify=false), explicación «Lo marcaste con dolor.»; S7 los no relacionados levantados ya no están; los no nombrados siguen; el plan releído sigue exactamente a /effective
+O20 S8 identificar dos veces → 404 Dolor de sesion sin identificar del ejercicio no encontrado: 1315
 O20 S10 reactivar sin confirmación explícita (confirmNoPain=false) → 422 Para volver a considerar este ejercicio confirma de forma explicita que lo pides tu.; sigue excluido
-O20 S10 reactivar el derivado EQUIVALENT 1098 (canReactivate=false, la app no lo ofrece) → 404 Exclusion por dolor activa del ejercicio no encontrado: 1098; sigue excluido
-O20 S10 POST /pain-exclusions/507/reactivation → 200 (candidatoHoy=true); sale de /effective con sus derivados
-O20 Historial: entrenamiento 38 sigue PARTIAL tras identificar y reactivar; sin sesión abierta
-O20 cuenta eq0 (gimnasio): 1 derivadas; 0 en rutinas abiertas (todas bloqueadas)
-O20 S3 PRECAUTION 899 «Flexión de escápula en banco inclinado» de 1138 «Flexión de escápula» (nivel PRECAUCION_OTRO_ANGULO): provisional, canReactivate=false; reactivarlo → 404 Exclusion por dolor activa del ejercicio no encontrado: 899. Flutter: «Es el mismo movimiento que «Flexión de escápula», con otro ángulo o apoyo, mientras confirmamos qué te dolió.»
-O20 cuenta eq1 (casa): 0 derivadas; 0 en rutinas abiertas (todas bloqueadas)
-O20 cuenta eq2 (gimnasio): 2 derivadas; 0 en rutinas abiertas (todas bloqueadas)
-O20 S2 EQUIVALENT 13 «Escaladores» de 1054 «Escalador» (nivel VARIANTE_MISMO_EJERCICIO): provisional, canReactivate=false; reactivarlo → 404 Exclusion por dolor activa del ejercicio no encontrado: 13. Flutter: «Es una variante de «Escalador», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.»
+O20 S10 POST /pain-exclusions/1315/reactivation → 200 (candidatoHoy=true); sale de /effective con sus derivados
+O20 Historial: entrenamiento 153 sigue COMPLETED tras identificar y reactivar; sin sesión abierta
+O20 cuenta eq0 (gimnasio): 0 derivadas; 0 en rutinas abiertas (todas bloqueadas)
+O20 cuenta eq1 (casa): 5 derivadas; 0 en rutinas abiertas (todas bloqueadas)
+O20 S2 EQUIVALENT 5 «Flexiones de pecho» de 1096 «Flexión» (nivel VARIANTE_MISMO_EJERCICIO): provisional, canReactivate=false; reactivarlo → 404 Exclusion por dolor activa del ejercicio no encontrado: 5. Flutter: «Es una variante de «Flexión», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.»
+O20 S3 PRECAUTION 7 «Flexiones inclinadas» de 1096 «Flexión» (nivel PRECAUCION_OTRO_ANGULO): provisional, canReactivate=false; reactivarlo → 404 Exclusion por dolor activa del ejercicio no encontrado: 7. Flutter: «Es el mismo movimiento que «Flexión», con otro ángulo o apoyo, mientras confirmamos qué te dolió.»

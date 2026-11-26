@@ -46,12 +46,7 @@ class _FitSenseAppState
         (_, userId) => ref.read(pushControllerProvider).onUser(userId), fireImmediately: true);
     // Back from the permission dialog, the phone settings or without network:
     // register what is still missing.
-    // O20: back from the background, the plan and the pain exclusions are
-    // read again: a block that arrived meanwhile shows up at once.
-    _lifecycle = AppLifecycleListener(onResume: () {
-      ref.read(pushControllerProvider).onResumed();
-      if (ref.read(authViewModelProvider).isAuthenticated) refreshPainSafety(ref);
-    });
+    _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
     // The push permission explanation is shown at the end of the profile
     // setup, before the first plan (OnboardingPage), not on Inicio.
   }
@@ -121,9 +116,11 @@ class _FitSenseAppState
           onThemeChanged:
           _setThemeMode,
 
-          child:
-          child ??
-              const SizedBox.shrink(),
+          // O20: back from the background, the plan and the pain exclusions
+          // are read again on every screen.
+          child: PainSafetyResumeRefresher(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

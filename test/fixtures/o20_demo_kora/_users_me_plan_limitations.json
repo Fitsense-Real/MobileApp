@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "data": {
+    "timestamp": "2026-11-26T04:00:46.070589367Z",
+    "status": 422,
+    "error": "Unprocessable Entity",
+    "message": "El usuario 1 no esta activo en el estudio: no se le generan planes.",
+    "details": []
+  }
+}

@@ -1,4 +1,4 @@
-# Validación final O20 en Flutter (PR #19)
+# Validación final O20 en Flutter (PR #19): cierre de seguridad
 
 **Contexto:**
 
@@ -6,195 +6,277 @@
 |---|---|
 | Rama | `claude/o20-exclusiones-dolor`, sobre `generation` `abe5e3d` (incluye las PR #17 y #18) |
 | Backend de referencia | `generation` `98276a9`, con #84 (O20 + V65) y #83 (gpt-5-mini). Se ejecutó en local con la IA apagada |
-| Bases aisladas | `fitsense_val` (cuentas sintéticas) y `fitsense_demo` (copia del dataset Demo Kora) |
+| Bases aisladas | `fitsense_val`, `fitsense_val2` (cuentas sintéticas) y `fitsense_demo` (copia del dataset Demo Kora) |
 | Recursos externos | No se usó Replicate ni OpenAI. No se hizo ningún despliegue. No se tocó ninguna base real |
 
-**Conclusión: VALIDACIÓN INCOMPLETA** (ver §10).
+**Resultado:**
 
-- Todo lo que se pudo ejecutar está aprobado: los 12 escenarios en pruebas automáticas, los escenarios 1 y 4–12 completos contra el Backend real (el 9 y el 11 con dos cierres semanales reales), y los escenarios 2 y 3 en parte.
-- Faltan cosas que este entorno no permite probar:
-  - un teléfono Android físico;
-  - el usuario 48 en tu base;
-  - para los escenarios 2 y 3, ver una variante bloqueada dentro de una rutina abierta. El generador real no coloca variantes del mismo ejercicio en la misma semana;
-  - `REACTIVACION_RECHAZADA_POR_SEGURIDAD`, que no se puede producir con flujos reales.
+- **Los 10 criterios de seguridad de la orden están aprobados (§9).** La evidencia viene de pruebas automáticas y del Backend real.
+- **La prueba en un teléfono Android físico sigue pendiente** de ejecución por el usuario (§8), igual que la comprobación del usuario 48 en su base (§7).
+- **Recomendación (§14):** la PR está lista para la revisión final. Conviene ejecutar antes la guía de Android.
 
-## 1. Verificaciones iniciales
-
-| Verificación | Resultado |
-|---|---|
-| `generation` actualizado en Mobile y en Backend | Mobile `abe5e3d`; Backend `98276a9` |
-| Mobile incluye las PR #17 y #18 | Sí: `a7516b2` y `abe5e3d` son ancestros de la rama, que tiene 0 commits por detrás de `generation` |
-| Backend con O20, V65 y gpt-5-mini | Sí: `V65__dolor_identificacion_posterior.sql`, `PainExclusionController` con `/effective`, `/confirmation-requests` e `/identification`, y `fitsense.ai.model=gpt-5-mini`. Flyway aplicó las migraciones hasta la V65 en las dos bases |
-| `ESPEC_MOBILE_EXCLUSIONES.md` | Revisada. Se usan solo sus campos y rutas. Los textos evitan «diagnóstico», «lesión» y «para siempre» (comprobado con grep) |
-| PR #19: CI y conflictos | CI `verify` en verde y `mergeable_state=clean` en `c84e22c`. Los commits de esta validación se verifican en §8 |
-| Archivos ajenos a O20 | Ninguno. Los 25 archivos de `c84e22c` y los de esta validación (§9) son de O20 o pruebas de O20 |
-
-## 2. Los doce escenarios
+## 1. Los doce escenarios
 
 **Columnas:**
 
-- **Real:** contra el Backend local, con los repositorios reales de la app (`test/live/o20_validacion_live_test.dart` y `o20_dos_semanas_live_test.dart`).
-- **Widget:** pantalla real de Flutter con respuestas que tienen la forma exacta del Backend (`test/pain_o20_test.dart`).
+- **Real:** Backend local con los repositorios reales de la app.
+- **Widget:** pantalla real de Flutter con respuestas que tienen la forma exacta del Backend, en muchos casos sus mensajes copiados literalmente.
 - **Evidencia:** está en `evidencia/` y `capturas/`.
 
-| N.º | Escenario | Datos iniciales | Acción | Endpoint | Respuesta del Backend | Flutter | Real | Widget |
-|---|---|---|---|---|---|---|---|---|
-| 1 | Ejercicio bloqueado por dolor | Cuenta A (casa); sesión 37 omitida por dolor | Releer el plan | `GET /plan/current` | La prescripción 276, «Gancho de izquierda (boxeo)», llega con `safetyBlockReason=dolor_registrado` y `safetyBlocked=false` | «No disponible por ahora. Estaba en una sesión en la que reportaste dolor sin indicar qué ejercicio fue.» | **Aprobado** | Aprobado |
-| 2 | Variante equivalente excluida | Cuenta eq2 (gimnasio): sesión omitida por dolor | Leer las exclusiones; reactivar la variante | `GET /effective`, `POST …/13/reactivation` | `EQUIVALENT 13 «Escaladores»`, de 1054 «Escalador», `VARIANTE_MISMO_EJERCICIO`, provisional, `canReactivate=false`. Reactivar → 404 | «Es una variante de «Escalador», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.» No hay botón de reactivar | **Aprobado (parcial):** en 10 cuentas, ninguna rutina abierta repetía una variante | Aprobado, incluido el bloqueo en rutina |
-| 3 | Precaución por ángulo | Cuenta eq0 (gimnasio) | Igual que el 2 | Igual que el 2 | `PRECAUTION 899 «Flexión de escápula en banco inclinado»`, de 1138, `PRECAUCION_OTRO_ANGULO`. Reactivar → 404 | «Es el mismo movimiento que «Flexión de escápula», con otro ángulo o apoyo, mientras confirmamos qué te dolió.» | **Aprobado (parcial),** igual que el 2 | Aprobado |
-| 4 | Sesión con permitidos y bloqueados | Cuenta A, entrenamiento 38 | Registrar el bloqueado completo, parcial y no realizado; luego los permitidos; finalizar | `PUT /sessions/2/exercises/{pe}`, `POST …/finish` | Completo → 422 `SESION_BLOQUEADA_POR_SEGURIDAD`; parcial (1×3) → 422; no realizado → 200; permitidos → 200; finalizar → `PARTIAL` 75 %, con 8 registros, uno por ejercicio | Para el bloqueado solo se ofrece «No lo hice»; el resto se registra normal | **Aprobado** | Aprobado |
-| 5 | Dolor sin ejercicio identificado | Cuenta A, plan de la semana del 30/11 | Omitir por dolor | `POST /workouts/37/skip`, `GET /confirmation-requests` | La sesión 37 aparece con 8 ejercicios, `confirmationRequired=false`; en `/effective`, 8 DIRECT sin confirmar | «Gracias por avisar», con «Más tarde» / «Indicar ahora» | **Aprobado** | Aprobado |
-| 6 | Identificación posterior | Cuenta A, petición de la sesión 37 | «Fue este»: 507 | `POST /pain-exclusions/507/identification` | 200; 507 queda `confirmed=true` y `canIdentify=false` | «Lo marcaste con dolor.» y el resumen de la confirmación | **Aprobado** | Aprobado |
-| 7 | Ejercicios no relacionados | Cuenta A | Marcar 1118 y 1179 como no relacionados | Igual que el 6 | Cuerpo enviado: `{"confirmPain":true,"plannedWorkoutId":37,"unrelatedExerciseIds":[1118,1179]}`. Levantados `[1118, 1179]`; siguen excluidos `[853, 973, 1066, 1075, 1097]` | «Vuelven a poder proponerse» y «Siguen sin proponerse» | **Aprobado** | Aprobado |
-| 8 | Respuestas 422 | Cuenta A | Trabajo en un bloqueado (en vivo y retroactivo); el identificado también como no relacionado; un no relacionado de otra sesión; identificar dos veces | `PUT /sessions/…`, `POST /workouts/38/report`, `…/identification` | 422 `SESION_BLOQUEADA_POR_SEGURIDAD` (en vivo y retroactivo; nada queda registrado); 422 «no puede ser a la vez no relacionado»; 422 «no esta pendiente de confirmar en esa sesion»; 404 al repetir | Explica el problema sin códigos y relee el plan y la sesión. La app rechaza antes de enviar las respuestas inválidas | **Aprobado** | Aprobado |
-| 9 | Exclusión provisional tras dos semanas | Cuenta s9 (gimnasio): sesión 49 del 30/11 omitida por dolor (7 ejercicios, 12 exclusiones) | Dos cierres semanales reales (07/12 y 14/12) | `GET /confirmation-requests`, `/effective`, `/plan/current` | Tras 1 semana con plan: `confirmationRequired=false`. Tras 2 semanas: `true`, con 7 DIRECT `confirmationRequired=true`. Siguen las 12 exclusiones y los planes del 07/12 y del 14/12 no prescriben ninguna | Inicio: «¿Recuerdas qué ejercicio te dolió el 30/11/2026?». Perfil: la petición resaltada y todo sigue excluido (capturas R5 y R6) | **Aprobado** | Aprobado |
-| 10 | Reactivación autorizada | Cuenta A, 507 confirmado | «Ya no me duele»; también sin confirmación explícita y sobre un derivado | `POST …/507/reactivation` | 200 (`candidatoHoy=true`); sale de `/effective` junto con sus derivados. Sin confirmación (`confirmNoPain=false`) → 422; derivado → 404; sigue excluido | El botón aparece solo si `canReactivate`; tras la respuesta se relee todo | **Aprobado.** El rechazo `REACTIVACION_RECHAZADA_POR_SEGURIDAD` solo se probó con widget (§10) | Aprobado (autorizada y rechazada) |
-| 11 | Adaptación `NO_FACTIBLE` | Cuenta A tras los escenarios 1–10 | Cierre semanal real del 07/12 | `GET /plan/adaptations`, `/plan/current` | `resultado=NO_FACTIBLE_POR_SEGURIDAD`, `estado=NO_FACTIBLE`, `motivoTexto` «No pudimos preparar una alternativa segura para la sesión en la que registraste molestias.»; `/plan/current` → 404 | «Kora no ha podido adaptar esa parte del entrenamiento debido a las restricciones actuales. No vuelve a proponer lo que te dolió ni lo sustituye por algo que no sea seguro. No pudimos preparar…» (captura R7). No se inventa un sustituto | **Aprobado** | Aprobado |
-| 12 | Cerrar y volver a abrir | Cuenta A tras los escenarios 1–8 | Nuevo inicio de sesión (Dio y repositorios nuevos) | `/effective`, `/plan/current`, `/plans` | Las mismas 9 exclusiones; el entrenamiento 38 sigue `PARTIAL`; las 2 prescripciones abiertas siguen bloqueadas | Al reabrir, la rutina se relee y los registros vienen del Backend, sin duplicados | **Aprobado** | Aprobado |
+| N.º | Escenario | Real | Widget | Evidencia |
+|---|---|---|---|---|
+| 1 | Ejercicio bloqueado por dolor | **Aprobado** | Aprobado | `backend-real-escenarios.txt`, R2 |
+| 2 | Variante equivalente excluida | **Aprobado**, en una sesión ya abierta (§2) | Aprobado | `backend-real-s2-s3-sesion-abierta.txt`, R8 |
+| 3 | Precaución por cambio de ángulo | **Aprobado**, en una sesión ya abierta (§2) | Aprobado | `backend-real-s2-s3-sesion-abierta.txt`, R8, R9 |
+| 4 | Sesión con permitidos y bloqueados | **Aprobado** | Aprobado | `backend-real-escenarios.txt` |
+| 5 | Dolor sin ejercicio identificado | **Aprobado** | Aprobado | `backend-real-escenarios.txt`, R3, R4 |
+| 6 | Identificación posterior | **Aprobado** | Aprobado | `backend-real-escenarios.txt` |
+| 7 | Ejercicios no relacionados (`unrelatedExerciseIds`) | **Aprobado** | Aprobado | `backend-real-escenarios.txt` (cuerpo exacto enviado) |
+| 8 | Respuestas 422 | **Aprobado** | Aprobado | `backend-real-escenarios.txt` y §4 |
+| 9 | Exclusión provisional tras dos semanas | **Aprobado** (dos cierres semanales reales) | Aprobado | `backend-real-cierre1-07dic.txt`, `backend-real-cierre2-14dic.txt`, R5, R6 |
+| 10 | Reactivación autorizada / rechazada | **Aprobado,** también el rechazo real (§3) | Aprobado | `backend-real-escenarios.txt`, `backend-real-reactivacion-rechazada.txt`, R10 |
+| 11 | Adaptación `NO_FACTIBLE` | **Aprobado** (cierre real) | Aprobado | `backend-real-no-factible.txt`, R7 |
+| 12 | Cerrar y volver a abrir | **Aprobado** | Aprobado | `backend-real-escenarios.txt` y §5 |
 
-## 3. Escenarios 9 y 11: dos cierres semanales reales
+**Escenarios 9 y 11:** pasaron dos semanas con el reloj del proceso del Backend adelantado (libfaketime). Los cierres los ejecutaron sus propias tareas programadas, sin escribir nada a mano en la base.
 
-**Cómo pasaron las semanas.** Se reinició el Backend de `fitsense_val` con su reloj adelantado (libfaketime, solo en ese proceso):
+## 2. Escenarios 2 y 3: equivalente y precaución en una sesión abierta
 
-1. lunes 07/12, 07:27:30 UTC;
-2. lunes 14/12, 07:27:30 UTC.
+**El generador real nunca produce este caso.** En 34 cuentas sintéticas (planes de 3, 5 y 6 días, en casa y gimnasio), ningún plan puso en la misma semana una variante equivalente o una precaución del ejercicio que dolió (`busqueda-coocurrencia.txt`). Por eso, como prevé la orden, preparé una prueba de integración reproducible.
 
-En cada arranque, las tareas programadas reales hicieron lo mismo que en producción:
+**La semilla:**
 
-- la de vencimiento (:30) cerró 33 entrenamientos vencidos;
-- a las 08:00 UTC (03:00 en Lima), `WeeklyCycleScheduler` cerró la semana de los 18 participantes sintéticos con el motor de reglas (IA apagada).
+- **Plan real:** el del motor de reglas, en la base aislada `fitsense_val2` y para una cuenta sintética.
+- **Cambio declarado:** se cambiaron por SQL 4 prescripciones de ese plan (`preparar-cierre.py`, sentencias en la evidencia):
+  - la sesión W1 recibe 1054 «Escalador» y 1138 «Flexión de escápula»;
+  - la sesión W2 recibe 13 «Escaladores» y 899 «Flexión de escápula en banco inclinado».
+- **Lo que no se tocó:** las reglas del Backend, sus políticas y los datos de otras cuentas.
+- **Lo que es real:** la omisión por dolor, la derivación, el bloqueo, cada respuesta HTTP y lo que muestra la app.
 
-No se escribió nada a mano en la base.
+**El flujo** (`test/live/o20_cierre_live_test.dart`, etapa `equivalentes`):
 
-**Escenario 9** (`evidencia/backend-real-cierre1-07dic.txt` y `backend-real-cierre2-14dic.txt`):
+1. **Primero se abre la sesión de W2:** 13 y 899 están permitidos y se registra un ejercicio.
+2. **Se omite W1 por dolor.** `/effective` devuelve:
+   - `EQUIVALENT 13` de 1054 (`VARIANTE_MISMO_EJERCICIO`);
+   - `PRECAUTION 899` de 1138 (`PRECAUCION_OTRO_ANGULO`);
+   - ambas provisionales.
+3. **La app relee el plan.** En la sesión abierta, las prescripciones 889 (ejercicio 13) y 890 (ejercicio 899) llegan con `safetyBlockReason=dolor_registrado`. La sesión sigue `IN_PROGRESS` y `safetyBlocked=false`; el resto sigue permitido.
+4. **Registros sobre cada una:**
+   - completo → 422 `SESION_BLOQUEADA_POR_SEGURIDAD`;
+   - parcial (1×4) → 422;
+   - no realizado → 200.
+5. **Textos en Flutter:**
+   - para la equivalente: «No disponible por ahora. Es una variante de «Escalador», de la sesión en la que reportaste dolor, mientras confirmamos qué te dolió.»;
+   - para la precaución: «… Es el mismo movimiento que «Flexión de escápula», con otro ángulo o apoyo, mientras confirmamos qué te dolió.».
+   - El diálogo de la precaución solo ofrece «No lo hice» (R9). No hay manera de confundirla con una autorización.
+6. **Nuevo inicio de sesión:** siguen bloqueadas. La sesión sigue abierta con 3 registros, sin duplicados.
+7. **Identificación que no las nombra:** identificar otro ejercicio de W1 como el que dolió, sin nombrar 1054 ni 1138, no levanta nada. 13 y 899 siguen bloqueadas.
 
-- **Antes:** sesión 49 del 30/11 omitida por dolor; `confirmationRequired=false`; 12 exclusiones (7 directas y 5 derivadas).
-- **Tras el cierre del 07/12** (una semana con plan después del dolor): `confirmationRequired=false`. Siguen las 12 y el plan nuevo `27` no prescribe ninguna.
-- **Tras el cierre del 14/12** (dos semanas): `confirmationRequired=true` en la petición y en las 7 directas. Siguen las 12 y el plan `43` no prescribe ninguna. **Nada se desbloqueó por el paso del tiempo.**
-- **En la app:** la tarjeta de Inicio aparece solo con `confirmationRequired=true` (captura R5).
-- **Derivadas:** los planes del 14/12 de las cuentas con equivalentes y precauciones (899 PRECAUTION; 13 y 957 EQUIVALENT) no prescriben ninguna de ellas (`evidencia/backend-real-derivadas-plan-nuevo.txt`).
+**Resultado: aprobado.**
 
-**Escenario 11** (`evidencia/backend-real-no-factible.txt`, `cierre1-intentos-adaptacion.txt` y `cierres-resumen-intentos.txt`):
+## 3. Reactivación rechazada (`REACTIVACION_RECHAZADA_POR_SEGURIDAD`)
 
-- El cierre del 07/12 dejó 9 intentos `NO_FACTIBLE`:
-  - 3 `DOLOR_SIN_RESOLUCION_SEGURA`, entre ellos la cuenta A;
-  - 6 `SEMANA_NO_VALIDA`.
-- La API devolvió a la cuenta A `NO_FACTIBLE_POR_SEGURIDAD` con `motivoTexto`, y la app lo explicó sin códigos.
-- El Backend no publicó semana (404) y la app no inventó una: el aviso de Inicio es la captura R7.
-- **Cuenta s11** (todas sus sesiones omitidas por dolor): el intento fue `NO_FACTIBLE`, pero la API lo publica como `REGENERACION_SEGURA_REGLAS`, porque la regeneración segura inmediata ya había publicado su semana. La app no lo muestra como no factible: sigue lo que dice el Backend.
+**Cómo se produjo de forma real, sin tocar el usuario 48 ni el perfil:**
 
-## 4. Mobile no puede saltarse O20
+- **La cuenta:** sintética y participante, de 59 años, nacida el 01/12/1966. Su plan natural (motor de reglas, sin semilla) incluía el 460 «Flexión pliométrica con toque de pecho», de alto impacto.
+- **Antes del cumpleaños:** se omitió por dolor esa sesión.
+- **El 02/12/2026:** con el reloj del Backend en esa fecha, la cuenta ya tiene 60 años y el Backend retira el alto impacto a partir de esa edad (`SafetyProfile.EDAD_SIN_IMPACTO`). El perfil de un participante con plan no se puede modificar (422), por eso se usó la edad.
 
-| N.º | Comprobación | Cómo se demostró | Resultado |
-|---|---|---|---|
-| 1 | Un bloqueado no se marca como completado | Widget: solo se ofrece «No lo hice». Real: completo → 422 | Aprobado |
-| 2 | No se registra parcialmente si el Backend lo prohíbe | Real: parcial (1 serie, 3 repeticiones) → 422. Widget: no se ofrece «Lo hice parcialmente» | Aprobado |
-| 3 | Una rutina en caché no permite ejecutar lo bloqueado después | **Corrección C1.** La rutina se relee al volver del segundo plano. **Corrección C2.** El registro retroactivo relee el plan antes de enviar y descarta borradores con trabajo. Real: el envío retroactivo y el registro en vivo con trabajo → 422 | Aprobado, con regresiones nuevas |
-| 4 | Tras reportar dolor se relee el plan vigente | Widget (escenario 5) y real (escenario 1) | Aprobado |
-| 5 | Un 422 obliga a recuperar el estado | Widget (escenario 8): relee el plan y la sesión, y se ve el bloqueo. Real: los 422 de §2 | Aprobado |
-| 6 | Las exclusiones no desaparecen al cerrar sesión, reiniciar o cambiar de pantalla | Widget nuevo: cerrar sesión y volver a entrar las relee del Backend y siguen ahí. Real: escenario 12. No hay caché local: todo es en memoria y se relee | Aprobado |
-| 7 | Los equivalentes y las precauciones conservan su restricción | Real: escenarios 2 y 3, y en las rutinas abiertas toda prescripción derivada estaba bloqueada. Escenario 9: el plan nuevo no prescribe nada de `/effective` | Aprobado |
-| 8 | No hay reactivaciones locales sin el Backend | La app solo llama a `/reactivation` y relee. Widget nuevo: sin botón en equivalentes, precauciones ni `canReactivate=false`. Real: derivado → 404; sin confirmación → 422 | Aprobado |
-| 9 | Las confirmaciones inválidas se rechazan y se informa | `identificationProblem` antes de enviar; real: 422 y 404 (escenario 8) | Aprobado |
-| 10 | Se conserva el historial | Real: el entrenamiento 38 sigue `PARTIAL` tras identificar, reactivar y volver a entrar. Demo: 4 planes con sus estados reales | Aprobado |
+| Comprobación | Resultado |
+|---|---|
+| 1. El rechazo se muestra bien | Respuesta real: `422 REACTIVACION_RECHAZADA_POR_SEGURIDAD: el ejercicio 460 choca con una restriccion de seguridad vigente (alto_impacto)…`. **La app mostraba ese texto crudo; corregido (C5).** Ahora dice: «Kora no puede volver a proponerte «Flexión pliométrica con toque de pecho» por ahora: no es compatible con una restricción de seguridad vigente (alto impacto). Sigue excluido; tu confirmación no puede levantar esa restricción.» (R10 y prueba con el mensaje literal) |
+| 2. Sigue bloqueado | Sigue en `/effective` tras el 422 |
+| 3. No aparece como permitido | La fila sigue en Perfil. La app no la quita ni la marca: solo relee |
+| 4. Se vuelven a consultar las exclusiones | Prueba widget: `effective()` se vuelve a leer tras la respuesta |
+| 5. No se elude por otro flujo | Real: identificar otro ejercicio y declarar el 460 «no relacionado» → `noRelacionadosNoLevantados {460: «choca con una restriccion de seguridad vigente (alto_impacto)»}`; sigue excluido. La app muestra el motivo sin códigos (C5). Los derivados no se pueden reactivar (404) |
+| 6. El historial no cambia | Las mismas 7 filas en `/pain-exclusions` (una ahora confirmada) y los mismos planes |
 
-## 5. Usuario Demo Kora
+**Resultado: aprobado.**
 
-- **Tu usuario 48 no se pudo verificar:** no tengo acceso a tu PostgreSQL ni a Railway.
-- **Copia local:** cargué el dataset de `feature/dataset-demo-kora` (`19ba896`) en una base aislada:
-  - registro por la API y scripts 01–05;
-  - cuenta sin participación en el estudio, como exige su README; el script 01 aborta con una cuenta participante.
-- **`06_VERIFICACION.sql`:** las 10 comprobaciones dan `ok = t` y la adherencia recalculada coincide en las 3 semanas (`evidencia/demo-06_verificacion.txt`).
-- **Lectura solo con GET** (la prueba falla si la app envía otra cosa; `evidencia/demo-kora.txt`):
-  - `/effective`: `DIRECT 1025 «Aperturas de pecho sentado con palanca»`, confirmado → «Lo marcaste con dolor.»;
-  - plan vigente `910000003`, sin el 1025 y sin prescripciones bloqueadas;
-  - `/plans`: 4 planes. W-3 queda con 3 completados, 1 parcial y 1 omitido; W-2 y W-1, completos;
-  - `/plan/adaptations`: `REGENERACION_SEGURA_SUSTITUCION`, `SIN_ADAPTACION` y `PROGRESION_DEL_BACKEND`.
-- **Captura:** `capturas/R1-demo-perfil-exclusion.png`.
-- **No se hizo nada más con esta cuenta:** ni generación, ni cierre, ni registros, ni modificaciones.
+## 4. Conexión, tiempo de espera y rutina desactualizada
 
-**Para tu base**, comprueba antes de la demostración:
+**Regla nueva (C3):** antes de enviar cualquier resultado, la app confirma la rutina con el Backend (`GET /users/me/plan/current`, hasta 8 s). Si no puede confirmarla, no envía nada:
 
-1. Ejecuta `06_VERIFICACION.sql` sobre el usuario 48: las 10 filas deben dar `ok = t`.
-2. Pídele `GET /users/me/pain-exclusions/effective`: debe salir solo el 1025, confirmado.
-3. **Discrepancia:** dices que el usuario 48 participa en el estudio, pero el README del dataset exige registrarlo **sin** participación. Con participación, el cierre semanal de los lunes podría generar otro plan (con coste) y alterar la demo. Comprueba `is_study_participant` (consulta 1 de 06).
+- **La falta de respuesta nunca equivale a «permitido».**
+- **El resultado no se pierde:** queda guardado en el teléfono («Pendiente de enviar»), con una explicación y «Reintentar envío».
+- **Qué se descarta:** solo lo que ya nunca podrá ser válido, es decir, trabajo en un ejercicio bloqueado después o en uno que salió de la rutina.
+- **Registro retroactivo:** se aplica la misma regla y se conservan todos los borradores.
 
-## 6. Pruebas automáticas
+Pruebas en `test/o20_rutina_desactualizada_test.dart` (12):
 
-- `flutter analyze`: sin problemas.
-- `flutter test`: 374 aprobadas, 0 fallidas, 26 omitidas. Las omitidas son las de Backend real y capturas, que necesitan variables de entorno y se ejecutaron aparte (§2–§5).
-- Nombres de las pruebas de seguridad: `evidencia/pruebas-seguridad-o20.txt`.
-- **Pruebas de seguridad O20,** en `test/pain_o20_test.dart` (24 pruebas):
-  - las 20 de los 12 escenarios;
-  - 4 regresiones nuevas de esta validación:
-    - volver del segundo plano relee la rutina;
-    - el registro retroactivo preparado sobre una copia vieja no se envía;
-    - cerrar sesión y volver a entrar relee las exclusiones;
-    - sin reactivación para equivalentes, precauciones ni `canReactivate=false`.
-- **Las dos correcciones se comprobaron a la inversa:** sin ellas, las dos regresiones correspondientes fallan.
-
-## 7. Firebase, D-M1 y generación
-
-Resultados por grupo en `evidencia/regresiones-firebase-dm1-generacion.txt`.
-
-| Grupo | Archivos | Resultado |
+| N.º | Caso | Comportamiento comprobado |
 |---|---|---|
-| **Firebase y sesión:** registro del dispositivo, permisos, notificaciones, sesiones autenticadas, desvinculación al cerrar sesión (`DELETE` con el FID antes de `unregister`) | `push_notifications`, `push_permission`, `push_early_registration`, `push_first_plan_prompt`, `session_expiry`, `auth_social_cleanup`, `android_identifier` | 94 aprobadas, 0 fallidas |
-| **D-M1:** sesiones completas y parciales, duración por tiempo (3×120 s = 360 s; parcial de 150 s), un parcial igual al 100 % pide «Lo completé», cronómetro y minutos activos | `timed_exercise_results`, `exercise_results`, `session_timer` | 28 aprobadas, 0 fallidas |
-| **Generación y adaptación:** plan vigente, historial, generación asíncrona, resultados de adaptación, `NO_FACTIBLE` | `first_plan_generation`, `generation_screen`, `plan_week_label`, `dashboard_live`, `backend_alignment`, `backend_contract`, `adherence_history` | 104 aprobadas, 0 fallidas |
+| 1 | Falla la conexión | No se envía; queda pendiente; mensaje claro; «Reintentar envío» lo envía una vez |
+| 2 | El Backend tarda más de 8 s | Igual que el caso 1, tras 8 s de espera (simulados) |
+| 3 | La consulta devuelve 401 | No se envía; queda pendiente. La sesión caducada la gestiona el manejo global de 401 |
+| 4 | La consulta devuelve 422 | No se envía; queda pendiente |
+| 5 | El plan del Backend es distinto del que hay en pantalla | Si el ejercicio quedó bloqueado mientras el diálogo estaba abierto: no se envía, se explica, se muestra el bloqueo y solo se ofrece «No lo hice». Si la rutina salió del plan: no se envía y la rutina deja de ser editable. Si la pantalla mostraba un bloqueo que el Backend ya levantó: manda la respuesta del Backend |
+| 6 | Se pierde Internet durante el envío | Queda pendiente con «Se perdió la conexión…». El reintento lo envía una vez (PUT reemplaza: sin duplicados) |
+| 7 | La app pasa a segundo plano durante la consulta | Un solo diálogo y un solo registro |
+| 8 | Dos acciones sobre el mismo ejercicio a la vez | Dos toques en «Registrar ejercicio» → un diálogo y un registro. Dos toques en «Reintentar envío» → un registro |
+| — | Registro retroactivo sin red o con más de 8 s | No se envía; se conservan todos los borradores; con la rutina confirmada continúa |
 
-- **Generación real:** en el Backend real, las cuentas sintéticas generaron su primer plan con `POST /users/me/plan/generation` (motor de reglas) y el plan se leyó una sola vez por cuenta.
-- **D-M1 en real:** la sesión del escenario 4 terminó `PARTIAL` 75 %, con un registro por ejercicio.
-- **Sin cambios:** O20 no toca Firebase, la autenticación, la generación ni la política de D-M1. La app no cambió ninguna regla del Backend.
+**Prueba a la inversa:** si se quita la regla (es decir, si se envía cuando no hay confirmación), fallan las pruebas 1, 2, 3, 4 y la de reintento.
 
-## 8. Resultados finales
+**Además siguen vigentes:**
+
+- **C1:** se relee al volver del segundo plano, ahora en el widget `PainSafetyResumeRefresher`, que `app.dart` aplica a toda la app y se prueba con la pantalla de Inicio real.
+- **C2:** el registro retroactivo descarta borradores inválidos.
+- **El Backend sigue siendo la autoridad final:** si el bloqueo llega entre la confirmación y el envío (una carrera), responde 422. La app lo explica y relee (escenario 8, real y widget).
+
+## 5. Comportamiento ante un plan desactualizado
+
+| Situación | Resultado |
+|---|---|
+| Rutina en memoria anterior a un bloqueo | Antes de abrir el diálogo y antes de enviar, se confirma con el Backend. El diálogo usa el ejercicio tal como lo tiene el Backend ahora |
+| La app vuelve del segundo plano | Se releen el plan, las exclusiones, las peticiones y las adaptaciones (C1, probado con Inicio real y con la rutina abierta) |
+| Sin red o con una respuesta lenta | No se envía nada; los resultados se conservan (C3) |
+| Una rutina reemplazada por una versión nueva | No se puede editar ni enviar |
+| No hay caché en disco | La app no guarda rutinas entre arranques: al reabrir, todo se lee del Backend (escenario 12) |
+
+## 6. Evidencias con el Backend real
+
+Todas están en `evidencia/`. Las capturas usan las respuestas reales grabadas, sin cambios (`capturas/R*`, `D*`).
+
+- `backend-real-escenarios.txt`: escenarios 1, 4–8, 10 y 12, además de la lista y la explicación de equivalentes y precauciones. Repetido con el código final.
+- `backend-real-s2-s3-sesion-abierta.txt`: escenarios 2 y 3 en una sesión abierta (§2).
+- `backend-real-reactivacion-rechazada.txt`: el rechazo real y la vía «no relacionado» (§3).
+- `backend-real-cierre1-07dic.txt` y `backend-real-cierre2-14dic.txt`: escenario 9.
+- `backend-real-no-factible.txt`: escenario 11.
+- `busqueda-coocurrencia.txt`: las 34 cuentas sin coocurrencia.
+- `demo-kora.txt`: la cuenta demo, leída solo con GET.
+
+## 7. Usuario 48 (Demo Kora)
+
+**Tu usuario 48 no se pudo verificar.** No tengo acceso a tu PostgreSQL ni a Railway, y no modifiqué nada.
+
+**Copia local:** el dataset `feature/dataset-demo-kora` (`19ba896`) cargado en la base aislada `fitsense_demo`.
+
+**Por GET** (`demo-kora.txt`), los datos siguen presentes:
+
+- 4 planes: 910000000 (W-3, con 3 completados, 1 parcial y 1 omitido), 910000001 y 910000002 (completos) y 910000003 (vigente);
+- 3 adaptaciones: `REGENERACION_SEGURA_SUSTITUCION` (la sustitución por dolor), `SIN_ADAPTACION` y `PROGRESION_DEL_BACKEND`;
+- métricas de adherencia de 3 semanas;
+- la exclusión `DIRECT 1025`, confirmada.
+
+**Los procesos automáticos no alteraron el escenario:**
+
+- no hay planes nuevos ni intentos de adaptación nuevos (siguen 4 y 3);
+- lo único que cambió es lo que prevé el README del dataset: la tarea de vencimiento marcó como omitidos el lunes y el martes de la semana vigente, que la cuenta no entrenó.
+
+**Desde la app** (`test/o20_demo_kora_app_test.dart`, en la suite):
+
+- La pantalla de Inicio real, con sus proveedores y repositorios, funciona sobre las 17 respuestas reales grabadas (`test/fixtures/o20_demo_kora`). Cualquier petición que no sea GET hace fallar la prueba.
+- Se comprobó:
+  1. la sesión iniciada;
+  2. la rutina vigente (D1, D2: los 5 entrenamientos);
+  3. las semanas anteriores: el historial de 4 planes (D4);
+  4. la adherencia: 100 % (5/5) el 16/11, 67,8 % (3/5) el 02/11 (D3);
+  5. las adaptaciones: «Plan adaptado a ti» en la semana del 09/11, la sustitución, y «Sin ajustes registrados» el 16/11 (D3);
+  6. la exclusión del 1025, «Lo marcaste con dolor.» (D5);
+  7. los mensajes de seguridad: ninguno pendiente, correcto para esta cuenta;
+  8. al volver del segundo plano se relee el plan.
+
+**Discrepancia:** dices que el usuario 48 participa en el estudio (`is_study_participant = true`), pero el script `01_USUARIO_DEMO.sql` aborta con una cuenta participante (líneas 35–38). Por eso la copia local no participa. **En tu base, con participación:**
+
+- el cierre de los lunes a las 03:00 (Lima) podría generar otro plan;
+- conviene no hacer la demostración en esa franja;
+- comprueba que no apareció ningún plan nuevo (consulta 3 de `06_VERIFICACION.sql`).
+
+No cambié ese valor.
+
+## 8. Android físico
+
+**Pendiente de ejecución por el usuario.** No hay dispositivo, y `adb` no está disponible en este entorno.
+
+`GUIA_ANDROID.md` explica, para Windows y Android Studio:
+
+- actualizar la rama;
+- ADB y `adb reverse` (no se usa `10.0.2.2`, que solo vale en el emulador);
+- arrancar el Backend sin IA;
+- el usuario demo (solo mirar);
+- 18 comprobaciones, con lo que debe aparecer en cada una;
+- cómo capturar `logcat`, pantallas y vídeo.
+
+## 9. Pruebas automáticas y criterios de aceptación
 
 | Verificación | Resultado |
 |---|---|
 | `flutter analyze` | Sin problemas |
-| `flutter test` | **374 aprobadas, 0 fallidas**, 26 omitidas |
-| Pruebas de Backend real (`test/live/o20_validacion_live_test.dart`) | 4 de 4 aprobadas (escenarios 1–8, 10 y 12) |
-| Dos cierres semanales reales (`test/live/o20_dos_semanas_live_test.dart`) | `prepare`, `check1` y `check2` aprobadas |
-| Grabación de respuestas reales y capturas | Demo (solo GET), sintética, cuenta no factible y s9: aprobadas; 7 capturas |
-| CI de GitHub | En la PR #19, sobre el último commit (ver el comentario de la PR) |
+| `flutter test` | **389 aprobadas, 0 fallidas, 31 omitidas.** Las omitidas son las de Backend real y capturas, que necesitan variables de entorno y se ejecutaron aparte |
+| Pruebas de seguridad O20 en la suite | `pain_o20_test` 26, `o20_rutina_desactualizada_test` 12, `o20_demo_kora_app_test` 1. Nombres en `evidencia/pruebas-seguridad-o20.txt` |
+| Backend real | `o20_validacion_live_test` 4/4, `o20_cierre_live_test` 2/2 (equivalentes, rechazo), `o20_dos_semanas_live_test` 3/3, grabación 5 modos |
 
-**Capturas con respuestas reales del Backend** (`capturas/`):
+| N.º | Criterio | Estado |
+|---|---|---|
+| 1 | Ningún bloqueado como completo | Aprobado (real: escenarios 1, 2, 3 y 4; widget) |
+| 2 | Ningún bloqueado como parcial | Aprobado (real: parciales → 422; widget: no se ofrece) |
+| 3 | No se usa un plan desactualizado para autorizar | Aprobado (C3, §4 y §5) |
+| 4 | Los fallos de conexión no eliminan restricciones | Aprobado (§4, casos 1, 2 y 6) |
+| 5 | Se respetan equivalentes y precauciones | Aprobado (§2) |
+| 6 | Las confirmaciones inválidas no desbloquean | Aprobado (escenario 8; §3, vía «no relacionado») |
+| 7 | Los 422 se recuperan | Aprobado (escenario 8, §4) |
+| 8 | Las restricciones siguen tras reiniciar | Aprobado (escenario 12, §2, §7) |
+| 9 | Firebase y D-M1 sin regresiones | Aprobado (§10) |
+| 10 | El Backend es la autoridad final | Aprobado. La app nunca levanta ni concede nada por su cuenta; solo relee |
 
-- R1: Demo Kora, Perfil;
-- R2: rutina con un bloqueado;
-- R3: confirmación;
-- R4: Perfil con la petición;
-- R5: Inicio a las dos semanas;
-- R6: Perfil a las dos semanas;
-- R7: Inicio con `NO_FACTIBLE`.
+## 10. Firebase, D-M1, generación y adaptación
 
-Los GIF de los ejercicios no cargan en las capturas porque las pruebas no tienen red.
+Resultados en `evidencia/regresiones-firebase-dm1-generacion.txt`.
 
-## 9. Incidencias, correcciones, archivos y commits
+| Grupo | Resultado |
+|---|---|
+| **Firebase y sesión:** registro del dispositivo, permisos, notificaciones, recuperación de sesión, desvinculación al cerrar sesión | 94/94 |
+| **D-M1:** sesiones completas y parciales, duración por tiempo, un parcial igual al 100 % pide «Lo completé» | 28/28 |
+| **Generación y adaptación:** plan vigente, historial, generación asíncrona, `NO_FACTIBLE`, adaptaciones | 104/104 |
 
-**C1 · Rutina abierta tras volver del segundo plano.**
+- No se modificó nada de Firebase, D-M1, la generación ni el Backend.
+- **Ajuste de pruebas:** las dos de D-M1 que tocan la rutina simulan también el repositorio de planes, porque la página confirma la rutina antes de enviar. No cambia ninguna expectativa.
 
-- **Problema:** ni Inicio ni una rutina abierta releían el plan al volver a la app sin cerrarla. Se veía un estado viejo. El Backend igual rechazaba el registro con 422.
-- **Corrección:**
-  - `lib/app/app.dart`: al volver a primer plano, `refreshPainSafety` relee el plan, las exclusiones, las peticiones y las adaptaciones;
-  - `planned_workout_page.dart`: la rutina abierta se relee al volver.
+## 11. Incidencias y correcciones de esta ronda
 
-**C2 · Registro retroactivo sobre una copia vieja.**
+| N.º | Incidencia | Corrección | Prueba que lo reproduce |
+|---|---|---|---|
+| C3 | Sin respuesta del Backend (error o espera larga), la app seguía adelante y dejaba decidir al Backend. La orden exige no enviar | Confirmación obligatoria antes de cada envío; resultados pendientes guardados; «Reintentar envío»; bloqueo de acciones duplicadas | `o20_rutina_desactualizada_test`: fallan 5 pruebas sin la corrección |
+| C4 | La relectura al volver del segundo plano (C1) estaba en `app.dart` y no se podía probar con pantallas reales | Widget `PainSafetyResumeRefresher`, aplicado a toda la app | `o20_demo_kora_app_test`, paso 6 |
+| C5 | El rechazo de reactivación y los motivos de «no levantado» mostraban el texto crudo del Backend (código, identificador, `alto_impacto`) | `reactivationRefusal` y `notLiftedReason`, sin códigos | `pain_o20_test`: 2 pruebas con los mensajes literales del Backend |
 
-- **Problema:** los borradores con trabajo, preparados antes de un bloqueo, se enviaban y el Backend los rechazaba con 422.
-- **Corrección:** `report()` relee el plan antes de enviar, con un límite de 8 s; si un borrador queda bloqueado, lo descarta y lo explica.
+**Fuera de O20 (no se cambió):** el historial de planes muestra el código técnico de la decisión del Backend en la semana adaptada («ADAPT_LOCALIZED», captura D4). Es anterior a esta PR.
 
-**Ajuste de pruebas por C2.** `test/exercise_results_test.dart` y `test/timed_exercise_results_test.dart` ahora simulan también el repositorio de planes, porque la página lo lee antes de enviar. No cambia ninguna expectativa.
+## 12. Commits y archivos
 
-## 10. Limitaciones y pendientes
+- `c84e22c`: integración O20.
+- `89a7be9`: primera validación.
+- **El commit de este cierre:**
 
-1. **Android físico:** no hay dispositivo disponible. Guía en `GUIA_ANDROID.md`.
-2. **Usuario 48:** solo se verificó una copia local del dataset (§5).
-3. **Escenarios 2 y 3 dentro de una rutina abierta:** en 10 cuentas, el generador nunca puso una variante equivalente o una precaución en la misma semana que el ejercicio de origen.
-   - Lo que sí es real: la lista, la explicación, que no se puede reactivar, y que donde una derivada aparece en una rutina abierta queda bloqueada (verificado en todas las cuentas).
-   - El bloqueo dentro de la rutina se probó con widget.
-   - En los cierres reales, los planes nuevos nunca las prescriben.
-4. **`REACTIVACION_RECHAZADA_POR_SEGURIDAD`:** requiere que una restricción del perfil aparezca después del dolor, y el Backend no permite cambiar el perfil de un participante con plan (422).
-   - Se probó con widget.
-   - En real se probaron los otros rechazos: sin confirmación explícita y sobre un derivado.
-5. **Reloj de los cierres (escenarios 9 y 11):** las semanas pasaron con el reloj del proceso del Backend adelantado (libfaketime). Los cierres los ejecutaron sus tareas programadas reales; no se escribió nada a mano en la base.
+| Tipo | Archivos |
+|---|---|
+| Código | `lib/features/workouts/presentation/planned_workout_page.dart` (C3), `lib/features/pain/presentation/pain_confirmation_sheet.dart` (C4, C5), `lib/features/pain/domain/pain_safety.dart` (C5), `lib/features/pain/presentation/pain_exclusions_sheet.dart` (C5), `lib/app/app.dart` (C4) |
+| Pruebas | `test/o20_rutina_desactualizada_test.dart`, `test/o20_demo_kora_app_test.dart` y su fixture `test/fixtures/o20_demo_kora/` (17 respuestas), `test/pain_o20_test.dart`, `test/live/o20_cierre_live_test.dart`, `test/live/o20_grabar_live_test.dart`, `test/screenshots/o20_backend_real_capturas_test.dart` |
+| Documentación | Este informe, `GUIA_ANDROID.md`, `evidencia/` y `capturas/` |
+
+## 13. Riesgos y limitaciones
+
+1. **Android físico** sin ejecutar (§8).
+2. **Usuario 48** no verificado en tu base, y con la discrepancia de participación (§7).
+3. **Escenarios 2 y 3:** el plan se sembró por SQL en una base aislada (§2), porque el generador real no produce ese caso. Si un plan publicado lo contuviera, por ejemplo uno de la IA, la protección probada es la misma: el bloqueo del Backend y su 422, y la app que no ofrece registrar trabajo.
+4. **Escenarios 9 y 11 y el rechazo:** se probaron con el reloj del Backend adelantado (libfaketime), no con semanas reales.
+5. **Precio de la regla C3:** sin conexión no se puede enviar ningún resultado, aunque sea un «no realizado». Queda pendiente hasta que haya red. Es la conducta segura que pide la orden.
+6. **Capturas:** las GIF no cargan porque las pruebas no tienen red. El texto de botones y avisos se dibuja con Poppins, mientras que el dispositivo usa su fuente.
+
+## 14. Recomendación sobre el merge
+
+**Apta para la revisión final.**
+
+- **Seguridad:** los 10 criterios están demostrados, también en las rutas con conexión interrumpida, rutina antigua o sesión abierta.
+- **Calidad:** no hay regresiones en Firebase, D-M1 ni generación; `flutter analyze` sale limpio; 389 pruebas aprobadas y 0 fallidas.
+
+**Recomiendo autorizar el merge después de ejecutar `GUIA_ANDROID.md` en tu teléfono.** Esa prueba no cubre ninguna regla de seguridad que no esté ya demostrada. Lo que sí comprueba es:
+
+- la conectividad real del dispositivo (`adb reverse` o Wi-Fi);
+- el comportamiento con el modo avión (§6, filas S5 y S6 de la guía);
+- la experiencia en pantalla.
+
+Si decides fusionar sin ella, el riesgo restante es de presentación o conectividad del dispositivo, no de seguridad O20.
+
+**La PR #19 queda pendiente de tu autorización. No se fusionó.**

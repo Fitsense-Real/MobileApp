@@ -1,2 +1,2 @@
-flutter analyze → No issues found! (ran in 1.7s)
-flutter test → 00:57 +374 ~26: All tests passed!
+flutter analyze → No issues found! (ran in 1.6s)
+flutter test → 01:01 +389 ~31: All tests passed!  (0 fallidas)

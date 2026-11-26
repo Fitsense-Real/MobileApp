@@ -56,6 +56,16 @@ void main() {
         live.log('DEMO /plans: ${[for (final p in history) '${p['planId']} ${p['weekStartDate']} ${p['status']}']}');
         live.log('DEMO /plan/adaptations: ${[for (final a in adaptations) '${a['weekStartDate']} ${a['resultado']}']}');
         live.log('DEMO /confirmation-requests: ${(await app.pain.confirmationRequests()).length} pendientes');
+        // Every GET the app's screens make, saved by path for the app replay test (o20_demo_app_test).
+        final paths = ['/users/me', '/users/me/profile', '/users/me/plan/current', '/users/me/plans', '/users/me/plan/adaptations',
+          '/users/me/plan/limitations', '/users/me/metrics/weekly', '/users/me/interventions', '/users/me/pain-exclusions',
+          '/users/me/pain-exclusions/effective', '/users/me/pain-exclusions/confirmation-requests', '/sessions/current',
+          '/users/me/notification-preferences', for (final p in history) '/users/me/plan/${p['planId']}'];
+        for (final path in paths) {
+          final response = await app.dio.get(path, options: Options(validateStatus: (_) => true));
+          save('paths/${path.replaceAll('/', '_')}', {'status': response.statusCode, 'data': response.data});
+        }
+        live.log('DEMO respuestas GET guardadas para la app: ${paths.length}');
         for (final p in history) {
           final full = await app.plans.byId(p['planId']);
           save('plan_${p['planId']}', full);
