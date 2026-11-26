@@ -13,6 +13,7 @@ class LocalAccountData {
         'kora_welcome_$userId', // tour progress and first-plan operation
         'kora_reminders_$userId', // reminder settings
         'kora_favorites_$userId', // favourite workouts
+        'kora_pending_results_$userId', // workout results not sent yet (PendingResultsStore)
       ];
 
   Future<void> clear(int userId) async {

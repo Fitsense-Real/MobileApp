@@ -163,6 +163,9 @@ Capturas de referencia, hechas con las respuestas reales de una copia local de l
 | S10 | Cierra sesión y vuelve a entrar | Las mismas exclusiones y bloqueos; la sesión de S4 sigue registrada |
 | S11 (opcional) | Con un resultado «Pendiente de enviar» (S5), omite por dolor, desde otro dispositivo, otra rutina que contenga **ese mismo ejercicio**. Quita el modo avión y pulsa «Reintentar envío» | El resultado **no se envía**: pasa a «Resultados retenidos: no se enviarán» y el ejercicio aparece bloqueado. Solo puede registrarse como «No lo hice». «Descartar» lo quita |
 | S12 | Mientras se envía un resultado, activa el modo avión; luego desactívalo y pulsa «Reintentar envío» | «Se perdió la conexión…». Al reintentar, Kora consulta antes la sesión: si el resultado ya había llegado, no lo repite; nunca hay registros duplicados |
+| S13 (requiere la PR de P1) | Con un resultado «Pendiente de enviar» (modo avión), **cierra Kora del todo** (deslízala fuera de recientes) y quita el modo avión. Abre Kora y la misma rutina | El resultado reaparece como «Pendiente de enviar» y **no se envía solo**. Pulsa «Reintentar envío»: se envía una vez y desaparece |
+| S14 (requiere la PR de P1) | Repite S13, pero antes de reabrir omite por dolor, desde otro dispositivo, una rutina con ese mismo ejercicio | Al reabrir: «Retenido: no se enviará», con el ejercicio bloqueado. «Descartar» lo quita |
+| S15 (requiere la PR de P1) | Con un pendiente guardado, cierra sesión y entra con **otra cuenta** | La otra cuenta no ve nada. Al volver a la primera cuenta, dentro de 48 h, el resultado reaparece |
 
 ## 7. Registros y evidencia si algo falla
 
