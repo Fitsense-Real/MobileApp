@@ -4,31 +4,19 @@ import '../../../../core/api/api_error.dart';
 import '../../../../core/api/json.dart';
 import '../../../../shared/widgets/kora_ui.dart';
 import '../../../plans/data/plan_repository.dart';
+import '../../../plans/domain/adaptation_text.dart';
 import '../../../workouts/domain/workout_rules.dart';
 import '../pages/dashboard_page.dart' show displayDate, trainingDay;
 
 const planStatusLabels = {'ACTIVE': 'Vigente', 'COMPLETED': 'Completado', 'REPLACED': 'Reemplazado'};
-const adjustmentLabels = {
-  'NONE': 'Sin ajuste',
-  'REDUCE_VOLUME': 'Menos volumen',
-  'REDUCE_DURATION': 'Sesiones más cortas',
-  'REDUCE_DAYS': 'Menos días',
-  'LOWER_DIFFICULTY': 'Menor dificultad',
-  'LOWER_LOAD': 'Menos carga',
-};
-
-String adjustmentLabel(Object? value) => '$value'
-    .split(RegExp(r'[,\s]+'))
-    .where((code) => code.isNotEmpty && code != 'null')
-    .map((code) => adjustmentLabels[code] ?? code)
-    .join(', ');
-
 /// `GET /users/me/plans`: every week and version, including replaced ones.
 class PlanHistorySheet extends ConsumerWidget {
   const PlanHistorySheet({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(planHistoryProvider);
+    // What really happened to each week (GET /users/me/plan/adaptations); without it, the plan's own field.
+    final adaptations = ref.watch(planAdaptationsProvider).asData?.value ?? const <Json>[];
     return ListView(padding: const EdgeInsets.fromLTRB(24, 0, 24, 24), children: [
       const Text('Historial de planes', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
       const SizedBox(height: 16),
@@ -46,7 +34,7 @@ class PlanHistorySheet extends ConsumerWidget {
                       subtitle: Text([
                         planStatusLabels[plan['status']] ?? '${plan['status']}',
                         '${plan['plannedDaysCount'] ?? '—'} días',
-                        if (adjustmentLabel(plan['adjustmentApplied']).isNotEmpty) adjustmentLabel(plan['adjustmentApplied']),
+                        if (planHistoryLabel(plan, adaptations) case final label?) label,
                       ].join(' · ')),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: plan['planId'] is num
@@ -67,6 +55,8 @@ class PlanVersionPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plan = ref.watch(planByIdProvider(planId));
+    final adaptation = (ref.watch(planAdaptationsProvider).asData?.value ?? const <Json>[])
+        .where((a) => a['resultingPlanId'] == planId).firstOrNull;
     return KoraPage(child: ListView(padding: const EdgeInsets.all(24), children: [
       Align(alignment: Alignment.centerLeft, child: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back), tooltip: 'Volver')),
       plan.when(
@@ -76,7 +66,8 @@ class PlanVersionPage extends ConsumerWidget {
           final workouts = jsonRows(data['workouts'])..sort((a, b) => '${a['scheduledDate']}'.compareTo('${b['scheduledDate']}'));
           return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             KoraHeading('Semana del ${displayDate(data['weekStartDate'])}', subtitle: 'Versión ${data['planVersion'] ?? 1} · ${planStatusLabels[data['status']] ?? data['status']}'),
-            if (data['adjustmentReason'] != null) Padding(padding: const EdgeInsets.only(top: 12), child: KoraCard(child: Text('${data['adjustmentReason']}'))),
+            if (adaptation != null) Padding(padding: const EdgeInsets.only(top: 12), child: AdaptationCard(adaptation: adaptation))
+            else if (data['adjustmentReason'] != null) Padding(padding: const EdgeInsets.only(top: 12), child: KoraCard(child: Text('${data['adjustmentReason']}'))),
             const SizedBox(height: 12),
             if (workouts.isEmpty) const Text('Este plan no tiene entrenamientos.'),
             for (final workout in workouts)
@@ -88,6 +79,33 @@ class PlanVersionPage extends ConsumerWidget {
           ]);
         },
       ),
+    ]));
+  }
+}
+
+/// One week's adaptation in plain words: title, the backend's reason and what changed.
+class AdaptationCard extends StatelessWidget {
+  const AdaptationCard({super.key, required this.adaptation, this.showWeek = false});
+  final Json adaptation;
+  final bool showWeek;
+  @override
+  Widget build(BuildContext context) {
+    final text = describeAdaptation(adaptation);
+    final icon = switch (text.kind) {
+      AdaptationKind.changed => Icons.tune,
+      AdaptationKind.kept => Icons.check_circle_outline,
+      AdaptationKind.notFeasible => Icons.info_outline,
+      AdaptationKind.unknown => Icons.history,
+    };
+    return KoraCard(child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: Kora.sage),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (showWeek) Text('Semana del ${displayDate(adaptation['weekStartDate'])}', style: const TextStyle(color: Kora.muted, fontSize: 12)),
+        Text(text.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        if (text.reason case final reason?) Padding(padding: const EdgeInsets.only(top: 4), child: Text(reason)),
+        for (final detail in text.details) Padding(padding: const EdgeInsets.only(top: 4), child: Text(detail, style: const TextStyle(color: Kora.muted))),
+      ])),
     ]));
   }
 }
