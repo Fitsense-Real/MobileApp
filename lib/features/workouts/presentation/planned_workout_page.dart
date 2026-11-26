@@ -10,7 +10,9 @@ import '../../pain/presentation/pain_confirmation_sheet.dart';
 import '../../plans/data/plan_repository.dart';
 import 'package:dio/dio.dart';
 import '../domain/workout_rules.dart';
+import '../data/pending_results_store.dart';
 import '../data/workout_repository.dart';
+import '../../authentication/presentation/providers/auth_provider.dart';
 
 import 'exercise_media.dart';
 import 'exercise_result_dialog.dart';
@@ -42,7 +44,11 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => act(() async { session = await repository.current(); }));
+    Future.microtask(() async {
+      await act(() async { session = await repository.current(); });
+      // P1: results kept on the phone for this account and routine come back; none is sent from here.
+      if (await restoreKept()) await refreshWorkout();
+    });
     // In the background: the screen is usable at once and updates when the
     // backend answers (a slow network never blocks registering).
     Future.microtask(refreshWorkout);
@@ -71,6 +77,86 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   /// Pending results whose request may have reached the backend (the answer
   /// was lost): before repeating, the app asks the backend what it has.
   final maybeSent = <Object>{};
+
+  /// When and in which session each kept result was entered (P1: persisted).
+  final keptMeta = <Object, ({int sessionId, DateTime savedAt})>{};
+
+  /// A problem with the results kept on this phone (unreadable, damaged, expired).
+  String? storeNotice;
+
+  /// The signed-in account; without one nothing is kept on the phone.
+  int? get userId {
+    try {
+      return ref.read(authViewModelProvider).user?.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Brings back this account's kept results for this routine. A result from a session that is no longer
+  /// the open one is held (never sent). Returns whether anything came back.
+  Future<bool> restoreKept() async {
+    final user = userId;
+    if (user == null || !mounted) return false;
+    final PendingLoad load;
+    try {
+      load = await ref.read(pendingResultsStoreProvider).load(user);
+    } on PendingStoreException catch (e) {
+      if (mounted) setState(() => storeNotice = '${e.message} No se ha enviado nada.');
+      return false;
+    }
+    if (!mounted) return false;
+    final mine = load.entries.where((e) => e.plannedWorkoutId == workout['plannedWorkoutId']).toList();
+    final openSession = (session?['sessionId'] as num?)?.toInt();
+    for (final e in mine) {
+      final id = e.plannedExerciseId;
+      keptMeta[id] = (sessionId: e.sessionId, savedAt: e.savedAt);
+      if (e.state == PendingState.held || e.sessionId != openSession) {
+        held[id] = e.body;
+      } else {
+        pending[id] = e.body;
+        if (e.state == PendingState.maybeSent) maybeSent.add(id);
+      }
+    }
+    setState(() {
+      storeNotice = [
+        if (load.damaged) 'Algunos resultados guardados en este teléfono estaban dañados y se descartaron. No se ha enviado nada; revisa tu rutina.',
+        if (load.expired > 0) load.expired == 1
+            ? 'Un resultado guardado hace más de 48 horas se descartó sin enviarse.'
+            : '${load.expired} resultados guardados hace más de 48 horas se descartaron sin enviarse.',
+      ].join(' ').trim();
+      if (storeNotice!.isEmpty) storeNotice = null;
+    });
+    if (mine.any((e) => e.sessionId != openSession && e.state != PendingState.held)) await persistKept();
+    return mine.isNotEmpty;
+  }
+
+  /// Saves this routine's pending and held results for the account, keeping those of other routines.
+  Future<void> persistKept() async {
+    final user = userId;
+    if (user == null) return;
+    final store = ref.read(pendingResultsStoreProvider);
+    final now = DateTime.now();
+    final open = (session?['sessionId'] as num?)?.toInt();
+    PendingResult? entry(Object id, Json body, PendingState state) {
+      final meta = keptMeta[id] ?? (open == null ? null : (keptMeta[id] = (sessionId: open, savedAt: now)));
+      if (meta == null) return null; // without a known session there is nothing safe to keep
+      return PendingResult(userId: user, sessionId: meta.sessionId, plannedWorkoutId: (workout['plannedWorkoutId'] as num).toInt(),
+          plannedExerciseId: (id as num).toInt(), body: {for (final k in PendingResult.bodyKeys) if (body.containsKey(k)) k: body[k]},
+          state: state, savedAt: meta.savedAt);
+    }
+    try {
+      final mine = [
+        for (final e in pending.entries) ?entry(e.key, e.value, maybeSent.contains(e.key) ? PendingState.maybeSent : PendingState.pending),
+        for (final e in held.entries) ?entry(e.key, e.value, PendingState.held),
+      ];
+      keptMeta.removeWhere((id, _) => !pending.containsKey(id) && !held.containsKey(id));
+      final others = (await store.load(user)).entries.where((e) => e.plannedWorkoutId != workout['plannedWorkoutId']);
+      await store.save(user, [...others, ...mine]);
+    } on PendingStoreException catch (e) {
+      if (mounted) setState(() => storeNotice = '${e.message} El resultado sigue en pantalla, pero se perderá si cierras la app.');
+    }
+  }
 
   /// Exercises whose result is being confirmed or sent: a second action on
   /// the same exercise waits instead of sending twice.
@@ -116,12 +202,17 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (!mounted) return;
     // Back from the background or after a refusal: a pending result that the
     // routine no longer allows is held, never sent.
+    var moved = false;
     if (check != RoutineCheck.unreachable) {
       for (final entry in [...pending.entries]) {
-        if (check == RoutineCheck.outdated || refusal(entry.key, entry.value) != null) hold(entry.key, entry.value);
+        if (check == RoutineCheck.outdated || refusal(entry.key, entry.value) != null) {
+          hold(entry.key, entry.value);
+          moved = true;
+        }
       }
     }
     setState(() {});
+    if (moved) await persistKept();
   }
 
   void hold(Object id, Json body) {
@@ -285,6 +376,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       }
     } finally {
       if (mounted) setState(() { sending.remove(id); busy = false; });
+      if (mounted) await persistKept();
     }
   }
 
@@ -446,6 +538,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
             : '${pending.length} resultados guardados en este teléfono, sin enviar: falta confirmar tu rutina con el servidor.'),
         TextButton(onPressed: busy ? null : retryPending, child: const Text('Reintentar envío')),
       ])),
+      if (storeNotice case final notice?) KoraCard(key: const Key('store-notice'), child: Text(notice)),
       if (held.isNotEmpty && !closed) KoraCard(key: const Key('held-results'), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Resultados retenidos: no se enviarán', style: TextStyle(fontWeight: FontWeight.w800)),
         const Text('Tu rutina cambió desde que los anotaste (por ejemplo, un ejercicio tiene ahora una restricción por seguridad). '
@@ -453,7 +546,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         for (final entry in held.entries)
           Row(children: [
             Expanded(child: Text('• ${freshExercise(entry.key)?['exerciseName'] ?? 'Ejercicio'}: ${resultLabel(entry.value)}')),
-            TextButton(key: Key('discard-${entry.key}'), onPressed: busy ? null : () => setState(() => held.remove(entry.key)), child: const Text('Descartar')),
+            TextButton(key: Key('discard-${entry.key}'), onPressed: busy ? null : () { setState(() => held.remove(entry.key)); persistKept(); }, child: const Text('Descartar')),
           ]),
       ])),
       if (session != null && !ownSession) const KoraCard(child: Text('Tienes otra sesión en curso. Regresa a esa rutina para terminarla o abandonarla.')),

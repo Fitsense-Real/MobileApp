@@ -146,7 +146,7 @@ Future<void> fillAndConfirm(WidgetTester tester, {bool confirm = true, String pa
   await tester.pumpAndSettle();
 }
 
-const userKeys = {'kora_welcome_7': '{}', 'kora_reminders_7': '{}', 'kora_favorites_7': '[]', 'access_token': 'jwt-viejo', 'kora_welcome_8': '{"tourStep":3}'};
+const userKeys = {'kora_welcome_7': '{}', 'kora_reminders_7': '{}', 'kora_favorites_7': '[]', 'kora_pending_results_7': '[]', 'access_token': 'jwt-viejo', 'kora_welcome_8': '{"tourStep":3}'};
 
 Future<Map<String, String>> stored() => const FlutterSecureStorage().readAll();
 
