@@ -2,7 +2,7 @@
 
 **Estado: pendiente de ejecución por el usuario.** No tengo un teléfono disponible, así que no hay ninguna prueba física hecha.
 
-Esta guía usa la versión de depuración de la rama **`generation`**, que desde el merge de la PR #19 (`0649f784567086e17660da55ab7635e7a74fcf6a`) ya incluye O20, contra **tu Backend de pruebas**, nunca contra producción. No genera APK de producción ni despliega nada.
+Esta guía usa la versión de depuración de la rama **`generation`**, que desde el merge de la PR #22 (`d7bbc1a5b5296b06243207c8feb98b3de1187452`) incluye O20 (PR #19), el historial de adaptaciones comprensible (P2, PR #21) y los resultados pendientes guardados en el teléfono (P1, PR #22), contra **tu Backend de pruebas**, nunca contra producción. No genera APK de producción ni despliega nada.
 
 ## 0. Requisitos
 
@@ -33,7 +33,7 @@ flutter pub get
 flutter doctor
 ```
 
-- En `git log` debe aparecer `Merge PR #19: integración de seguridad O20…` (`0649f78`) o un commit posterior de `generation`.
+- En `git log` debe aparecer `Merge PR #22: P1, resultados pendientes…` (`d7bbc1a`) o un commit posterior de `generation`.
 - `flutter doctor` debe mostrar Flutter, Android toolchain y Android Studio sin errores en rojo.
 
 ## 2. Backend local sin IA
@@ -97,6 +97,31 @@ Si no puedes usar `adb reverse`:
 
 4. En el §4 usa `http://IP_DEL_PC:8080/api/v1`.
 
+### Opción C: ADB inalámbrico (Android 11 o superior, sin cable)
+
+1. Pon el teléfono y el PC en la misma red Wi-Fi.
+2. En el teléfono: Opciones de desarrollador → **Depuración inalámbrica** → actívala → **Vincular dispositivo con código de vinculación**. Anota la IP, el puerto de vinculación y el código.
+3. En el PC, vincula y conecta:
+
+   ```powershell
+   adb pair IP_DEL_TELEFONO:PUERTO_DE_VINCULACION
+   ```
+
+   Escribe el código de 6 dígitos cuando lo pida. Después conecta con el puerto que muestra la pantalla «Depuración inalámbrica», que es distinto del de vinculación:
+
+   ```powershell
+   adb connect IP_DEL_TELEFONO:PUERTO
+   adb devices
+   ```
+
+4. **Acceso al Backend:** `adb reverse` también funciona por la conexión inalámbrica, así que usa la URL de la opción A.
+
+   ```powershell
+   adb reverse tcp:8080 tcp:8080
+   ```
+
+   Si falla, usa la URL de la opción B.
+
 **No uses `10.0.2.2`:** esa dirección solo funciona en el emulador, nunca en un teléfono físico.
 
 ## 4. Ejecutar Kora en el teléfono
@@ -106,7 +131,7 @@ flutter devices
 flutter run -d ID_DEL_TELEFONO --dart-define=API_BASE_URL=http://127.0.0.1:8080/api/v1
 ```
 
-En la opción B, la URL es `http://IP_DEL_PC:8080/api/v1`.
+En la opción B, la URL es `http://IP_DEL_PC:8080/api/v1`. En las opciones A y C, con `adb reverse`, es `http://127.0.0.1:8080/api/v1`.
 
 - El modo debug permite HTTP local (`android/app/src/debug/AndroidManifest.xml`).
 - **Push:** sin `android/app/google-services.json` la app compila, pero sin notificaciones push. Para probarlas, incorpora los archivos según `docs/push/INCORPORAR_CONFIGURACION_FIREBASE.md`.
@@ -135,7 +160,8 @@ Las fechas de la tabla son las de la copia validada (semana vigente del 23/11/20
 | D2 | Rutinas | Los 5 entrenamientos de la semana vigente (Empuje, Traccion, Piernas, Tren superior, Tren inferior; el dataset escribe «Traccion» sin tilde). Ninguno con «No disponible por ahora» |
 | D3 | Progreso → selector de semana | 16/11: 100 %, 5/5, «Sin ajustes registrados». 09/11: 100 %, «Plan adaptado a ti» (la sustitución por dolor). 02/11: 67,8 %, 3/5 |
 | D4 | Progreso → «Resumen de ajustes» | El ajuste del 23/11 (progresión) y el del 09/11 (sustitución) |
-| D5 | Perfil → Historial de planes | 4 semanas: 23/11 vigente; 16/11, 09/11 y 02/11 completadas |
+| D4b | Progreso → «Historial de adaptaciones» (P2) | Tres tarjetas, sin códigos: 23/11 «Tu rutina avanzó un paso»; 16/11 «Tu rutina se mantiene igual»; 09/11 «Se sustituyó un ejercicio por seguridad», con «Sesión revisada: jueves 05/11 (Tren superior)» |
+| D5 | Perfil → Historial de planes | 4 semanas: 23/11 «Vigente · 5 días · Progresión»; 16/11 «Completado · 5 días · Sin cambios»; 09/11 «Completado · 5 días · Sustitución por seguridad»; 02/11 «Completado · 5 días». **En ningún sitio debe aparecer `ADAPT_LOCALIZED` ni otro código** |
 | D6 | Perfil → Ejercicios excluidos por dolor | «Te dolieron: Aperturas de pecho sentado con palanca. Lo marcaste con dolor · 05/11/2026». **No pulses «Ya no me duele»** |
 | D7 | Manda la app a segundo plano 1 minuto y vuelve | La rutina y las exclusiones se vuelven a cargar, sin errores |
 | D8 | Cierra la app del todo y ábrela | La sesión se mantiene y se ve lo mismo |
@@ -163,9 +189,9 @@ Capturas de referencia, hechas con las respuestas reales de una copia local de l
 | S10 | Cierra sesión y vuelve a entrar | Las mismas exclusiones y bloqueos; la sesión de S4 sigue registrada |
 | S11 (opcional) | Con un resultado «Pendiente de enviar» (S5), omite por dolor, desde otro dispositivo, otra rutina que contenga **ese mismo ejercicio**. Quita el modo avión y pulsa «Reintentar envío» | El resultado **no se envía**: pasa a «Resultados retenidos: no se enviarán» y el ejercicio aparece bloqueado. Solo puede registrarse como «No lo hice». «Descartar» lo quita |
 | S12 | Mientras se envía un resultado, activa el modo avión; luego desactívalo y pulsa «Reintentar envío» | «Se perdió la conexión…». Al reintentar, Kora consulta antes la sesión: si el resultado ya había llegado, no lo repite; nunca hay registros duplicados |
-| S13 (requiere la PR de P1) | Con un resultado «Pendiente de enviar» (modo avión), **cierra Kora del todo** (deslízala fuera de recientes) y quita el modo avión. Abre Kora y la misma rutina | El resultado reaparece como «Pendiente de enviar» y **no se envía solo**. Pulsa «Reintentar envío»: se envía una vez y desaparece |
-| S14 (requiere la PR de P1) | Repite S13, pero antes de reabrir omite por dolor, desde otro dispositivo, una rutina con ese mismo ejercicio | Al reabrir: «Retenido: no se enviará», con el ejercicio bloqueado. «Descartar» lo quita |
-| S15 (requiere la PR de P1) | Con un pendiente guardado, cierra sesión y entra con **otra cuenta** | La otra cuenta no ve nada. Al volver a la primera cuenta, dentro de 48 h, el resultado reaparece |
+| S13 | Con un resultado «Pendiente de enviar» (modo avión), **cierra Kora del todo** (deslízala fuera de recientes) y quita el modo avión. Abre Kora y la misma rutina | El resultado reaparece como «Pendiente de enviar» y **no se envía solo**. Pulsa «Reintentar envío»: se envía una vez y desaparece |
+| S14 | Repite S13, pero antes de reabrir omite por dolor, desde otro dispositivo, una rutina con ese mismo ejercicio | Al reabrir: «Retenido: no se enviará», con el ejercicio bloqueado. «Descartar» lo quita |
+| S15 | Con un pendiente guardado, cierra sesión y entra con **otra cuenta** | La otra cuenta no ve nada. Al volver a la primera cuenta, dentro de 48 h, el resultado reaparece |
 
 ## 7. Registros y evidencia si algo falla
 
