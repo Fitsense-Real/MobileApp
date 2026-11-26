@@ -116,3 +116,9 @@ KORA_LIVE_API_BASE_URL=http://localhost:8080/api/v1 KORA_LIVE_EMAIL_A=... KORA_L
 ## Validación final
 
 La validación de la orden «VALIDACIÓN FINAL O20 Y CIERRE DE PR #19» está en `validacion/INFORME_VALIDACION_O20.md`, con la evidencia del Backend real, las capturas dibujadas con respuestas reales y la guía para probar en Android.
+
+## Después del merge
+
+- **PR #19 fusionada en `generation`:** `0649f784567086e17660da55ab7635e7a74fcf6a`.
+- **Prueba en un Android físico:** pendiente del usuario. Guía en `validacion/GUIA_ANDROID.md`.
+- **Mejoras propuestas, sin implementar:** `PENDIENTES_P1_P2.md`.

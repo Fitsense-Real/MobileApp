@@ -2,7 +2,7 @@
 
 **Estado: pendiente de ejecución por el usuario.** No tengo un teléfono disponible, así que no hay ninguna prueba física hecha.
 
-Esta guía usa la versión de depuración de la PR #19 contra **tu Backend de pruebas**, nunca contra producción. No genera APK de producción ni despliega nada.
+Esta guía usa la versión de depuración de la rama **`generation`**, que desde el merge de la PR #19 (`0649f784567086e17660da55ab7635e7a74fcf6a`) ya incluye O20, contra **tu Backend de pruebas**, nunca contra producción. No genera APK de producción ni despliega nada.
 
 ## 0. Requisitos
 
@@ -15,18 +15,26 @@ Esta guía usa la versión de depuración de la PR #19 contra **tu Backend de pr
 | Cable USB de datos | |
 | Backend `generation` con #83 y #84 (migración V65) y la base donde está el usuario Demo Kora | Ver §2 |
 
-## 1. Actualizar la rama de la PR #19
+## 1. Actualizar el código local (rama `generation`) e instalar dependencias
 
 ```powershell
 cd C:\ruta\a\MobileApp
-git fetch origin claude/o20-exclusiones-dolor
-git checkout claude/o20-exclusiones-dolor
-git pull --ff-only origin claude/o20-exclusiones-dolor
-git log --oneline -3
-flutter pub get
+git status
 ```
 
-El primer commit de `git log` debe ser el último de la PR; compáralo con GitHub.
+Si `git status` muestra cambios tuyos, guárdalos antes con `git stash`.
+
+```powershell
+git fetch origin generation
+git checkout generation
+git pull --ff-only origin generation
+git log --oneline -3
+flutter pub get
+flutter doctor
+```
+
+- En `git log` debe aparecer `Merge PR #19: integración de seguridad O20…` (`0649f78`) o un commit posterior de `generation`.
+- `flutter doctor` debe mostrar Flutter, Android toolchain y Android Studio sin errores en rojo.
 
 ## 2. Backend local sin IA
 
@@ -105,7 +113,21 @@ En la opción B, la URL es `http://IP_DEL_PC:8080/api/v1`.
 
 ## 5. Qué revisar con el usuario Demo Kora (solo mirar)
 
+### 5.1 Antes: comprobar que el dataset sigue intacto
+
+Hazlo antes de abrir la app, con solo lectura. En DBeaver o pgAdmin, sobre tu base, ejecuta estas consultas de `docs/FitSense/dataset_demo_kora/06_VERIFICACION.sql` (rama `feature/dataset-demo-kora` del Backend):
+
+- **Consulta 1:** cuenta ACTIVE. Tu usuario 48 participa en el estudio; **no cambies ese valor**.
+- **Consulta 3:** **exactamente 4 planes**: 3 COMPLETED y 1 ACTIVE, ninguno con origen AI. Un quinto plan significa que un cierre automático alteró la demo: no sigas y avísame.
+- **Consulta 14:** `ok = t` en las comprobaciones de integridad.
+
+Si las tres salen bien, la prueba con el usuario 48 puede empezar.
+
+### 5.2 En la app
+
 Inicia sesión con `usuario.demo.kora@example.com` y su contraseña.
+
+Las fechas de la tabla son las de la copia validada (semana vigente del 23/11/2026). Si cargaste el dataset otra semana, se desplazan igual.
 
 | N.º | Pantalla / acción | Resultado esperado |
 |---|---|---|
