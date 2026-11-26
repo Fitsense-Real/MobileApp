@@ -117,6 +117,8 @@ Inicia sesión con `usuario.demo.kora@example.com` y su contraseña.
 | D6 | Perfil → Ejercicios excluidos por dolor | «Te dolieron: Aperturas de pecho sentado con palanca. Lo marcaste con dolor · 05/11/2026». **No pulses «Ya no me duele»** |
 | D7 | Manda la app a segundo plano 1 minuto y vuelve | La rutina y las exclusiones se vuelven a cargar, sin errores |
 | D8 | Cierra la app del todo y ábrela | La sesión se mantiene y se ve lo mismo |
+| D9 | Perfil → Cuenta | «Ganar masa muscular (usuario de demostracion de Kora)», 176 cm, 74 kg, 5 días · 60 min |
+| D10 | Perfil → Historial de planes → «Semana del 02/11/2026» | 5 entrenamientos: 3 «Completado», 1 «Parcial» y 1 «Omitido» |
 
 Capturas de referencia, hechas con las respuestas reales de una copia local de la demo: `capturas/D1…D5`.
 
@@ -137,6 +139,8 @@ Capturas de referencia, hechas con las respuestas reales de una copia local de l
 | S8 | Vuelve a la rutina | Los no relacionados ya no están bloqueados; los no nombrados, sí |
 | S9 | Con una rutina abierta, manda la app a segundo plano, omite por dolor otra rutina desde otro dispositivo (o con la API) y vuelve | Al volver, la rutina se actualiza sola y muestra el bloqueo |
 | S10 | Cierra sesión y vuelve a entrar | Las mismas exclusiones y bloqueos; la sesión de S4 sigue registrada |
+| S11 (opcional) | Con un resultado «Pendiente de enviar» (S5), omite por dolor, desde otro dispositivo, otra rutina que contenga **ese mismo ejercicio**. Quita el modo avión y pulsa «Reintentar envío» | El resultado **no se envía**: pasa a «Resultados retenidos: no se enviarán» y el ejercicio aparece bloqueado. Solo puede registrarse como «No lo hice». «Descartar» lo quita |
+| S12 | Mientras se envía un resultado, activa el modo avión; luego desactívalo y pulsa «Reintentar envío» | «Se perdió la conexión…». Al reintentar, Kora consulta antes la sesión: si el resultado ya había llegado, no lo repite; nunca hay registros duplicados |
 
 ## 7. Registros y evidencia si algo falla
 

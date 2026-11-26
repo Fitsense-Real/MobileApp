@@ -237,8 +237,10 @@ String _restrictionSentence(String message) {
 /// codes. Null for any other message.
 String? reactivationRefusal(String message, String name) {
   if (!message.contains('REACTIVACION_RECHAZADA_POR_SEGURIDAD')) return null;
-  return 'Kora no puede volver a proponerte «$name» por ahora: ${_restrictionSentence(message)}. '
-      'Sigue excluido; tu confirmación no puede levantar esa restricción.';
+  final labels = _namedRestrictions(message);
+  final restriction = labels.isEmpty ? 'una restricción de seguridad en tu perfil' : 'una restricción de seguridad en tu perfil (${labels.join(', ')})';
+  return '«$name» todavía no puede habilitarse porque existe $restriction. '
+      'Sigue bloqueado y Kora no te lo propondrá. Puedes continuar con los ejercicios permitidos.';
 }
 
 /// Why the backend did not lift an exercise declared unrelated (`noRelacionadosNoLevantados`), in plain words.

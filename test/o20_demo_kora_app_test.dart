@@ -87,7 +87,7 @@ Future<void> loadFonts() async {
 void main() {
   setUpAll(() async { if (out != null) await loadFonts(); });
 
-  testWidgets('Demo Kora: current routine, past weeks, adherence, adaptations, exclusion 1025, refresh on return', (tester) async {
+  testWidgets('Demo Kora: profile, current routine, four plans and their sessions, adherence, adaptations, exclusion 1025, refresh on return', (tester) async {
     FlutterSecureStorage.setMockInitialValues({'access_token': 'demo'});
     tester.view.physicalSize = const Size(400, 900);
     tester.view.devicePixelRatio = 1;
@@ -146,7 +146,33 @@ void main() {
     await tester.tap(find.text('Historial de planes'));
     await tester.pumpAndSettle();
     expect(adapter.count('/users/me/plans'), greaterThan(0));
+    for (final week in ['23/11/2026', '16/11/2026', '09/11/2026', '02/11/2026']) {
+      expect(find.textContaining('Semana del $week'), findsOneWidget, reason: week);
+    }
     await capture(tester, 'D4-demo-historial');
+    // The first week: 3 completed, 1 partial and 1 skipped session, as the backend recorded them.
+    await tester.tap(find.textContaining('Semana del 02/11/2026'));
+    await tester.pumpAndSettle();
+    expect(adapter.count('/users/me/plan/910000000'), greaterThan(0));
+    expect(find.textContaining('· Completado'), findsNWidgets(4), reason: 'the plan (Versión 1 · Completado) and its 3 completed sessions');
+    expect(find.textContaining('· Parcial'), findsOneWidget);
+    expect(find.textContaining('· Omitido'), findsOneWidget);
+    await capture(tester, 'D4-demo-semana-02nov-sesiones');
+    Navigator.of(tester.element(find.textContaining('· Parcial'))).pop();
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    // Perfil → Cuenta: the complete profile of the dataset (read only during the study).
+    await tester.scrollUntilVisible(find.text('Cuenta'), -200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Cuenta'));
+    await tester.pumpAndSettle();
+    expect(adapter.count('/users/me/profile'), greaterThan(0));
+    expect(find.textContaining('Ganar masa muscular'), findsOneWidget);
+    expect(find.textContaining('Estatura: 176 cm'), findsOneWidget);
+    expect(find.textContaining('Peso: 74 kg'), findsOneWidget);
+    expect(find.textContaining('5 días · 60 min'), findsOneWidget);
+    await capture(tester, 'D6-demo-perfil');
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
 

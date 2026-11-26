@@ -60,7 +60,7 @@ void main() {
         final paths = ['/users/me', '/users/me/profile', '/users/me/plan/current', '/users/me/plans', '/users/me/plan/adaptations',
           '/users/me/plan/limitations', '/users/me/metrics/weekly', '/users/me/interventions', '/users/me/pain-exclusions',
           '/users/me/pain-exclusions/effective', '/users/me/pain-exclusions/confirmation-requests', '/sessions/current',
-          '/users/me/notification-preferences', for (final p in history) '/users/me/plan/${p['planId']}'];
+          '/users/me/notification-preferences', '/users/me/consents', for (final p in history) '/users/me/plan/${p['planId']}'];
         for (final path in paths) {
           final response = await app.dio.get(path, options: Options(validateStatus: (_) => true));
           save('paths/${path.replaceAll('/', '_')}', {'status': response.statusCode, 'data': response.data});

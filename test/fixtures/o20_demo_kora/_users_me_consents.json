@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "data": {
+    "currentVersions": {
+      "STUDY_PARTICIPATION": "MVP-1.0",
+      "TERMS_OF_SERVICE": null,
+      "PRIVACY_POLICY": null
+    },
+    "enforcedOnSignup": false,
+    "history": []
+  }
+}

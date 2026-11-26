@@ -1,0 +1,21 @@
+  plan_id  | week_start_date |   plan    | entrenamiento | count 
+-----------+-----------------+-----------+---------------+-------
+ 910000000 | 2026-11-02      | COMPLETED | COMPLETED     |     3
+ 910000000 | 2026-11-02      | COMPLETED | PARTIAL       |     1
+ 910000000 | 2026-11-02      | COMPLETED | SKIPPED       |     1
+ 910000001 | 2026-11-09      | COMPLETED | COMPLETED     |     5
+ 910000002 | 2026-11-16      | COMPLETED | COMPLETED     |     5
+ 910000003 | 2026-11-23      | ACTIVE    | SCHEDULED     |     3
+ 910000003 | 2026-11-23      | ACTIVE    | SKIPPED       |     2
+(7 rows)
+
+ intentos_adaptacion 
+---------------------
+                   3
+(1 row)
+
+ user_id |             email             | is_study_participant 
+---------+-------------------------------+----------------------
+       1 | usuario.demo.kora@example.com | f
+(1 row)
+

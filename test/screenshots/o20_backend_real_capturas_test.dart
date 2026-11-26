@@ -202,7 +202,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ya no tengo dolor'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Kora no puede volver a proponerte «Flexión pliométrica con toque de pecho» por ahora'), findsOneWidget);
+    expect(find.byKey(const Key('reactivation-refused')), findsOneWidget);
+    expect(find.textContaining('todavía no puede habilitarse porque existe una restricción de seguridad en tu perfil (alto impacto)'), findsOneWidget);
     expect(target, findsOneWidget);
     await capture(tester, 'R10-reactivacion-rechazada');
   }, skip: skip || !has('rechazo'));

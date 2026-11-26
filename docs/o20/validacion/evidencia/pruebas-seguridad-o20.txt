@@ -26,7 +26,7 @@ Mobile cannot bypass O20 (regressions) logout and a new login: the exclusions co
 contract parsing (exact fields of the backend) /confirmation-requests and /identification answer
 contract parsing (exact fields of the backend) /effective: DIRECT and its provisional EQUIVALENT, as in the specification
 
-== test/o20_rutina_desactualizada_test.dart (12 pruebas, todas aprobadas)
+== test/o20_rutina_desactualizada_test.dart (19 pruebas, todas aprobadas)
 1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 1 · the connection fails
 1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 2 · the backend takes more than 8 seconds
 1–4 · the plan cannot be confirmed: nothing is sent, the result is kept, and it can be retried 3 · the plan request answers 401
@@ -34,12 +34,19 @@ contract parsing (exact fields of the backend) /effective: DIRECT and its provis
 5 · the backend answers a plan different from the one on screen a blocked exercise on screen that the backend still allows: the dialog follows the backend
 5 · the backend answers a plan different from the one on screen the exercise was blocked meanwhile: work is not sent; only «No lo hice» is offered
 5 · the backend answers a plan different from the one on screen the routine left the plan (a new version): nothing is sent and it cannot be edited
+6 · lost answer: before repeating, the app asks the backend what it has the request had arrived: it is not sent again
+6 · lost answer: before repeating, the app asks the backend what it has the session cannot be checked: kept, not sent again
+6 · lost answer: before repeating, the app asks the backend what it has the session was closed meanwhile: the result is held, never sent
 6 · the connection drops while sending: kept, never duplicated when retried
 7 · the app goes to the background while the plan is being read: one dialog, one record
 8 · two actions on the same exercise at the same time two taps on «Registrar ejercicio» while the plan is being read: one dialog
 8 · two actions on the same exercise at the same time two taps on «Reintentar envío»: one record
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent a held result can be discarded
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent back from the background: the pending result is checked again and held, without sending
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent completed result
+pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent partial result
 retroactive report on a routine that cannot be confirmed no network or a slow answer: nothing sent, every draft kept; later it goes on
 
 == test/o20_demo_kora_app_test.dart (1 pruebas, todas aprobadas)
-Demo Kora: current routine, past weeks, adherence, adaptations, exclusion 1025, refresh on return
+Demo Kora: profile, current routine, four plans and their sessions, adherence, adaptations, exclusion 1025, refresh on return
 

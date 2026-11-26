@@ -430,7 +430,8 @@ void main() {
       await tap(tester, find.text('Ya no me duele'));
       await tap(tester, find.text('Ya no tengo dolor'));
       expect(find.byKey(const Key('effective-537')), findsOneWidget);
-      expect(find.textContaining('no es compatible con una restricción de seguridad vigente'), findsOneWidget);
+      expect(find.byKey(const Key('reactivation-refused')), findsOneWidget);
+      expect(find.textContaining('todavía no puede habilitarse porque existe una restricción de seguridad en tu perfil'), findsOneWidget);
       expect(find.textContaining('REACTIVACION_RECHAZADA'), findsNothing);
     });
 
@@ -443,12 +444,19 @@ void main() {
       await tap(tester, find.text('Ya no me duele'));
       await tap(tester, find.text('Ya no tengo dolor'));
       expect(pain.reactivated, [460]);
-      expect(find.text('Kora no puede volver a proponerte «Flexión pliométrica con toque de pecho» por ahora: no es compatible con una '
-          'restricción de seguridad vigente (alto impacto). Sigue excluido; tu confirmación no puede levantar esa restricción.'), findsOneWidget);
+      // Shown as a refusal (its own dialog), never as a passing success notice.
+      expect(find.byKey(const Key('reactivation-refused')), findsOneWidget);
+      expect(find.text('Sigue bloqueado'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.text('«Flexión pliométrica con toque de pecho» todavía no puede habilitarse porque existe una restricción de seguridad '
+          'en tu perfil (alto impacto). Sigue bloqueado y Kora no te lo propondrá. Puedes continuar con los ejercicios permitidos.'), findsOneWidget);
       expect(find.textContaining('REACTIVACION_RECHAZADA'), findsNothing);
       expect(find.textContaining('alto_impacto'), findsNothing);
-      expect(find.byKey(const Key('effective-460')), findsOneWidget, reason: 'not shown as allowed');
+      expect(find.textContaining('460'), findsNothing, reason: 'no internal ids');
       expect(pain.effectiveReads, greaterThan(reads), reason: 'the exclusions are read again from the backend');
+      await tap(tester, find.text('Entendido'));
+      expect(find.byKey(const Key('effective-460')), findsOneWidget, reason: 'still blocked, not shown as allowed');
+      expect(pain.identified, isEmpty, reason: 'nothing else is sent: the history is not touched');
     });
 
     testWidgets('10 · declared «unrelated» but not lifted by the backend: the reason in plain words', (tester) async {

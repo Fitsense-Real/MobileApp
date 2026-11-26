@@ -62,6 +62,16 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   /// backend: kept on this device and never sent until it is confirmed.
   final pending = <Object, Json>{};
 
+  /// Results that will never be sent: entered for an exercise the backend
+  /// blocked (or removed) since, or for a session that is no longer open.
+  /// Kept on screen so the user can review them; only a valid result
+  /// («No lo hice» for a blocked exercise) replaces them.
+  final held = <Object, Json>{};
+
+  /// Pending results whose request may have reached the backend (the answer
+  /// was lost): before repeating, the app asks the backend what it has.
+  final maybeSent = <Object>{};
+
   /// Exercises whose result is being confirmed or sent: a second action on
   /// the same exercise waits instead of sending twice.
   final sending = <Object>{};
@@ -102,8 +112,31 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   /// [checkRoutine] in the background (on open, back from the background,
   /// after a 422): the screen shows the backend's routine as soon as it answers.
   Future<void> refreshWorkout() async {
-    await checkRoutine();
-    if (mounted) setState(() {});
+    final check = await checkRoutine();
+    if (!mounted) return;
+    // Back from the background or after a refusal: a pending result that the
+    // routine no longer allows is held, never sent.
+    if (check != RoutineCheck.unreachable) {
+      for (final entry in [...pending.entries]) {
+        if (check == RoutineCheck.outdated || refusal(entry.key, entry.value) != null) hold(entry.key, entry.value);
+      }
+    }
+    setState(() {});
+  }
+
+  void hold(Object id, Json body) {
+    pending.remove(id);
+    maybeSent.remove(id);
+    held[id] = body;
+  }
+
+  /// Whether the session from the backend already has this result.
+  bool resultSaved(Object id, Json body) {
+    final saved = jsonRows(session?['exercises'] ?? []).where((r) => r['plannedExerciseId'] == id).firstOrNull;
+    if (saved == null) return false;
+    num n(Object? v) => v is num ? v : 0;
+    return ['actualSets', 'actualRepsTotal', 'actualDurationSeconds'].every((k) => n(saved[k]) == n(body[k])) &&
+        (saved['skipReason'] ?? '') == (body['skipReason'] ?? '');
   }
 
   /// The exercise as the backend has it now in this routine, or null.
@@ -175,7 +208,9 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
 
   /// Sends one live result only after the backend confirms, just before, that
   /// the routine is current and the exercise allows it. Otherwise it is kept
-  /// in [pending] (no answer) or refused (blocked, removed), never sent.
+  /// in [pending] (no answer) or [held] (blocked, removed, session closed),
+  /// never sent. A result whose earlier request may have arrived is first
+  /// looked up in the backend's session, so it is never sent twice.
   Future<void> send(Object id, Json body) async {
     if (sending.contains(id)) return;
     setState(() { sending.add(id); busy = true; error = null; });
@@ -188,29 +223,61 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         return;
       }
       if (check == RoutineCheck.outdated) {
-        pending.remove(id);
-        error = 'Tu plan se actualizó y esta rutina ya no forma parte de él. No se envió el resultado.';
+        hold(id, body);
+        error = 'Tu plan se actualizó y esta rutina ya no forma parte de él. El resultado no se envió; revisa tu rutina actualizada.';
         return;
       }
       final refused = refusal(id, body);
       if (refused != null) {
-        pending.remove(id);
-        error = refused;
+        hold(id, body);
+        error = '$refused Revisa la rutina actualizada.';
+        refreshPainSafety(ref);
         return;
+      }
+      if (maybeSent.contains(id)) {
+        // The previous request may have reached the backend: ask before repeating.
+        final Json? current;
+        try {
+          current = await repository.current().timeout(confirmLimit);
+        } catch (_) {
+          if (!mounted) return;
+          pending[id] = body;
+          error = 'No pudimos comprobar si el servidor recibió tu resultado. Sigue guardado en este teléfono y no se ha vuelto a enviar.';
+          return;
+        }
+        if (!mounted) return;
+        if (current == null || current['sessionId'] != session?['sessionId']) {
+          session = current;
+          hold(id, body);
+          error = 'La sesión ya no está abierta en el servidor. El resultado no se envió; revisa tu rutina.';
+          return;
+        }
+        session = current;
+        if (resultSaved(id, body)) {
+          pending.remove(id);
+          maybeSent.remove(id);
+          held.remove(id);
+          return; // it had arrived: nothing to repeat
+        }
       }
       try {
         session = await repository.record(session!['sessionId'], id, body);
         pending.remove(id);
+        maybeSent.remove(id);
+        held.remove(id);
       } on DioException catch (e) {
         if (!mounted) return;
         if (e.response?.statusCode == 422) {
           pending.remove(id);
+          maybeSent.remove(id);
           await onRefused(e);
         } else if (e.response == null) {
-          // The connection dropped while sending: kept to try again (a PUT
-          // replaces the result, so repeating it never duplicates).
+          // The connection dropped while sending: the request may or may not
+          // have arrived. Kept, and looked up in the session before repeating.
           pending[id] = body;
-          error = 'Se perdió la conexión al enviar el resultado. Se guardó en este teléfono y no se ha enviado; vuelve a intentarlo.';
+          maybeSent.add(id);
+          error = 'Se perdió la conexión al enviar el resultado. Se guardó en este teléfono; antes de volver a enviarlo, '
+              'Kora comprobará si el servidor ya lo recibió.';
         } else {
           pending[id] = body;
           error = '${apiError(e)} Tu resultado se guardó en este teléfono y no se ha enviado.';
@@ -379,6 +446,16 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
             : '${pending.length} resultados guardados en este teléfono, sin enviar: falta confirmar tu rutina con el servidor.'),
         TextButton(onPressed: busy ? null : retryPending, child: const Text('Reintentar envío')),
       ])),
+      if (held.isNotEmpty && !closed) KoraCard(key: const Key('held-results'), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Resultados retenidos: no se enviarán', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('Tu rutina cambió desde que los anotaste (por ejemplo, un ejercicio tiene ahora una restricción por seguridad). '
+            'Revisa la rutina actualizada: un ejercicio bloqueado solo puede registrarse como no realizado.'),
+        for (final entry in held.entries)
+          Row(children: [
+            Expanded(child: Text('• ${freshExercise(entry.key)?['exerciseName'] ?? 'Ejercicio'}: ${resultLabel(entry.value)}')),
+            TextButton(key: Key('discard-${entry.key}'), onPressed: busy ? null : () => setState(() => held.remove(entry.key)), child: const Text('Descartar')),
+          ]),
+      ])),
       if (session != null && !ownSession) const KoraCard(child: Text('Tienes otra sesión en curso. Regresa a esa rutina para terminarla o abandonarla.')),
       if (sessionClock case final clock?) SessionTimerBar(clock: clock),
       if (outdated) const KoraCard(child: Text('Tu plan se actualizó y esta rutina ya no forma parte de él. Vuelve al inicio para ver la versión actual.')),
@@ -421,7 +498,9 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
             ),
         ]),
         if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => showInstructions(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
-        Text(pending.containsKey(exercise['plannedExerciseId']) ? 'Pendiente de enviar' : resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(pending.containsKey(exercise['plannedExerciseId']) ? 'Pendiente de enviar'
+            : held.containsKey(exercise['plannedExerciseId']) ? 'Retenido: no se enviará'
+            : resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
         if (resultFor(exercise) case final result?) Text('Guardado: ${result['actualSets'] ?? '—'} series · ${result['actualRepsTotal'] ?? '—'} reps · ${result['actualDurationSeconds'] ?? '—'} s', style: const TextStyle(color: Kora.muted)),
         if (editable) Padding(padding: const EdgeInsets.only(top: 14), child: KoraButton(label: 'Registrar ejercicio', busy: busy, onPressed: session != null && !ownSession ? null : () => prepareRecord(exercise))),
       ]))),

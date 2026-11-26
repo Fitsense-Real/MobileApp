@@ -51,17 +51,30 @@ class _PainExclusionsSheetState extends ConsumerState<PainExclusionsSheet> {
     if (confirmed != true || !mounted) return;
     setState(() => busyExercise = exerciseId);
     String message;
+    String? refused;
     try {
       final result = await ref.read(painExclusionRepositoryProvider).reactivate(exerciseId, comment: text);
       message = '${result['nota'] ?? (result['candidatoHoy'] == true ? 'El ejercicio vuelve a ser candidato.' : 'Reactivación registrada.')}';
     } catch (e) {
       // e.g. 422 REACTIVACION_RECHAZADA_POR_SEGURIDAD: it stays excluded.
-      message = reactivationRefusal(apiError(e), name) ?? apiError(e);
+      message = apiError(e);
+      refused = reactivationRefusal(message, name);
     } finally {
       if (mounted) setState(() => busyExercise = null);
       refreshPainSafety(ref);
     }
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) return;
+    if (refused != null) {
+      // A refusal is not a confirmation: shown as such, never as a passing notice.
+      await showDialog<void>(context: context, builder: (context) => AlertDialog(
+        key: const Key('reactivation-refused'),
+        title: const Text('Sigue bloqueado'),
+        content: Text(refused!),
+        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido'))],
+      ));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget reactivateButton(EffectiveExclusion e) => busyExercise == e.exerciseId

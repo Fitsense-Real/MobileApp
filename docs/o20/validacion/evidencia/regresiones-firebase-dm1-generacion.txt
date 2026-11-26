@@ -1,3 +1,4 @@
-Firebase/push y sesión [push_notifications_test push_permission_test push_early_registration_test push_first_plan_prompt_test session_expiry_test auth_social_cleanup_test android_identifier_test] → 00:06 +94: All tests passed!
-D-M1 (completas, parciales, duración) [timed_exercise_results_test exercise_results_test session_timer_test] → 00:06 +28: All tests passed!
-Generación y adaptación [first_plan_generation_test generation_screen_test plan_week_label_test dashboard_live_test backend_alignment_test backend_contract_test adherence_history_test] → 00:15 +104: All tests passed!
+Firebase/push, autenticación y cierre de sesión [push_notifications_test push_permission_test push_early_registration_test push_first_plan_prompt_test session_expiry_test auth_social_cleanup_test android_identifier_test account_deletion_test] → 00:14 +117: All tests passed!
+D-M1 (completas, parciales, duración) [timed_exercise_results_test exercise_results_test session_timer_test] → 00:07 +28: All tests passed!
+Generación, historial y adaptación [first_plan_generation_test generation_screen_test plan_week_label_test dashboard_live_test backend_alignment_test backend_contract_test adherence_history_test] → 00:19 +104: All tests passed!
+Exclusiones y confirmaciones por dolor (O20) [pain_o20_test o20_rutina_desactualizada_test o20_demo_kora_app_test] → 00:10 +46: All tests passed!

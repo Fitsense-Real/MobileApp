@@ -125,9 +125,11 @@ void main() {
       plans.plan = planWith([other, squatBlocked]); // the block arrives while the dialog is open
       await tap(tester, find.text('Guardar'));
       expect(workouts.recorded, isEmpty);
-      expect(find.textContaining('tiene ahora una restricción por seguridad'), findsOneWidget);
+      expect(find.textContaining('tiene ahora una restricción por seguridad'), findsWidgets);
       expect(find.byKey(const Key('blocked-42')), findsOneWidget);
-      expect(find.byKey(const Key('pending-results')), findsNothing, reason: 'a result that can never be valid is not kept');
+      expect(find.byKey(const Key('pending-results')), findsNothing, reason: 'it will never be sent');
+      expect(find.byKey(const Key('held-results')), findsOneWidget, reason: 'kept on screen for review, not applied');
+      expect(find.textContaining('Revisa la rutina actualizada'), findsWidgets);
       await tap(tester, find.text('Registrar ejercicio').at(1));
       expect(find.text('Lo completé'), findsNothing);
       expect(find.text('Lo hice parcialmente'), findsNothing);
@@ -162,6 +164,123 @@ void main() {
     expectKeptNotSent(tester);
     expect(find.textContaining('Se perdió la conexión al enviar el resultado'), findsOneWidget);
     await retryAndExpectOneRecord(tester);
+  });
+
+  group('6 · lost answer: before repeating, the app asks the backend what it has', () {
+    testWidgets('the request had arrived: it is not sent again', (tester) async {
+      final lossy = LossyWorkouts(session: workouts.session);
+      workouts = lossy;
+      await open(tester);
+      await completeSquat(tester);
+      expect(lossy.puts, 1);
+      expect(find.byKey(const Key('pending-results')), findsOneWidget);
+      expect(find.textContaining('comprobará si el servidor ya lo recibió'), findsOneWidget);
+      final reads = lossy.currentReads;
+      await tap(tester, find.text('Reintentar envío'));
+      expect(lossy.currentReads, greaterThan(reads), reason: 'GET /sessions/current before repeating');
+      expect(lossy.puts, 1, reason: 'already saved: nothing repeated');
+      expect(lossy.recorded.length, 1);
+      expect(find.byKey(const Key('pending-results')), findsNothing);
+      expect(find.text('Pendiente de enviar'), findsNothing);
+    });
+
+    testWidgets('the session was closed meanwhile: the result is held, never sent', (tester) async {
+      var failures = 1;
+      workouts.recordError = (pe, body) => failures-- > 0
+          ? DioException(requestOptions: RequestOptions(path: '/sessions/77/exercises/42'), type: DioExceptionType.connectionError)
+          : null;
+      await open(tester);
+      await completeSquat(tester);
+      workouts.session = null; // the backend closed the session (finished elsewhere or stale)
+      await tap(tester, find.text('Reintentar envío'));
+      expect(workouts.recorded, isEmpty);
+      expect(find.byKey(const Key('held-results')), findsOneWidget);
+      expect(find.textContaining('La sesión ya no está abierta'), findsOneWidget);
+    });
+
+    testWidgets('the session cannot be checked: kept, not sent again', (tester) async {
+      final lossy = LossyWorkouts(session: workouts.session)..losses = 1;
+      workouts = lossy;
+      await open(tester);
+      await completeSquat(tester);
+      lossy.currentError = offline();
+      await tap(tester, find.text('Reintentar envío'));
+      expect(lossy.puts, 1);
+      expect(find.byKey(const Key('pending-results')), findsOneWidget);
+      expect(find.textContaining('No pudimos comprobar si el servidor recibió tu resultado'), findsOneWidget);
+    });
+  });
+
+  group('pending result, exclusion recorded later, «Reintentar envío»: the old result is never sent', () {
+    Future<void> partialSquat(WidgetTester tester) async {
+      await tap(tester, find.text('Registrar ejercicio').at(1));
+      await tap(tester, find.text('Lo hice parcialmente'));
+      await tester.enterText(find.widgetWithText(TextFormField, 'Repeticiones totales (todas las series)'), '12');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Series realizadas'), '1');
+      await tap(tester, find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.text('Fatiga').last);
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Guardar'));
+    }
+
+    for (final (kind, enter) in [('completed', null), ('partial', partialSquat)]) {
+      testWidgets('$kind result', (tester) async {
+        await open(tester);
+        plans.error = offline(); // the connection drops before sending
+        if (enter == null) { await completeSquat(tester); } else { await enter(tester); }
+        expectKeptNotSent(tester);
+        // Meanwhile the backend records an exclusion for that exercise.
+        plans.plan = planWith([other, squatBlocked]);
+        plans.error = null;
+        final reads = plans.reads;
+        await tap(tester, find.text('Reintentar envío'));
+        expect(plans.reads, greaterThan(reads), reason: 'the current plan is read again');
+        expect(workouts.recorded, isEmpty, reason: 'the old result is not sent');
+        expect(find.byKey(const Key('pending-results')), findsNothing);
+        expect(find.byKey(const Key('held-results')), findsOneWidget);
+        expect(find.text('Retenido: no se enviará'), findsOneWidget);
+        expect(find.textContaining('Revisa la rutina actualizada'), findsWidgets);
+        expect(find.byKey(const Key('blocked-42')), findsOneWidget);
+        // The only valid result now: «No lo hice». It replaces the held one; one record, no duplicates.
+        await tap(tester, find.text('Registrar ejercicio').at(1));
+        expect(find.text('Lo completé'), findsNothing);
+        expect(find.text('Lo hice parcialmente'), findsNothing);
+        await tap(tester, find.byType(DropdownButtonFormField<String>));
+        await tester.tap(find.text('Dolor o molestias').last);
+        await tester.pumpAndSettle();
+        await tap(tester, find.text('Guardar'));
+        expect(workouts.recorded.single, {'plannedExerciseId': 42, 'actualSets': 0, 'actualRepsTotal': 0, 'actualDurationSeconds': 0, 'actualLoadKg': 0, 'skipReason': 'PAIN_OR_DISCOMFORT'});
+        expect(find.byKey(const Key('held-results')), findsNothing);
+      });
+    }
+
+    testWidgets('back from the background: the pending result is checked again and held, without sending', (tester) async {
+      await open(tester);
+      plans.error = offline();
+      await completeSquat(tester);
+      plans.plan = planWith([other, squatBlocked]);
+      plans.error = null;
+      for (final state in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused,
+                           AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pumpAndSettle();
+      expect(workouts.recorded, isEmpty);
+      expect(find.byKey(const Key('held-results')), findsOneWidget);
+      expect(find.byKey(const Key('pending-results')), findsNothing);
+    });
+
+    testWidgets('a held result can be discarded', (tester) async {
+      await open(tester);
+      plans.error = offline();
+      await completeSquat(tester);
+      plans.plan = planWith([other, squatBlocked]);
+      plans.error = null;
+      await tap(tester, find.text('Reintentar envío'));
+      await tap(tester, find.byKey(const Key('discard-42')));
+      expect(find.byKey(const Key('held-results')), findsNothing);
+      expect(workouts.recorded, isEmpty);
+    });
   });
 
   testWidgets('7 · the app goes to the background while the plan is being read: one dialog, one record', (tester) async {
@@ -262,4 +381,24 @@ class ReportingWorkouts extends FakeWorkouts {
   Future<Json?> current() async => null;
   @override
   Future<Json> report(Object workoutId, Json body) async { sent.add(body); return {'completionPercentage': 100}; }
+}
+
+/// The PUT reaches the backend (it is saved) but the answer is lost [losses] times.
+class LossyWorkouts extends FakeWorkouts {
+  LossyWorkouts({super.session});
+  int losses = 1, puts = 0, currentReads = 0;
+  Object? currentError;
+  @override
+  Future<Json?> current() async {
+    currentReads++;
+    if (currentError != null) throw currentError!;
+    return super.current();
+  }
+  @override
+  Future<Json> record(Object sessionId, Object plannedExerciseId, Json body) async {
+    puts++;
+    final saved = await super.record(sessionId, plannedExerciseId, body);
+    if (losses-- > 0) throw DioException(requestOptions: RequestOptions(path: '/sessions/$sessionId/exercises/$plannedExerciseId'), type: DioExceptionType.connectionError);
+    return saved;
+  }
 }
