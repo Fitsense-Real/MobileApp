@@ -1,6 +1,8 @@
 # Pendientes tras O20: propuestas (sin implementar)
 
-Se identificaron durante la validación de la PR #19, ya fusionada en `generation` (`0649f78`). **No bloquean O20 y no se incluyeron en ella.** Este documento solo propone; nada de esto está implementado.
+Se identificaron durante la validación de la PR #19, ya fusionada en `generation` (`0649f78`). **No bloquean O20 y no se incluyeron en ella.**
+
+> **Estado:** P2 se implementó en la PR #21 (merge `d6e32a5`) y P1 en la PR #22 (merge `d7bbc1a`). El detalle final está en `docs/mejoras/p1/` y `docs/mejoras/p2/`. Lo que sigue es la propuesta original, que se conserva como referencia. Los pendientes vigentes están en `docs/mejoras/PENDIENTES.md`.
 
 ## P1 · Guardar en el teléfono los resultados pendientes
 
