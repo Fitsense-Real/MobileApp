@@ -134,6 +134,17 @@ void main() {
     await week('Semana del 09/11/2026');
     expect(find.text('Plan adaptado a ti'), findsOneWidget, reason: 'the plan of 09/11 came from the substitution for pain');
     await capture(tester, 'D3-demo-progreso-09nov-sustitucion');
+    // P2: the history of adaptations, in plain words and without codes.
+    await tester.scrollUntilVisible(find.byKey(const Key('adaptation-history')), 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    for (final title in ['Tu rutina avanzó un paso', 'Tu rutina se mantiene igual', 'Se sustituyó un ejercicio por seguridad']) {
+      expect(find.text(title), findsOneWidget, reason: title);
+    }
+    expect(find.textContaining('ADAPT_'), findsNothing);
+    expect(find.textContaining('PROGRESION_DEL_BACKEND'), findsNothing);
+    await capture(tester, 'D3-demo-historial-adaptaciones');
+    await tester.scrollUntilVisible(find.byType(DropdownButton<String>), -300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     await week('Semana del 02/11/2026');
     expect(find.text('67.8%'), findsOneWidget, reason: 'adherence of the first week: 67,81 %');
     expect(find.textContaining('3 / 5', findRichText: true), findsOneWidget, reason: '3 completed of 5');
@@ -149,6 +160,8 @@ void main() {
     for (final week in ['23/11/2026', '16/11/2026', '09/11/2026', '02/11/2026']) {
       expect(find.textContaining('Semana del $week'), findsOneWidget, reason: week);
     }
+    expect(find.textContaining('ADAPT_LOCALIZED'), findsNothing, reason: 'P2: no codes in the history');
+    expect(find.textContaining('Sustitución por seguridad'), findsOneWidget);
     await capture(tester, 'D4-demo-historial');
     // The first week: 3 completed, 1 partial and 1 skipped session, as the backend recorded them.
     await tester.tap(find.textContaining('Semana del 02/11/2026'));

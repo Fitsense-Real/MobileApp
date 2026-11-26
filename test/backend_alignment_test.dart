@@ -521,7 +521,8 @@ void main() {
       expect(find.textContaining('Registraste 2 de 3 entrenamientos (66.7%)'), findsOneWidget);
       expect(find.textContaining('Cumplimiento en lo registrado: 60%'), findsOneWidget);
       expect(find.text('Sin ajustes registrados'), findsOneWidget);
-      expect(find.text('No hubo cambios válidos que aplicar.'), findsOneWidget);
+      // P2: the backend's reason, in the week card and in the history of adaptations.
+      expect(find.text('No hubo cambios válidos que aplicar.'), findsNWidgets(2));
     });
     testWidgets('routines list what the plan cannot cover (GET /users/me/plan/limitations)', (tester) async {
       tester.view.physicalSize = const Size(420, 1400); tester.view.devicePixelRatio = 1;

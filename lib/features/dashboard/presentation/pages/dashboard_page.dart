@@ -21,6 +21,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/config/app_links.dart';
 import '../../../consents/data/consents_repository.dart';
 import '../../domain/plan_week_label.dart';
+import '../../../plans/domain/adaptation_text.dart';
 import '../widgets/plan_history_sheet.dart';
 import '../../data/dashboard_repository.dart';
 
@@ -1047,6 +1048,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
+  /// Every weekly adaptation, newest first, in plain words (GET /users/me/plan/adaptations).
+  Widget adaptationHistory(List<Json> rows) => Column(
+    key: const Key('adaptation-history'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      label('Historial de adaptaciones'),
+      const SizedBox(height: 12),
+      if (rows.isEmpty)
+        const Text('Todavía no hay semanas cerradas con su adaptación.', style: TextStyle(fontSize: 12, color: Kora.sage)),
+      for (final row in adaptationHistoryOf(rows))
+        Padding(padding: const EdgeInsets.only(bottom: 10), child: AdaptationCard(adaptation: row, showWeek: true)),
+    ],
+  );
+
   Widget adjustments(List<Json> rows) => surface(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1620,6 +1635,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 () => ref.invalidate(interventionsProvider),
               ),
               const SizedBox(height: 24),
+              if (!tour) ...[
+                section(
+                  ref.watch(planAdaptationsProvider),
+                  adaptationHistory,
+                  () => ref.invalidate(planAdaptationsProvider),
+                ),
+                const SizedBox(height: 24),
+              ],
 
             ],
             if (tab == 3)
