@@ -405,6 +405,8 @@ void main() {
         catalogRepositoryProvider.overrideWithValue(CatalogRepository(dio)),
       ]));
       await tester.pumpAndSettle();
+      // The action bar is fixed at the bottom (M-13): bring the button above it.
+      await tester.ensureVisible(find.text('Ver instrucciones').first); await tester.pumpAndSettle();
       await tester.tap(find.text('Ver instrucciones').first); await tester.pumpAndSettle();
       expect(find.text('Baja con la espalda recta.'), findsOneWidget);
       // M-08: catalog muscle codes are shown in Spanish, never raw.

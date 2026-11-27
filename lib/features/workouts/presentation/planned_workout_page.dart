@@ -16,6 +16,7 @@ import '../../authentication/presentation/providers/auth_provider.dart';
 import '../data/equipment_names.dart';
 import '../domain/effort_guidance.dart';
 import '../domain/exercise_labels.dart';
+import '../domain/rpe_scale.dart';
 import 'exercise_detail_page.dart';
 import 'exercise_media.dart';
 import 'exercise_result_dialog.dart';
@@ -287,7 +288,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     await checkRoutine();
   }
 
-  Future<void> record(Json exercise) async {
+  Future<void> record(Json exercise, {String? initialOutcome, String? initialReason}) async {
     final id = exercise['plannedExerciseId'] as Object;
     if (sending.contains(id)) return;
     // Show the dialog with the routine as the backend has it now, when it answers.
@@ -302,7 +303,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (check == RoutineCheck.confirmed) exercise = freshExercise(id) ?? exercise;
     final records = reporting ? drafts.values.toList() : jsonRows(session?['exercises'] ?? []);
     final existing = pending[id] ?? records.where((e) => e['plannedExerciseId'] == id).firstOrNull;
-    final body = await showDialog<Json>(context: context, builder: (_) => ExerciseResultDialog(exercise: exercise, existing: existing, draft: reporting, blockReason: blockExplanation(exercise, effective: ref.read(effectivePainExclusionsProvider).asData?.value ?? const [])));
+    final body = await showDialog<Json>(context: context, builder: (_) => ExerciseResultDialog(exercise: exercise, existing: existing, draft: reporting, initialOutcome: initialOutcome, initialReason: initialReason, blockReason: blockExplanation(exercise, effective: ref.read(effectivePainExclusionsProvider).asData?.value ?? const [])));
     if (body == null || !mounted) return;
     if (reporting) { setState(() => drafts[id] = {...body, 'plannedExerciseId': id}); return; }
     await send(id, body);
@@ -399,7 +400,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       if (pending.containsKey(entry.key)) return; // still no answer: stop here
     }
   }
-  Future<void> prepareRecord(Json exercise) async {
+  Future<void> prepareRecord(Json exercise, {String? initialOutcome, String? initialReason}) async {
     if (!ownSession && !reporting) {
       final mode = await showDialog<String>(context: context, builder: (context) => SimpleDialog(title: const Text('Registrar ejercicio'), children: [
         if (canStartWorkout(workout)) SimpleDialogOption(onPressed: () => Navigator.pop(context, 'start'), child: const Text('Comenzar sesión y registrar')),
@@ -412,7 +413,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         if (!mounted || !ownSession || error != null) return;
       }
     }
-    if (mounted) await record(exercise);
+    if (mounted) await record(exercise, initialOutcome: initialOutcome, initialReason: initialReason);
   }
   Future<void> report() async {
     if (jsonRows(workout['exercises'] ?? []).isEmpty || jsonRows(workout['exercises'] ?? []).any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
@@ -447,20 +448,86 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     if (exercises.any((e) => !drafts.containsKey(e['plannedExerciseId']))) {
       setState(() => error = 'Indica el resultado de cada ejercicio antes de guardar.'); return;
     }
-    final body = await showDialog<Json>(context: context, builder: (_) => const FinishDialog(reporting: true));
+    final body = await showDialog<Json>(context: context, builder: (_) => FinishDialog(reporting: true, summary: summaryOf(drafts.values)));
     if (body == null || !mounted) return;
     await act(() async {
       session = await repository.report(workout['plannedWorkoutId'], {...body, 'exercises': exercises.map((e) => drafts[e['plannedExerciseId']]).toList()});
       closed = true; reporting = false;
     });
   }
+  /// «Completados: N · Parciales: M · No realizados: K», from the results.
+  String summaryOf(Iterable<Json> results) {
+    final counts = <String, int>{};
+    for (final r in results) { counts.update(resultLabel(r), (n) => n + 1, ifAbsent: () => 1); }
+    return [
+      for (final label in ['Completado', 'Parcial', 'Realizado', 'No realizado'])
+        if (counts[label] case final n?) '${label == 'Completado' ? 'Completados' : label == 'Parcial' ? 'Parciales' : label == 'Realizado' ? 'Realizados' : 'No realizados'}: $n',
+    ].join(' · ');
+  }
+
+  /// Exercises still without a result that can be done (not blocked by O20).
+  List<Json> get unrecorded => [
+        for (final e in orderedExercises)
+          if (!isUnsafeExercise(e) && resultFor(e) == null && !pending.containsKey(e['plannedExerciseId']) && !held.containsKey(e['plannedExerciseId'])) e,
+      ];
+
+  /// M-10: several exercises recorded as completed at once, only those the
+  /// person ticks and confirms (nothing is ticked for them). Each one goes
+  /// through the same path as a single result: routine confirmed, O20 checked,
+  /// kept on the phone (P1) if it cannot be sent.
+  Future<void> markCompleted() async {
+    final candidates = unrecorded;
+    if (candidates.isEmpty) return;
+    final chosen = await showDialog<List<Json>>(context: context, builder: (_) => MarkCompletedDialog(exercises: candidates));
+    if (chosen == null || chosen.isEmpty || !mounted) return;
+    if (reporting) {
+      setState(() { for (final e in chosen) { drafts[e['plannedExerciseId']] = {...prescribedResult(e), 'plannedExerciseId': e['plannedExerciseId']}; } });
+      return;
+    }
+    for (final e in chosen) {
+      if (!mounted) return;
+      final id = e['plannedExerciseId'] as Object;
+      await send(id, prescribedResult(freshExercise(id) ?? e));
+      if (pending.containsKey(id) || held.containsKey(id) || error != null) return; // stop at the first problem: it is on screen
+    }
+  }
+
+  /// M-12: pain reported from the exercise, in one or two taps. Uses the same
+  /// dialog and checks as any result; nothing is sent until «Guardar».
+  Future<void> reportPain(Json exercise) async {
+    final completed = resultLabel(resultFor(exercise)) == 'Completado';
+    if (completed) {
+      final choice = await showDialog<String>(context: context, builder: (context) => SimpleDialog(
+        title: const Text('Ya lo registraste como completado'),
+        children: [
+          SimpleDialogOption(onPressed: () => Navigator.pop(context, 'stopped'), child: const Text('Paré antes de terminar por dolor')),
+          SimpleDialogOption(onPressed: () => Navigator.pop(context, 'finished'), child: const Text('Lo terminé, pero me dolió')),
+        ],
+      ));
+      if (!mounted || choice == null) return;
+      if (choice == 'finished') {
+        // No backend contract yet records pain on a completed exercise.
+        await showDialog<void>(context: context, builder: (context) => AlertDialog(
+          title: const Text('Todavía no se puede registrar'),
+          content: const Text('Por ahora Kora solo registra el dolor cuando un ejercicio no se hizo o se hizo en parte. '
+              'Si el dolor continúa o es intenso, detente y contacta al equipo del estudio.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido'))],
+        ));
+        return;
+      }
+      await prepareRecord(exercise, initialOutcome: 'partial', initialReason: 'PAIN_OR_DISCOMFORT');
+      return;
+    }
+    await prepareRecord(exercise, initialOutcome: 'none', initialReason: 'PAIN_OR_DISCOMFORT');
+  }
+
   Future<void> finish() async {
     final records = jsonRows(session?['exercises'] ?? []);
     if (jsonRows(workout['exercises'] ?? []).any((e) => resultLabel(records.where((r) => r['plannedExerciseId'] == e['plannedExerciseId']).firstOrNull) == 'Sin registrar')) {
       setState(() => error = 'Indica si realizaste o no cada ejercicio antes de finalizar.'); return;
     }
     final clock = sessionClock;
-    final body = await showDialog<Json>(context: context, builder: (_) => FinishDialog(suggestedMinutes: clock?.suggestedActiveMinutes(DateTime.now())));
+    final body = await showDialog<Json>(context: context, builder: (_) => FinishDialog(suggestedMinutes: clock?.suggestedActiveMinutes(DateTime.now()), summary: summaryOf(records)));
     if (body == null || !mounted) return;
     final sessionId = session!['sessionId'];
     await act(() async { session = await repository.finish(sessionId, body); closed = true; });
@@ -528,7 +595,53 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   Future<(ExerciseDetailAction, Json)?> showInstructions(Json exercise) {
     final list = orderedExercises;
     final index = list.indexWhere((e) => e['plannedExerciseId'] == exercise['plannedExerciseId']);
-    return ExerciseDetailPage.open(context, exercises: list, index: index < 0 ? 0 : index, guidance: guidance);
+    return ExerciseDetailPage.open(context, exercises: list, index: index < 0 ? 0 : index, guidance: guidance, canReportPain: canRegister);
+  }
+
+  /// Results can be entered now (live session, report, or a routine that can be started or reported).
+  bool get canRegister => !closed && !outdated && (ownSession || reporting || (session == null && (canStartWorkout(workout) || canReportWorkout(workout))));
+
+  Future<void> openExercise(Json exercise) async {
+    final result = await showInstructions(exercise);
+    if (result != null && result.$1 == ExerciseDetailAction.reportPain && mounted) await reportPain(result.$2);
+  }
+
+  /// M-13: the main actions always visible at the bottom, never after the
+  /// whole list of exercises. Same labels as before.
+  Widget? actionBar({required bool canStart, required bool canReport}) {
+    if (closed || outdated) return null;
+    final secondary = <Widget>[];
+    Widget? primary;
+    if (reporting) {
+      primary = KoraButton(label: 'Guardar entrenamiento', busy: busy, onPressed: report);
+      if (unrecorded.isNotEmpty) secondary.add(TextButton(key: const Key('mark-completed'), onPressed: busy ? null : markCompleted, child: const Text('Marcar varios como completados')));
+      secondary.add(TextButton(onPressed: busy ? null : () => setState(() { reporting = false; drafts.clear(); }), child: const Text('Cancelar registro')));
+    } else if (ownSession) {
+      primary = KoraButton(label: 'Finalizar sesión', busy: busy, onPressed: finish);
+      if (unrecorded.isNotEmpty) secondary.add(TextButton(key: const Key('mark-completed'), onPressed: busy ? null : markCompleted, child: const Text('Marcar varios como completados')));
+      secondary.add(TextButton(onPressed: busy ? null : abandon, child: const Text('Abandonar sesión')));
+    } else if (session == null) {
+      if (canStart) {
+        primary = KoraButton(label: 'Comenzar entrenamiento', busy: busy, onPressed: () => act(() async {
+          // Reconcile after a lost response before attempting another start.
+          session = await repository.current();
+          session ??= await repository.start(workout['plannedWorkoutId']);
+        }));
+      }
+      if (canReport) {
+        final reportButton = TextButton(onPressed: busy ? null : () => setState(() => reporting = true), child: const Text('Ya lo hice · registrar entrenamiento'));
+        primary == null ? primary = reportButton : secondary.add(reportButton);
+      }
+      if (canSkipWorkout(workout)) secondary.add(TextButton(onPressed: busy ? null : skip, child: const Text('Omitir entrenamiento')));
+    }
+    if (primary == null && secondary.isEmpty) return null;
+    return Material(color: Colors.white, elevation: 8, child: SafeArea(child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ?primary,
+        if (secondary.isNotEmpty) Wrap(alignment: WrapAlignment.center, spacing: 4, children: secondary),
+      ]),
+    )));
   }
 
   @override
@@ -539,9 +652,9 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
     final effort = guidance?.forRoutine(exercises) ?? const <String>[];
     final canStart = canStartWorkout(workout);
     final canReport = canReportWorkout(workout);
-    final editable = !closed && !outdated && (ownSession || reporting || (session == null && (canStart || canReport)));
+    final editable = canRegister;
     final status = workoutStatusOf(workout);
-    return PopScope(canPop: !busy, child: KoraPage(child: ListView(padding: const EdgeInsets.all(24), children: [
+    return PopScope(canPop: !busy, child: KoraPage(bottomNavigationBar: actionBar(canStart: canStart, canReport: canReport), child: ListView(padding: const EdgeInsets.all(24), children: [
       Align(alignment: Alignment.centerLeft, child: IconButton(onPressed: busy ? null : () => Navigator.pop(context), icon: const Icon(Icons.arrow_back), tooltip: 'Volver')),
       KoraHeading('${workout['workoutName'] ?? 'Mi entrenamiento'}', subtitle: [
         if (workout['scheduledDate'] != null) displayDay(workout['scheduledDate']),
@@ -577,6 +690,10 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       if (!closed && !reporting && session == null && isOpenWorkout(workout) && isExpiredWorkout(workout)) const KoraCard(child: Text('El plazo para hacerlo en vivo venció. Si lo realizaste, puedes registrarlo.')),
       if (!closed && status == 'SKIPPED' && workout['skipReason'] != null) KoraCard(child: Text('Omitido: ${skipReasons[workout['skipReason']] ?? workout['skipReason']}. Si lo realizaste, puedes registrarlo.')),
       if (reporting) const KoraCard(child: Text('Registro de un entrenamiento ya realizado. Los resultados están pendientes de envío hasta pulsar Guardar entrenamiento.')),
+      if (!closed && !reporting && session == null && canStart) const KoraCard(key: Key('how-to-start'), child: Text(
+          'Pulsa «Comenzar entrenamiento» para registrar en vivo, con cronómetro y descansos. Si ya entrenaste, usa «Ya lo hice».')),
+      if (ownSession && !closed) const KoraCard(key: Key('session-running'), child: Text(
+          'Sesión en curso. Registra cada ejercicio al terminarlo. Al final pulsa «Finalizar sesión».')),
       if (closed) KoraCard(child: Text(session?['completionPercentage'] == null ? 'Entrenamiento omitido.' : 'Sesión guardada · ${session!['completionPercentage']}% completado')),
       if (effort.isNotEmpty && !closed) Padding(padding: const EdgeInsets.only(top: 8), child: KoraCard(
         key: const Key('effort-guidance'),
@@ -587,7 +704,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
         ]),
       )),
       for (final exercise in exercises) Padding(padding: const EdgeInsets.only(top: 16), child: KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ExerciseMedia(source: ExerciseMediaSource.of(exercise), onTap: exercise['exerciseId'] is num ? () => showInstructions(exercise) : null),
+        ExerciseMedia(source: ExerciseMediaSource.of(exercise), onTap: exercise['exerciseId'] is num ? () => openExercise(exercise) : null),
         const SizedBox(height: 12),
         Text('${exercise['exerciseName'] ?? 'Ejercicio'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)), const SizedBox(height: 8),
         Text(exercisePrescription(exercise)),
@@ -618,29 +735,22 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
               label: Text('Descanso ${exercise['restSeconds']} s'),
             ),
         ]),
-        if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => showInstructions(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
+        if (exercise['exerciseId'] is num) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => openExercise(exercise), icon: const Icon(Icons.menu_book_outlined, size: 18), label: const Text('Ver instrucciones'))),
         Text(pending.containsKey(exercise['plannedExerciseId']) ? 'Pendiente de enviar'
             : held.containsKey(exercise['plannedExerciseId']) ? 'Retenido: no se enviará'
             : resultLabel(resultFor(exercise)), style: const TextStyle(fontWeight: FontWeight.w700)),
         if (resultFor(exercise) case final result?) Text('Guardado: ${result['actualSets'] ?? '—'} series · ${result['actualRepsTotal'] ?? '—'} reps · ${result['actualDurationSeconds'] ?? '—'} s', style: const TextStyle(color: Kora.muted)),
         if (editable) Padding(padding: const EdgeInsets.only(top: 14), child: KoraButton(label: 'Registrar ejercicio', busy: busy, onPressed: session != null && !ownSession ? null : () => prepareRecord(exercise))),
+        if (editable && !isUnsafeExercise(exercise)) Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+          key: Key('pain-${exercise['plannedExerciseId']}'),
+          onPressed: busy || (session != null && !ownSession) ? null : () => reportPain(exercise),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFF9B2C1F), minimumSize: const Size(48, 48)),
+          icon: const Icon(Icons.healing_outlined, size: 20),
+          label: const Text('Tengo dolor o molestias'),
+        )),
       ]))),
       if (exercises.isEmpty) const Text('El servidor no incluyó ejercicios para esta rutina.'),
       const SizedBox(height: 24),
-      if (reporting && !closed) KoraButton(label: 'Guardar entrenamiento', busy: busy, onPressed: report),
-      if (!reporting && !closed && session == null && canReport) TextButton(onPressed: busy ? null : () => setState(() => reporting = true), child: const Text('Ya lo hice · registrar entrenamiento')),
-      if (!reporting && !closed) ...[
-        if (session == null && canStart) KoraButton(label: 'Comenzar entrenamiento', busy: busy, onPressed: () => act(() async {
-          // Reconcile after a lost response before attempting another start.
-          session = await repository.current();
-          session ??= await repository.start(workout['plannedWorkoutId']);
-        })),
-        if (ownSession) ...[
-          KoraButton(label: 'Finalizar sesión', busy: busy, onPressed: finish),
-          TextButton(onPressed: busy ? null : abandon, child: const Text('Abandonar sesión')),
-        ],
-        if (session == null && canSkipWorkout(workout)) TextButton(onPressed: busy ? null : skip, child: const Text('Omitir entrenamiento')),
-      ],
     ])));
   }
 }
@@ -703,12 +813,59 @@ String displayDay(Object? value) {
   return '${days[date.weekday - 1]} ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
 }
 
+/// M-10: the person ticks the exercises they really completed; nothing is
+/// ticked in advance and the confirmation says what will be saved.
+class MarkCompletedDialog extends StatefulWidget {
+  const MarkCompletedDialog({super.key, required this.exercises});
+  final List<Json> exercises;
+  @override
+  State<MarkCompletedDialog> createState() => _MarkCompletedDialogState();
+}
+
+class _MarkCompletedDialogState extends State<MarkCompletedDialog> {
+  final chosen = <Object>{};
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Marcar como completados'),
+    content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Marca solo los ejercicios que hiciste completos, con todo lo indicado en tu plan. Los que hiciste en parte o no hiciste, regístralos uno por uno.'),
+      Align(alignment: Alignment.centerRight, child: TextButton(
+        onPressed: () => setState(() => chosen.length == widget.exercises.length ? chosen.clear() : chosen.addAll(widget.exercises.map((e) => e['plannedExerciseId'] as Object))),
+        child: Text(chosen.length == widget.exercises.length ? 'Quitar todos' : 'Seleccionar todos'),
+      )),
+      for (final e in widget.exercises) CheckboxListTile(
+        key: Key('mark-${e['plannedExerciseId']}'),
+        contentPadding: EdgeInsets.zero,
+        controlAffinity: ListTileControlAffinity.leading,
+        value: chosen.contains(e['plannedExerciseId']),
+        onChanged: (v) => setState(() => v == true ? chosen.add(e['plannedExerciseId'] as Object) : chosen.remove(e['plannedExerciseId'])),
+        title: Text('${e['exerciseName'] ?? 'Ejercicio'}'),
+        subtitle: Text(exercisePrescription(e)),
+      ),
+    ]))),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+      FilledButton(
+        onPressed: chosen.isEmpty ? null : () => Navigator.pop(context, [for (final e in widget.exercises) if (chosen.contains(e['plannedExerciseId'])) e]),
+        child: Text(chosen.isEmpty ? 'Confirmo que los hice completos' : 'Confirmo que hice completos ${chosen.length}'),
+      ),
+    ],
+  );
+}
+
 class FinishDialog extends StatefulWidget {
-  const FinishDialog({super.key, this.reporting = false, this.suggestedMinutes});
+  const FinishDialog({super.key, this.reporting = false, this.suggestedMinutes, this.summary, this.rpeDescriptions = approvedRpeDescriptions, this.satisfactionDescriptions = approvedSatisfactionDescriptions});
   final bool reporting;
 
   /// Active minutes measured by the session clock (pauses excluded).
   final int? suggestedMinutes;
+
+  /// What was recorded («Completados: 6 · Parciales: 1 · …»), reviewed before finishing.
+  final String? summary;
+
+  /// Approved descriptions of each level (empty: numbers only).
+  final Map<int, String> rpeDescriptions;
+  final Map<int, String> satisfactionDescriptions;
   @override
   State<FinishDialog> createState() => _FinishDialogState();
 }
@@ -727,12 +884,25 @@ class _FinishDialogState extends State<FinishDialog> {
   }
   @override
   void dispose() { minutes.dispose(); super.dispose(); }
+
+  String _level(int i, Map<int, String> descriptions) => descriptions[i] == null ? '$i' : '$i · ${descriptions[i]}';
+
   @override
-  Widget build(BuildContext context) => AlertDialog(title: const Text('Finalizar entrenamiento'), content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) => AlertDialog(title: const Text('Finalizar entrenamiento'), content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+    if (widget.summary != null && widget.summary!.isNotEmpty) ...[
+      const Text('Lo que registraste', style: TextStyle(fontWeight: FontWeight.w700)),
+      Text(widget.summary!, key: const Key('finish-summary')),
+      const SizedBox(height: 8),
+    ],
     const Text('El progreso se calculará con los ejercicios que registraste.'),
     if (widget.reporting) FormField<DateTime>(validator: (_) => performedAt == null ? 'Selecciona cuándo entrenaste' : performedAt!.isAfter(DateTime.now()) ? 'La fecha no puede ser futura' : null, builder: (field) => Column(children: [TextButton(onPressed: chooseDate, child: Text(performedAt == null ? 'Elegir fecha y hora del entrenamiento' : '${performedAt!.day}/${performedAt!.month}/${performedAt!.year} ${TimeOfDay.fromDateTime(performedAt!).format(context)}')), if (field.hasError) Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error))])),
-    DropdownButtonFormField<int>(initialValue: rpe, decoration: const InputDecoration(labelText: 'Esfuerzo percibido (1–10)'), items: [for (var i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => rpe = value), validator: (value) => value == null ? 'Selecciona el esfuerzo percibido' : null),
-    DropdownButtonFormField<int>(initialValue: satisfaction, decoration: const InputDecoration(labelText: 'Satisfacción (opcional, 1–5)'), items: [for (var i = 1; i <= 5; i++) DropdownMenuItem(value: i, child: Text('$i'))], onChanged: (value) => setState(() => satisfaction = value)),
+    const SizedBox(height: 8),
+    // M-11: what each question asks, so effort, pain and satisfaction are not mixed.
+    const Text('Esfuerzo: cuánto te costó la sesión en conjunto, del 1 (lo mínimo) al 10 (lo máximo). No es dolor ni satisfacción: si algo te dolió, indícalo en ese ejercicio.', key: Key('rpe-help'), style: TextStyle(fontSize: 13)),
+    DropdownButtonFormField<int>(initialValue: rpe, isExpanded: true, decoration: const InputDecoration(labelText: 'Esfuerzo percibido (1–10)'), items: [for (var i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text(_level(i, widget.rpeDescriptions), overflow: TextOverflow.ellipsis))], onChanged: (value) => setState(() => rpe = value), validator: (value) => value == null ? 'Selecciona el esfuerzo percibido' : null),
+    const SizedBox(height: 8),
+    const Text('Satisfacción: cuánto te gustó la sesión, del 1 (lo mínimo) al 5 (lo máximo). Es opcional.', style: TextStyle(fontSize: 13)),
+    DropdownButtonFormField<int>(initialValue: satisfaction, isExpanded: true, decoration: const InputDecoration(labelText: 'Satisfacción (opcional, 1–5)'), items: [for (var i = 1; i <= 5; i++) DropdownMenuItem(value: i, child: Text(_level(i, widget.satisfactionDescriptions), overflow: TextOverflow.ellipsis))], onChanged: (value) => setState(() => satisfaction = value)),
     TextFormField(controller: minutes, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Minutos activos (opcional)', helperText: widget.suggestedMinutes == null ? null : 'Según el cronómetro, sin pausas'), validator: (v) => (v ?? '').isEmpty || (int.tryParse(v!) != null && int.parse(v) >= 0) ? null : 'Escribe minutos válidos'),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: () {
     if (!form.currentState!.validate()) return;
