@@ -32,6 +32,12 @@ class _ForgotPasswordFormState
   TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _emailController.text = ref.read(forgotPasswordViewModelProvider).email;
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
@@ -295,7 +301,30 @@ class _ForgotPasswordFormState
 
                       const SizedBox(
                         height:
-                        AppSpacing.lg,
+                        AppSpacing.md,
+                      ),
+
+                      const Text(
+                        'Si el correo corresponde a una cuenta de Kora, te llegará un código. Caduca a los 30 minutos y sirve una sola vez. '
+                        'Si no llega en unos minutos, revisa la carpeta de correo no deseado.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, height: 1.45),
+                      ),
+
+                      TextButton(
+                        key: const Key('have-code'),
+                        onPressed: state.isLoading
+                            ? null
+                            : () {
+                                ref.read(forgotPasswordViewModelProvider.notifier).rememberEmail(_emailController.text);
+                                context.push(AppRoutes.resetPassword);
+                              },
+                        child: const Text('Ya tengo un código'),
+                      ),
+
+                      const SizedBox(
+                        height:
+                        AppSpacing.sm,
                       ),
 
                       // ==========================================
@@ -449,18 +478,21 @@ class _SecurityMessage extends StatelessWidget {
           Icons
               .verified_user_outlined,
           size: 14,
-          color: Color(0xFF8D9999),
+          color: Color(0xFF5E7865),
         ),
 
         SizedBox(
           width: 7,
         ),
 
-        Text(
-          "Tu información está protegida",
-          style: TextStyle(
-            color: Color(0xFF8D9999),
-            fontSize: 12,
+        // Flexible: with large system text the line wraps instead of overflowing.
+        Flexible(
+          child: Text(
+            "Tu información está protegida",
+            style: TextStyle(
+              color: Color(0xFF5E7865),
+              fontSize: 13,
+            ),
           ),
         ),
       ],

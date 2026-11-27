@@ -1,5 +1,6 @@
 import 'package:fitsense_mobile/features/authentication/domain/password_rules.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,10 @@ import '../../../../shared/widgets/fs_button.dart';
 import '../../../../shared/widgets/fs_text_field.dart';
 import '../../../../shared/widgets/page_header.dart';
 import '../providers/forgot_password_provider.dart';
+
+/// The code as it arrives by e-mail can be split by line breaks or spaces
+/// when copied: they are never part of it (Base64 URL, 43 characters).
+String normalizeRecoveryCode(String raw) => raw.replaceAll(RegExp(r'\s'), '');
 
 class ResetPasswordForm extends ConsumerStatefulWidget {
   const ResetPasswordForm({super.key});
@@ -40,6 +45,22 @@ _confirmPasswordController.dispose();
 super.dispose();
 }
 
+Future<void> _pasteCode() async {
+final data = await Clipboard.getData(Clipboard.kTextPlain);
+final text = normalizeRecoveryCode(data?.text ?? '');
+if (!mounted) return;
+if (text.isEmpty) {
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay ningún código copiado. Cópialo del correo y vuelve a intentarlo.')));
+return;
+}
+setState(() => _codeController.text = text);
+}
+
+void _askNewCode() {
+ref.read(forgotPasswordViewModelProvider.notifier).rememberEmail(ref.read(forgotPasswordViewModelProvider).email);
+context.go(AppRoutes.forgotPassword);
+}
+
 Future<void> _resetPassword() async {
 
 if (!_formKey.currentState!.validate()) {
@@ -49,7 +70,7 @@ return;
 final success = await ref
 .read(forgotPasswordViewModelProvider.notifier)
 .resetPassword(
-code: _codeController.text.trim(),
+code: normalizeRecoveryCode(_codeController.text),
 password: _passwordController.text,
 );
 
@@ -64,7 +85,8 @@ content: Text(
 ),
 );
 
-context.go(AppRoutes.login);
+final email = ref.read(forgotPasswordViewModelProvider).email;
+context.go(email.isEmpty ? AppRoutes.login : '${AppRoutes.login}?correo=${Uri.encodeQueryComponent(email)}');
 return;
 }
 
@@ -143,6 +165,18 @@ return null;
 .fade()
 .slideX(begin: -.15),
 
+Align(
+alignment: Alignment.centerLeft,
+child: TextButton.icon(
+key: const Key('paste-code'),
+onPressed: state.isLoading ? null : _pasteCode,
+icon: const Icon(Icons.content_paste_rounded, size: 20),
+label: const Text('Pegar código'),
+),
+),
+if (state.email.isNotEmpty)
+Text('Lo pediste para ${state.email}.', style: const TextStyle(fontSize: 14)),
+
 const SizedBox(
 height: AppSpacing.lg,
 ),
@@ -207,6 +241,12 @@ onPressed: state.isLoading
 
 const SizedBox(
 height: AppSpacing.lg,
+),
+
+TextButton(
+key: const Key('new-code'),
+onPressed: state.isLoading ? null : _askNewCode,
+child: const Text('¿No te llegó o caducó? Pide un código nuevo'),
 ),
 
 OutlinedButton.icon(
