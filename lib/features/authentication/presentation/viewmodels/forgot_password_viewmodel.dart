@@ -38,6 +38,7 @@ class ForgotPasswordViewModel
       state = state.copyWith(
         isLoading: false,
         emailSent: true,
+        email: email,
       );
 
       return true;
@@ -52,6 +53,9 @@ class ForgotPasswordViewModel
       return false;
     }
   }
+
+  /// Remembers the address typed on the recovery screen (also without sending).
+  void rememberEmail(String email) => state = state.copyWith(email: email.trim());
 
   Future<bool> resetPassword({
     required String code,

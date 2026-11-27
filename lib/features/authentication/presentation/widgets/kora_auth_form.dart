@@ -18,8 +18,9 @@ import '../providers/auth_provider.dart';
 final signUpDocumentsProvider = Provider<SignUpDocuments>((ref) => SignUpDocuments.fromConfig());
 
 class KoraAuthForm extends ConsumerStatefulWidget {
-  const KoraAuthForm({super.key, this.register = false});
+  const KoraAuthForm({super.key, this.register = false, this.initialEmail});
   final bool register;
+  final String? initialEmail;
   @override
   ConsumerState<KoraAuthForm> createState() => _KoraAuthFormState();
 }
@@ -30,7 +31,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
   final _lastName = TextEditingController();
   late String _timezone = StudyConfig.defaultTimezone;
   bool _consent = false;
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.initialEmail ?? '');
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 

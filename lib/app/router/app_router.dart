@@ -52,7 +52,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.login,
         name: RouteNames.login,
-        builder: (_, __) => const LoginPage(),
+        builder: (_, state) => LoginPage(initialEmail: state.uri.queryParameters['correo']),
       ),
 
       GoRoute(
