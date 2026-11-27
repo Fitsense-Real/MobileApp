@@ -1,0 +1,89 @@
+# Contratos contra Backend generation 77b9df3 LOCAL (perfil local-dev, IA apagada, sin correo, base aislada kora_audit_mobile)
+# Cuentas sintéticas @audit.local creadas para esta auditoría. Sin usuario 48, sin producción, sin Replicate.
+
+
+======== 1. Registro SIN participar en el estudio (casilla «Opcional» de Mobile)
+  POST /auth/register -> 201 {"userId": 1, "email": "audit-noparticipa-1795761188@audit.local", "firstName": "Auditoria", "lastName": "noparticipa", "timezone": "America/Lima", "status": "ACTIVE", "studyParticipant": false, "participantCode": null, "enrolledAt": null, "withdrawnAt": null, "lastLoginAt": null, "role": "USER"}
+  POST /auth/login -> 200
+  POST /users/me/profile -> 201
+  POST /users/me/plan/generation -> 422 {"timestamp": "2026-11-27T06:33:09.70015096Z", "status": 422, "error": "Unprocessable Entity", "message": "En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.", "details": []}
+  GET /users/me/plan/current -> 404 {"timestamp": "2026-11-27T06:33:09.758470519Z", "status": 404, "error": "Not Found", "message": "El usuario 1 no tiene un plan activo para esta semana.", "details": []}
+  GET /users/me/plan/limitations -> 422 {"timestamp": "2026-11-27T06:33:09.785582737Z", "status": 422, "error": "Unprocessable Entity", "message": "El usuario 1 no esta activo en el estudio: no se le generan planes.", "details": []}
+
+======== 2. Registro con zona horaria escrita a mano (campo de texto libre de Mobile)
+  timezone='Lima' -> register 400 {"timestamp": "2026-11-27T06:33:09.897774796Z", "status": 400, "error": "Bad Request", "message": "Zona horaria IANA no valida: Lima", "details": []}
+  timezone='america/lima' -> register 400 {"timestamp": "2026-11-27T06:33:09.995537187Z", "status": 400, "error": "Bad Request", "message": "Zona horaria IANA no valida: america/lima", "details": []}
+  timezone='GMT-5' -> register 201 {"userId": 2, "email": "audit-tzgmt5-1795761188@audit.local", "firstName": "Auditoria", "lastName": "tzGMT5", "timezone": "GMT-5", "status": "ACTIVE", "studyParticipant": true, "participantCode": "P-003", "enrolledAt": "…
+  timezone='' -> register 201 {"userId": 3, "email": "audit-tzvacia-1795761188@audit.local", "firstName": "Auditoria", "lastName": "tzvacia", "timezone": "America/Lima", "status": "ACTIVE", "studyParticipant": true, "participantCode": "P-004", "enrol…
+
+======== 3. Registro con versiones de condiciones/privacidad (campos que Mobile no envia)
+  GET /users/me/consents (cuenta 1) -> 200 {"currentVersions": {"STUDY_PARTICIPATION": "MVP-1.0", "TERMS_OF_SERVICE": null, "PRIVACY_POLICY": null}, "enforcedOnSignup": false, "history": []}
+  register con acceptedTermsVersion=v1 sin version vigente -> 422 {"timestamp": "2026-11-27T06:33:10.233131488Z", "status": 422, "error": "Unprocessable Entity", "message": "Todavia no hay una version aprobada de TERMS_OF_SERVICE: no se puede aceptar.", "details": []}
+
+======== 4. Participante: generacion (motor de reglas) y contenido del plan
+  register -> 201 {"userId": 4, "email": "audit-participa-1795761188@audit.local", "firstName": "Auditoria", "lastName": "participa", "timezone": "America/Lima", "status": "ACTIVE", "studyParticipant": true, "participantCode": "P-005", "enrolledAt": "2026-11-27T06:33:…
+  login -> 200
+  profile -> 201
+  POST /users/me/plan/generation -> 202 {"operationId": "967aff02-d0af-4c1a-9373-24748cfbf74e", "status": "PENDING", "terminal": false, "weekStartDate": "2026-11-30", "planId": null, "reasonCode": null, "message": null, "retryable": false, "createdAt": "2026-11-27T06:33:10.48897345Z", "startedAt": null, "finishedAt": null, "pollAfterSeconds": 3}
+  operacion final -> 200 {"operationId": "967aff02-d0af-4c1a-9373-24748cfbf74e", "status": "COMPLETED", "terminal": true, "weekStartDate": "2026-11-30", "planId": 1, "reasonCode": null, "message": null, "retryable": false, "createdAt": "2026-11-27T06:33:10.488973Z", "startedAt": "2026-11-27T06:33:10.922763Z", "finishedAt": "2026-11-27T06:33:11.540447Z", "pollAfterSeconds": null}
+  GET /users/me/plan/current -> 200
+  claves del plan: ['activatedAt', 'adaptation', 'adjustmentApplied', 'adjustmentReason', 'effortGuidance', 'generationSource', 'modelName', 'parentPlanId', 'planId', 'planVersion', 'plannedDaysCount', 'status', 'weekEndDate', 'weekNumber', 'weekStartDate', 'workouts']
+  effortGuidance: {"repsInReserve": "3", "setsRepsText": "Termina cada serie sintiendo que podrías hacer unas 3 repeticiones más, con buena técnica. No hace falta llegar al límite.", "durationText": "En los ejercicios por tiempo, mantén la posición con buena técnica y termina cuando todavía podrías aguantar unos segundos más.", "loadText": "El peso sugerido es solo una referencia: elige el peso con el que cumplas las repeticiones dejando ese margen."}
+  entrenamientos: 3 [('2026-11-30', 'Cuerpo completo', 'SCHEDULED'), ('2026-12-02', 'Cuerpo completo', 'SCHEDULED'), ('2026-12-04', 'Cuerpo completo', 'SCHEDULED')]
+  claves de un ejercicio: ['bodyPart', 'difficultyLevel', 'equipment', 'exerciseId', 'exerciseName', 'exerciseOrder', 'gifPath', 'imagePath', 'mediaAttribution', 'notes', 'plannedDurationSeconds', 'plannedExerciseId', 'plannedReps', 'plannedSets', 'prescriptionType', 'restSeconds', 'safetyBlockReason', 'targetLoadKg', 'targetMuscle']
+   - Zancada con giro | quads | upper legs | body weight | SETS_REPS 2 x 8 | desc 120 | gif videos/1688-K9VL0Jq.gif | notes None
+   - Inclinación pélvica hacia puente | glutes | upper legs | body weight | SETS_REPS 2 x 8 | desc 120 | gif videos/1422-D9qe7CM.gif | notes None
+   - Flexión con protracción escapular | pectorals | chest | body weight | SETS_REPS 2 x 8 | desc 120 | gif videos/3145-pvBMLHA.gif | notes None
+   - Toque de dos dedos de los pies | spine | back | body weight | SETS_REPS 2 x 10 | desc 90 | gif videos/3231-p195zsJ.gif | notes None
+   - Gancho de izquierda (boxeo) | delts | shoulders | body weight | SETS_REPS 2 x 10 | desc 90 | gif videos/2271-hoXt6wv.gif | notes None
+   - Flexión con toques de hombro | pectorals | chest | body weight | SETS_REPS 2 x 15 | desc 45 | gif videos/0699-qEse6fe.gif | notes None
+   - Gateo de oso | cardiovascular system | cardio | body weight | DURATION 3 x 90 | desc 60 | gif videos/3360-0Yz8WdV.gif | notes Intensidad moderada: RPE 5-6, deberias poder hablar con frases cortas.
+   - Estiramientos de rodilla en círculos | calves | lower legs | body weight | DURATION 2 x 30 | desc 15 | gif videos/0257-X7jbxra.gif | notes Sin rebotes, hasta tension leve, respirando.
+  GET /catalog/exercises/{id} -> 200 {"exerciseId": 1059, "sourceCode": "1688", "name": "Zancada con giro", "nameEn": "lunge with twist", "targetMuscle": "quads", "synergistMuscle": "abs", "secondaryMuscles": ["quadriceps", "glutes", "hamstrings"], "instructions": "Ponte de pie con los pies separados al ancho de las caderas y los brazos relajados. Da un paso adelante y baja a una zancada hasta que la rodilla trasera quede cerca del suelo, sin apoyarla. En la posición baja, gira el tronco hacia el lado de la pierna delantera manteniendo la rodilla alineada con el pie. Deshaz el giro y empuja con el pie delantero para volver a la posición inicial. Alterna los lados. Repite el número de repeticiones indicado.", "difficultyLevel": 1, "defaultPrescription": "SETS_REPS", "imagePath": "images/1688-K9VL0Jq.jpg", "gifPath": "videos/1688-K9VL0Jq.gif", "mediaAttribution": "© Gym visual — https://gymvisual.com/"}
+
+======== 5. Sesion en vivo: registro completo, parcial (D-M1) y no realizado; finalizar
+  start -> 201 {"sessionId": 1, "plannedWorkoutId": 1, "planId": 1, "attemptNumber": 1, "countsTowardAdherence": false, "startedAt": "2026-11-27T06:33:12.740323077Z", "endedAt": null, "activeMinutes": null, "complet…
+   PUT ejercicio 1 -> 200 COMPLETED 100.0
+   PUT ejercicio 2 -> 200 PARTIAL 25.0
+   PUT ejercicio 3 -> 200 SKIPPED 0.0
+   PUT ejercicio 4 -> 200 SKIPPED 0.0
+   PUT ejercicio 5 -> 200 SKIPPED 0.0
+   PUT ejercicio 6 -> 200 SKIPPED 0.0
+   PUT ejercicio 7 -> 200 SKIPPED 0.0
+   PUT ejercicio 8 -> 200 SKIPPED 0.0
+   PUT repetido sobre el ejercicio 1 (reemplaza, no acumula) -> 200 1 PARTIAL
+  finish -> 200 {"status": "PARTIAL", "completionPercentage": 3.91, "sessionRpe": 6, "activeMinutes": 0}
+  finish repetido (doble toque) -> 422 {"timestamp": "2026-11-27T06:33:13.328178712Z", "status": 422, "error": "Unprocessable Entity", "message": "Esta sesion ya esta cerrada.", "details": []}
+  finish con campo «notes» (no existe en el contrato) -> 422 {"timestamp": "2026-11-27T06:33:13.374963027Z", "status": 422, "error": "Unprocessable Entity", "message": "Esta sesion ya esta cerrada.", "details": []}
+
+======== 6. Omitir un entrenamiento con motivo y contexto de falta de tiempo
+  skip -> 204 null
+  skip repetido -> 204 null
+  report («Ya lo hice») sobre un omitido -> 201 {"sessionId": 2, "plannedWorkoutId": 2, "planId": 1, "attemptNumber": 1, "countsTowardAdherence": true, "startedAt": "2026-11-27T06:33:13.507178Z", "endedAt": "2026-11-27T06:33:13.587453032Z", "activeMinutes": 0, "completionPercentage": 0.0, "session…
+
+======== 7. Metricas, intervenciones y adaptaciones (lectura)
+  GET /users/me/metrics/weekly -> 200 []
+  GET /users/me/interventions -> 200 []
+  GET /users/me/plan/adaptations -> 200 []
+  GET /users/me/plans -> 200 [{"planId": 1, "weekNumber": 1, "weekStartDate": "2026-11-30", "weekEndDate": "2026-12-06", "planVersion": 1, "plannedDaysCount": 3, "status": "ACTIVE", "generationSource": "RULE_ENGINE", "adjustmentApplied": null}]
+  GET /users/me/pain-exclusions/effective -> 200 []
+  GET /users/me/pain-exclusions/confirmation-requests -> 200 []
+  GET /users/me/notification-preferences -> 200 {"planUpdates": true, "accountNotices": true}
+
+======== 8. Recuperacion de contrasena (entrega dev-log) y revocacion del JWT
+  request -> 202 {"message": "Si el correo corresponde a una cuenta, recibiras un codigo para restablecer tu contrasena."}
+  request (correo inexistente) -> 202 {"message": "Si el correo corresponde a una cuenta, recibiras un codigo para restablecer tu contrasena."}
+  token en el log local (longitud): None
+  confirm con codigo invalido -> 400 {"timestamp": "2026-11-27T06:33:15.812984232Z", "status": 400, "error": "Bad Request", "message": "El codigo de recuperacion no es valido o ha caducado.", "details": []}
+
+======== 9. Retirada del estudio y generacion posterior
+  withdraw -> 200 {"studyParticipant": true, "withdrawnAt": "2026-11-27T06:33:15.828947367Z", "participantCode": "P-005"}
+  consents tras retirarse -> 200 {"currentVersions": {"STUDY_PARTICIPATION": "MVP-1.0", "TERMS_OF_SERVICE": null, "PRIVACY_POLICY": null}, "enforcedOnSignup": false, "history": [{"type": "STUDY_PARTICIPATION", "documentVersion": "MVP-1.0", "grantedAt": "2026-11-27T06:33:10.328186Z", "affirmativeAction": "CASILLA_REGISTRO", "source": "APP", "withdrawnAt": "2026-11-27T06:33:15.825630Z"}]}
+  POST /users/me/plan/generate tras retirarse -> 422 {"timestamp": "2026-11-27T06:33:15.886701792Z", "status": 422, "error": "Unprocessable Entity", "message": "El usuario 4 no esta activo en el estudio: no se le generan planes.", "details": []}
+  GET /users/me/plan/current tras retirarse -> 200 plan
+
+======== 10. Endpoints que Mobile no expone: cambio de clave con sesion y verificacion de correo
+  POST /users/me/password -> 404
+  PUT /users/me/password -> 404
+  POST /auth/verify-email -> 404
+  POST /auth/email-verification -> 404
