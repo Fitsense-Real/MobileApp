@@ -1,0 +1,142 @@
+# Escenarios integrales posmerge: app real (Flutter web release de generation f8f5e24) contra el Backend LOCAL
+# Backend generation 77b9df3, perfil local-dev, IA apagada (--fitsense.ai.enabled=false, sin token), push apagado,
+# recuperación dev-log (el código se lee del log local), base nueva aislada kora_merge_final, solo cuentas @audit.local.
+# Arnés: evidencia/arnes/escenarios_posmerge.js (contraseña por AUDIT_PASSWORD; ningún archivo la contiene).
+# 27/11/2026 (hora UTC). Líneas [api]: método, ruta y estado de cada llamada real de la app.
+#
+# Intentos del arnés (no de la app): 1.º se detuvo tras generar porque el recorrido de Kapi aparece durante la
+# generación (por diseño) y el arnés lo esperaba antes; 2.º S1–S3 completos (abajo) y S4 se detuvo porque el arnés
+# buscaba «INICIA SESIÓN» (portada) en vez de «INICIAR SESIÓN» (pantalla de acceso): la sesión SÍ se había cerrado.
+# 3.º S4 y S5 repetidos con el arnés corregido (abajo).
+
+## Intento 2: S1 registro con participación + generación, S2 sesión completa por el camino rápido, S3 P1
+21:18:06 S1 · Registro con participación → perfil → generación (motor de reglas)
+21:18:19   [api] POST /auth/register 201
+21:18:20   [api] POST /auth/login 200
+21:18:20   [api] GET /users/me 200
+21:18:20   [api] GET /users/me/consents 200
+21:18:20   [api] GET /users/me/profile 404
+21:18:20   [api] GET /users/me/profile 404
+21:18:21   [api] GET /catalog/equipment-types 200
+21:18:21 OK    registro con participación entra directo al perfil (sin volver a escribir la clave)
+21:18:45   captura P1-revision-perfil
+21:18:46   [api] POST /users/me/profile 201
+21:18:47   [api] POST /users/me/plan/generation 202
+21:18:50   [api] GET /users/me/plan/generation/6764a6fa-e176-4b1f-b05a-5976f668d3c4 200
+21:19:35   [api] GET /users/me/plans 200
+21:19:35   [api] GET /users/me/plan/12 200
+21:19:35   [api] GET /users/me/plans 200
+21:19:36   [api] GET /users/me/metrics/weekly 200
+21:19:36   [api] GET /users/me/profile 200
+21:19:36   [api] GET /users/me/interventions 200
+21:19:36   [api] GET /users/me/plan/current 200
+21:19:44 OK    plan generado y visible (Inicio)
+21:19:46   captura P2-inicio-tras-generar
+21:19:46 S2 · Sesión completa por el camino rápido (Marcar varios + confirmación)
+21:19:46   [api] GET /users/me/plan/adaptations 200
+21:19:46   [api] GET /users/me/pain-exclusions/confirmation-requests 200
+21:19:46   [api] GET /users/me/plan/limitations 200
+21:19:49   [api] GET /users/me/pain-exclusions/effective 200
+21:19:49   [api] GET /catalog/equipment-types 200
+21:19:49   [api] GET /sessions/current 204
+21:19:49   [api] GET /users/me/plan/current 200
+21:19:53   [api] GET /sessions/current 204
+21:19:53   [api] POST /workouts/34/start 201
+21:19:58 OK    nada viene marcado de antemano
+21:19:59   captura P3-marcar-varios-seleccionados
+21:19:59   [api] GET /users/me/plan/current 200
+21:20:00   [api] PUT /sessions/7/exercises/259 200
+21:20:00   [api] GET /users/me/plan/current 200
+21:20:00   [api] PUT /sessions/7/exercises/260 200
+21:20:00   [api] GET /users/me/plan/current 200
+21:20:01   [api] PUT /sessions/7/exercises/261 200
+21:20:01   [api] GET /users/me/plan/current 200
+21:20:01   [api] PUT /sessions/7/exercises/262 200
+21:20:01   [api] GET /users/me/plan/current 200
+21:20:02   [api] PUT /sessions/7/exercises/263 200
+21:20:02   [api] GET /users/me/plan/current 200
+21:20:02   [api] PUT /sessions/7/exercises/264 200
+21:20:02   [api] GET /users/me/plan/current 200
+21:20:03   [api] PUT /sessions/7/exercises/265 200
+21:20:03   [api] GET /users/me/plan/current 200
+21:20:03   [api] PUT /sessions/7/exercises/266 200
+21:20:10   captura P4-finalizar-resumen
+21:20:10 OK    el resumen dice lo registrado
+21:20:13   [api] POST /sessions/7/finish 200
+21:20:18   captura P5-sesion-finalizada
+21:20:18 S3 · P1: un resultado sin conexión queda pendiente y se reintenta
+21:20:18   [api] GET /users/me 200
+21:20:19   [api] GET /users/me/consents 200
+21:20:19   [api] GET /users/me/profile 200
+21:20:19   [api] GET /users/me/plan/current 200
+21:20:19   [api] GET /users/me/metrics/weekly 200
+21:20:19   [api] GET /users/me/profile 200
+21:20:19   [api] GET /users/me/interventions 200
+21:20:19   [api] GET /users/me/plan/current 200
+21:20:22   [api] GET /users/me/plan/adaptations 200
+21:20:22   [api] GET /users/me/pain-exclusions/confirmation-requests 200
+21:20:22   [api] GET /users/me/plan/limitations 200
+21:20:24   [api] GET /users/me/pain-exclusions/effective 200
+21:20:24   [api] GET /sessions/current 204
+21:20:24   [api] GET /catalog/equipment-types 200
+21:20:24   [api] GET /users/me/plan/current 200
+21:20:29   [api] GET /sessions/current 204
+21:20:29   [api] POST /workouts/35/start 201
+21:20:37   [api] GET /users/me/plan/current 200
+21:20:40   [api] GET /users/me/plan/current 200
+21:20:40   [falla] http://localhost:8080/api/v1/sessions/8/exercises/267 net::ERR_INTERNET_DISCONNECTED
+21:20:40 OK    queda «Pendiente de enviar» (P1)
+21:20:40   captura P6-pendiente-de-enviar
+21:20:42   [api] GET /users/me/plan/current 200
+21:20:42   [api] GET /sessions/current 200
+21:20:43   [api] PUT /sessions/8/exercises/267 200
+21:20:50 OK    tras el reintento ya no está pendiente
+21:20:51   captura P7-tras-reintento
+21:20:53   [api] POST /sessions/8/abandon 200
+
+## Intento 3: S4 cierre de sesión y cambio de cuenta, S5 error de conexión
+21:21:58 S4 · Cierre de sesión y cambio de cuenta
+21:22:05   [api] POST /auth/login 200
+21:22:05   [api] GET /users/me 200
+21:22:06   [api] GET /users/me/consents 200
+21:22:06   [api] GET /users/me/profile 200
+21:22:06   [api] GET /users/me/plan/current 200
+21:22:06   [api] GET /users/me/metrics/weekly 200
+21:22:06   [api] GET /users/me/interventions 200
+21:22:06   [api] GET /users/me/profile 200
+21:22:06   [api] GET /users/me/plan/current 200
+21:22:22 OK    primera cuenta entra
+21:22:25   [api] GET /users/me/metrics/weekly 401
+21:22:25   [api] GET /users/me/interventions 401
+21:22:25   [api] GET /users/me/profile 401
+21:22:28 OK    vuelve al inicio de sesión
+21:22:28   captura P8a-tras-cerrar-sesion
+21:22:31   [api] POST /auth/login 200
+21:22:31   [api] GET /users/me 200
+21:22:31   [api] GET /users/me/consents 200
+21:22:31   [api] GET /users/me/profile 200
+21:22:31   [api] GET /users/me/plan/current 200
+21:22:31   [api] GET /users/me/metrics/weekly 200
+21:22:31   [api] GET /users/me/profile 200
+21:22:31   [api] GET /users/me/interventions 200
+21:22:31   [api] GET /users/me/plan/current 200
+21:22:47 OK    la otra cuenta entra
+21:22:50 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+21:22:50   captura P8-otra-cuenta
+21:22:50 S5 · Error de conexión al iniciar sesión
+21:22:57   [falla] http://localhost:8080/api/v1/auth/login net::ERR_INTERNET_DISCONNECTED
+21:22:57 OK    mensaje de conexión claro
+21:22:58   captura P9-sin-conexion-login
+21:22:58 fin
+
+## Comprobación en la base local (después de los escenarios)
+audit-ui-cierre-noparticipa-…  is_study_participant=f  consent_version=(vacío)  user_consents: ninguno
+audit-ui-posmerge-participa-…  is_study_participant=t  consent_version=MVP-1.0  user_consents: STUDY_PARTICIPATION MVP-1.0 CASILLA_REGISTRO APP
+  (MVP-1.0 es la etiqueta del Backend, no un documento aprobado; la app no envió versiones de condiciones ni privacidad
+   porque no hay ninguna configurada: no se registró ningún consentimiento inexistente)
+password_reset_tokens: 1 emitido, 1 usado (recuperación de punta a punta del arnés visual_cierre.js, flujo «recuperacion»)
+
+## Observación (no es regresión)
+Al cerrar sesión, tres consultas de fondo del Inicio (profile, interventions, metrics/weekly) salen ya sin token y
+reciben 401. La pantalla queda en el acceso, limpia, y la siguiente cuenta no ve datos de la anterior. logout() y
+AuthViewModel.logout() no cambiaron en #26–#31 (git diff 76dcf34..f8f5e24): comportamiento previo. P2, sin cambio.

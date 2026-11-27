@@ -1,7 +1,8 @@
 # Cierre de preproducción de Mobile Kora
 
-Seis PR apiladas (M1 → M6) que atienden la auditoría `docs/preproduccion/` (`c979e04`). **Sin merge, sin despliegue,
-sin APK de producción, sin Replicate, sin pruebas en teléfono físico.**
+Seis PR apiladas (M1 → M6) que atienden la auditoría `docs/preproduccion/` (`c979e04`), **fusionadas en `generation` el
+27/11/2026** junto con la #25 (`f8f5e24`). Sin despliegue, sin APK de producción, sin Replicate, sin pruebas en
+teléfono físico.
 
 | # | Documento |
 |---|---|
@@ -15,6 +16,9 @@ sin APK de producción, sin Replicate, sin pruebas en teléfono físico.**
 | 08 | [Pruebas en Android físico](08_PRUEBAS_ANDROID.md) (pendientes) |
 | 09 | [Pruebas y resultados](09_PRUEBAS_Y_RESULTADOS.md) |
 | 10 | [Pendientes para el piloto y recomendación](10_PENDIENTES_PARA_EL_PILOTO.md) |
+| 11 | [Merge final y validación posmerge](11_MERGE_FINAL_Y_VALIDACION.md) |
+| 12 | [Matriz para dos teléfonos](12_MATRIZ_DOS_TELEFONOS.csv) (pendiente) |
 
 Matriz actualizada: [`../preproduccion/08_MATRIZ_DE_PENDIENTES.md`](../preproduccion/08_MATRIZ_DE_PENDIENTES.md).
-Capturas: [`capturas/despues/`](capturas/despues/) y [`capturas/comparaciones/`](capturas/comparaciones/).
+Capturas: [`capturas/despues/`](capturas/despues/), [`capturas/comparaciones/`](capturas/comparaciones/) y
+[`capturas/posmerge/`](capturas/posmerge/).

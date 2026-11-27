@@ -9,8 +9,9 @@
 | Fecha | 27/11/2026 |
 | Herramientas | Flutter 3.50.1 / Dart 3.14.0 (las de CI) |
 
-**Nada se ha fusionado ni desplegado. No se generó ningún APK de producción. No se consumió Replicate. Ninguna prueba se
-hizo en un teléfono físico.**
+**Nada se ha desplegado. No se generó ningún APK de producción. No se consumió Replicate. Ninguna prueba se hizo en un
+teléfono físico.** Las seis PR y la #25 se fusionaron en `generation` el 27/11/2026, una por una y en orden
+(`generation` = `f8f5e244dea62daa3963dc9a8a0b1a96445c4d3b`; `main` sin cambios): ver [11](11_MERGE_FINAL_Y_VALIDACION.md).
 
 ## 1. Organización: seis PR apiladas
 

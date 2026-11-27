@@ -20,7 +20,8 @@ Flutter 3.50.1 / Dart 3.14.0. `flutter analyze` sin incidencias en las seis rama
 | M3 | `1ce8779` | 467 | 0 | 31 |
 | M4 | `24aa690` | 483 | 0 | 31 |
 | M5 | `1a71644` | 494 | 0 | 31 |
-| M6 | esta rama | 494 | 0 | 31 |
+| M6 | `4cbb97c` | 494 | 0 | 31 |
+| `generation` tras el merge final | `f8f5e24` | 494 | 0 | 31 |
 
 Las 31 omitidas son las mismas que en la auditoría: 16 en vivo (necesitan `KORA_LIVE_API_BASE_URL` y, algunas, un
 Backend preparado por etapas) y 15 de capturas de documentación.
@@ -102,6 +103,11 @@ para web (release) contra el mismo Backend local, mismos tamaños.
 | Solo «después» (pantallas nuevas) | `despues/A7`, `A8`, `A9`, `C6c`, `C10`, `C11`, `C12`, `D3`, `F5`, `G1` |
 
 Las capturas web no sustituyen al teléfono (teclado, permisos, push, rendimiento).
+
+## 6 bis. Validación posmerge
+
+Tras fusionar #26–#31 y #25: mismas cifras en cada paso, 12/12 pruebas en vivo y 15 escenarios en la app real contra el
+Backend local. Detalle en [11](11_MERGE_FINAL_Y_VALIDACION.md) §4.
 
 ## 7. Prueba de usabilidad (preparada, no realizada)
 
