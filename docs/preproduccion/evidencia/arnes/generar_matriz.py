@@ -46,6 +46,54 @@ R = [
  ('M-40', 'Ayuda y soporte', 'PARCIAL', 'dashboard_page.dart («Ayuda y soporte» → un párrafo)', 'No hay contacto del equipo del estudio en la app', 'Participantes sin a quién acudir (p. ej. sin acceso o con dolor)', 'P1', 'Equipo del estudio (dato de contacto)', 'Contacto y preguntas frecuentes', 'El contacto aparece en Ayuda y en los mensajes que remiten al equipo'),
  ('M-41', 'Firebase · clave de cliente', 'SIN VERIFICAR', 'android/app/google-services.json (api_key de cliente)', 'No se puede comprobar desde el repositorio si la clave está restringida al paquete y la huella', 'Bajo', 'P2', 'Consola de Google Cloud', 'Restringir la clave a pe.fit.kora y su huella', 'Captura de la restricción en la consola'),
 ]
+
+# Cierre de preproducción (27/11/2026): estado de cada ID tras las PR Mobile-M1…M6.
+CIERRE = {
+ 'M-01': ('BLOQUEADO POR DECISIÓN', 'M1: ya no hay callejón sin salida (aviso antes de crear la cuenta sin participar; pantalla «Por ahora no hay una rutina para ti» con contacto, comprobar de nuevo y cerrar sesión). Falta decidir el modelo A/B; la opción B queda preparada (PLANS_FOR_NON_PARTICIPANTS)', 'M1'),
+ 'M-02': ('BLOQUEADO POR BACKEND', 'M1: lector de documentos en la app, lectura obligatoria antes de aceptar, consentimiento del estudio antes de la casilla (STUDY_CONSENT_URL). Faltan textos aprobados y que el Backend los sirva por versión', 'M1'),
+ 'M-03': ('PREPARADO SIN ACTIVAR', 'M1: el registro envía acceptedTermsVersion/acceptedPrivacyVersion cuando la compilación tiene versión y dirección; 422 de versión desactualizada o no publicada explicados. Falta configurar versiones y activar enforce-on-signup en el Backend a la vez', 'M1'),
+ 'M-04': ('BLOQUEADO POR BACKEND', 'M2: «Ya tengo un código», «Pegar código», código nuevo con el correo escrito, caducidad explicada, vuelta al login con el correo; probado de punta a punta en la app contra el Backend local (dev-log). Falta proveedor de correo real; la bandera sigue apagada', 'M2'),
+ 'M-05': ('PENDIENTE DE DISPOSITIVO', 'M6: guía complementaria con todas las pruebas (docs/cierre_preproduccion/08). Ninguna prueba física realizada', 'M6'),
+ 'M-06': ('BLOQUEADO POR DECISIÓN', 'M3: Mobile usa gifUrl/imageUrl https del Backend si existen, imagen fija de respaldo y atribución; la construcción actual sigue activa (EXERCISE_MEDIA_LEGACY_SOURCE). Falta licencia y alojamiento; no se copió ningún archivo', 'M3'),
+ 'M-07': ('RESUELTO', 'M3: «Cómo esforzarte hoy» y «Cómo esforzarte» con el texto exacto de effortGuidance', 'M3'),
+ 'M-08': ('RESUELTO', 'M3: músculos y zonas en español (tablas cerradas, códigos desconocidos omitidos) y equipo con nameEs del catálogo. Campos en español en el Backend siguen siendo preferibles', 'M3'),
+ 'M-09': ('RESUELTO', 'M3: ficha a pantalla completa con animación grande, pausar/reanudar, ampliar, anterior/siguiente e imagen fija si falla. Corrección de la auditoría: Flutter 3.50 ya pausaba los GIF con «reducir movimiento» (image.dart:1189). Sin caché en disco hasta resolver M-06', 'M3'),
+ 'M-10': ('RESUELTO', 'M4: primero qué pasó, solo campos aplicables, parcial serie por serie con total calculado, «Marcar varios como completados» con confirmación explícita; 8 ejercicios en 8 toques (prueba). Cuerpos D-M1 idénticos', 'M4'),
+ 'M-11': ('PREPARADO SIN ACTIVAR', 'M4: explicación de esfuerzo y satisfacción y resumen antes de finalizar; descripciones por nivel preparadas (rpe_scale.dart) y vacías hasta su aprobación. Observaciones: decisión y Backend', 'M4'),
+ 'M-12': ('RESUELTO', 'M4: «Tengo dolor o molestias» en cada ejercicio y en su ficha (2 toques), mismas comprobaciones O20 y P1. «Lo terminé, pero me dolió» explica que no hay contrato y no envía nada (BLOQUEADO POR BACKEND)', 'M4'),
+ 'M-13': ('RESUELTO', 'M4: barra de acciones fija con «Comenzar», «Ya lo hice», «Omitir» / «Finalizar», «Marcar varios», «Abandonar», y explicación de cada camino', 'M4'),
+ 'M-14': ('RESUELTO', 'M5: notas plegadas «Tu plan tiene N notas»; las rutinas quedan en la primera pantalla. El texto de las notas sigue siendo del Backend', 'M5'),
+ 'M-15': ('RESUELTO', 'M5: «puntos frente a la semana anterior», «De lo que registraste, cumpliste…», «Actualizado el…» y cuándo aparecen los datos. Ocultar el riesgo de abandono queda preparado (SHOW_DROPOUT_RISK=false) a la espera de la decisión metodológica', 'M5'),
+ 'M-16': ('BLOQUEADO POR DECISIÓN', 'Sin cambios de comportamiento (prohibido activar recordatorios sin decisión). M5: un recordatorio tocado con la app cerrada abre Rutinas (M-32)', 'M5'),
+ 'M-17': ('RESUELTO', 'M5: el diálogo describe que no habrá rutinas nuevas y que historial y datos se conservan', 'M5'),
+ 'M-18': ('RESUELTO', 'M1: lista cerrada de zonas IANA (America/Lima por defecto)', 'M1'),
+ 'M-19': ('RESUELTO', 'M5: mínimo 12 px, texto secundario 4,8:1, objetivos de 48 dp, sin palabras partidas en 320 px (prueba automática). Pendiente comprobar texto del sistema ampliado en teléfono', 'M5'),
+ 'M-20': ('PENDIENTE', 'No abordado (P2)', '—'),
+ 'M-21': ('PENDIENTE', 'No abordado (P2). El caso principal (no participante) ya no llega a la pantalla de 30 s', '—'),
+ 'M-22': ('PENDIENTE DE DISPOSITIVO', 'Sin cambios: definir allowBackup o reglas de copia requiere comprobar la restauración en un teléfono', '—'),
+ 'M-23': ('BLOQUEADO POR DECISIÓN', 'Sin cambios: falta decidir si el estudio es solo Android', '—'),
+ 'M-24': ('PREPARADO SIN ACTIVAR', 'M5: PAIN_SAFETY_MESSAGE se muestra al informar dolor y en Ayuda; vacío hasta que el equipo apruebe el texto', 'M5'),
+ 'M-25': ('BLOQUEADO POR DECISIÓN', 'M5: mitigado con la revisión del perfil antes de generar (M-38)', 'M5'),
+ 'M-26': ('BLOQUEADO POR BACKEND', 'M2: revisada sin cambios (bandera ACCOUNT_DELETION_ENABLED); falta correo para la vía web y la página pública', 'M2'),
+ 'M-27': ('RESUELTO', 'M1: los documentos se leen completos dentro de la app (sin copiar enlaces). Aún no hay documentos publicados', 'M1'),
+ 'M-28': ('BLOQUEADO POR BACKEND', 'Sin endpoint en el Backend', '—'),
+ 'M-29': ('BLOQUEADO POR BACKEND', 'Sin endpoint en el Backend', '—'),
+ 'M-30': ('PENDIENTE', 'No abordado (P2)', '—'),
+ 'M-31': ('PENDIENTE', 'Parcial (M5): «Notificaciones» → «Novedades de tu plan»; ayuda con preguntas frecuentes. Quedan «Consultar estado de sesión» y la agrupación de avisos', 'M5'),
+ 'M-32': ('PENDIENTE DE DISPOSITIVO', 'M5: implementado (getNotificationAppLaunchDetails → Rutinas tras restaurar la sesión); solo probado con pruebas unitarias', 'M5'),
+ 'M-33': ('PENDIENTE', 'No abordado (P2)', '—'),
+ 'M-34': ('RESUELTO', 'M1: inicio de sesión automático tras crear la cuenta', 'M1'),
+ 'M-35': ('RESUELTO', 'M5: «Volver» en el paso 1 ofrece cerrar sesión', 'M5'),
+ 'M-36': ('NO APLICA', 'P3 excluido por la orden de cierre', '—'),
+ 'M-37': ('BLOQUEADO POR BACKEND', 'Textos del Backend', '—'),
+ 'M-38': ('RESUELTO', 'M5: revisión completa con «Editar» por bloque antes de «Generar mi plan»', 'M5'),
+ 'M-39': ('PREPARADO SIN ACTIVAR', 'M6: guía complementaria (cierre_preproduccion/08) con Firebase, arranque del Backend y las pruebas que faltaban; GUIA_ANDROID.md no se edita para no chocar con la PR #25 abierta', 'M6'),
+ 'M-40': ('RESUELTO', 'M5: «Ayuda y soporte» con preguntas frecuentes y contacto; sin STUDY_CONTACT muestra una indicación genérica (contacto pendiente del equipo)', 'M5'),
+ 'M-41': ('PENDIENTE', 'Verificación en la consola de Google Cloud', '—'),
+}
+assert set(CIERRE) == {r[0] for r in R}
+COLS = COLS + ['Estado tras el cierre', 'Qué se hizo / qué falta', 'PR']
+R = [r + CIERRE[r[0]] for r in R]
 assert all(len(r) == len(COLS) for r in R), [r[0] for r in R if len(r) != len(COLS)]
 with open(OUT + '.csv', 'w', newline='', encoding='utf-8') as f:
     w = csv.writer(f); w.writerow(COLS); w.writerows(R)
@@ -54,11 +102,20 @@ pr = {}
 for r in R: pr[r[6].split()[0]] = pr.get(r[6].split()[0], 0) + 1
 with open(OUT + '.md', 'w', encoding='utf-8') as f:
     f.write('# 08 · Matriz de pendientes de Mobile\n\n')
+    f.write('> **Actualizada en el cierre de preproducción (27/11/2026).** Las diez columnas originales de la auditoría (`c979e04`) se conservan sin cambios como evidencia histórica; '
+            'se añaden «Estado tras el cierre», «Qué se hizo / qué falta» y «PR» (ramas `claude/mobile-m1…m6`, ver `docs/cierre_preproduccion/`).\n\n')
     f.write('Matriz pedida en la orden (§15). La misma información está en [`08_MATRIZ_DE_PENDIENTES.csv`](08_MATRIZ_DE_PENDIENTES.csv) '
             'para abrirla en una hoja de cálculo. Las rutas de evidencia son relativas a `lib/features/` o al repositorio; «contratos §n» remite a '
             '[`evidencia/contratos-backend-local.txt`](evidencia/contratos-backend-local.txt) y las letras de captura a '
             '[`evidencia/capturas/`](evidencia/capturas/).\n\n')
     f.write('**Resumen por prioridad:** ' + ' · '.join(f'{k}: {v}' for k, v in sorted(pr.items())) + f' · Total: {len(R)}\n\n')
+    est = {}
+    for r in R: est.setdefault(r[10], {}).setdefault(r[6].split()[0], 0); est[r[10]][r[6].split()[0]] += 1
+    f.write('**Estado tras el cierre:**\n\n| Estado | P0 | P1 | P2 |\n|---|---|---|---|\n')
+    for e in ['RESUELTO', 'PREPARADO SIN ACTIVAR', 'BLOQUEADO POR BACKEND', 'BLOQUEADO POR DECISIÓN', 'PENDIENTE DE DISPOSITIVO', 'PENDIENTE', 'NO APLICA']:
+        c = est.get(e, {})
+        f.write(f"| {e} | {c.get('P0', 0)} | {c.get('P1', 0)} | {c.get('P2', 0)} |\n")
+    f.write('\n')
     f.write('| ' + ' | '.join(COLS) + ' |\n|' + '---|' * len(COLS) + '\n')
     for r in R: f.write('| ' + ' | '.join(esc(c) for c in r) + ' |\n')
 print(pr, len(R))

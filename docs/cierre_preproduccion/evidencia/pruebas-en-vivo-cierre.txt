@@ -1,0 +1,13 @@
+# Pruebas en vivo de Mobile sobre el código integrado (rama claude/mobile-m6-integracion-documentacion)
+# Backend generation 77b9df3 LOCAL, perfil local-dev, IA apagada, sin correo, base aislada kora_audit_mobile, cuentas sintéticas @audit.local
+
+00:00 +0: /home/user/MobileApp/test/live/timed_exercise_live_test.dart: (setUpAll)
+00:00 +0: /home/user/MobileApp/test/live/push_backend_live_test.dart: Mobile push code against the real backend contract
+00:00 +1: /home/user/MobileApp/test/live/timed_exercise_live_test.dart: complete session: «Lo completé» on a timed exercise is 100 %, the one-series value of main was 33 %
+COMPLETA workout=10 ejercicio=76 3x90 s: una serie (90s) → 33.33 % PARTIAL; todas (270s) → 100.0 % COMPLETED; sesión 100.0 % COMPLETED
+00:01 +2: /home/user/MobileApp/test/live/timed_exercise_live_test.dart: partial session: only the seconds really done count; the session is the mean the backend computes
+PARCIAL workout=12 ejercicio=90: 150/270 s → 55.56 % PARTIAL; sesión 94.45 % COMPLETED (media de 8 ejercicios = 94.44 %)
+00:01 +3: /home/user/MobileApp/test/live/timed_exercise_live_test.dart: whole workout report («Ya lo hice»): «Lo completé» on every exercise is 100 %
+REPORTE workout=11: 3x90=270s, 3x90=270s, 3x90=270s, 2x30=60s → sesión 100.0 %
+00:01 +4: /home/user/MobileApp/test/live/timed_exercise_live_test.dart: (tearDownAll)
+00:01 +4: All tests passed!

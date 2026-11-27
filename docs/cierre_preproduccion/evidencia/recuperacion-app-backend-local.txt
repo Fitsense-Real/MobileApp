@@ -1,0 +1,14 @@
+# Recuperación de contraseña de punta a punta en la app real
+# App: Flutter web release de la rama de cierre con --dart-define=PASSWORD_RECOVERY_ENABLED=true
+# Backend: generation 77b9df3 LOCAL, perfil local-dev (entrega dev-log: el código se lee del log local; nunca se imprime)
+# Cuenta sintética: audit-vivo-b-1795793820@audit.local · 27/11/2026, arnés evidencia/arnes/visual_cierre.js (flujo «recuperacion»)
+
+15:38:15   captura A5-recuperar-correo
+15:38:19   [api] POST /auth/password-reset/request 202
+15:38:21   captura A8-recuperar-codigo           («Pegar código», «Lo pediste para …»)
+           código de 43 caracteres leído del log local y escrito en «Código de recuperación»
+15:38:29   [api] POST /auth/password-reset/confirm 204
+15:38:31   captura A9-login-correo-escrito       (vuelta al inicio de sesión con el correo escrito)
+15:38:32   [api] POST /auth/login 200            (con la contraseña nueva)
+
+No probado aquí: entrega por correo real (el Backend de producción tiene delivery=none y transport=none).
