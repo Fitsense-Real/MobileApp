@@ -1,0 +1,140 @@
+# 03 · Copia local del dataset demo (fitsense_av48): solo lectura, instantáneas MD5 por tabla
+# Clon de fitsense_demo (cargada con los scripts del dataset; en la copia la cuenta es user_id 1 y NO participante).
+# Antes de la instantánea de referencia se asignó a la copia una contraseña local (solo en este clon).
+
+## Script docs/o20/validacion/usuario48_verificacion_solo_lectura.sql sobre la copia (salida íntegra)
+BEGIN
+ user_id |             email             | first_name | last_name | status |   timezone   |          created_at           |        last_login_at         
+---------+-------------------------------+------------+-----------+--------+--------------+-------------------------------+------------------------------
+       1 | usuario.demo.kora@example.com | Usuario    | Demo Kora | ACTIVE | America/Lima | 2026-11-25 05:19:16.881611+00 | 2026-11-26 13:46:26.01842+00
+(1 row)
+
+ user_id | is_study_participant | enrolled_at | withdrawn_at 
+---------+----------------------+-------------+--------------
+       1 | f                    |             | 
+(1 row)
+
+  plan_id  | week_start_date | week_end_date | plan_version |  status   | generation_source | model_name | adjustment_applied |       created_at       
+-----------+-----------------+---------------+--------------+-----------+-------------------+------------+--------------------+------------------------
+ 910000000 | 2026-11-02      | 2026-11-08    |            1 | COMPLETED | RULE_ENGINE       |            |                    | 2026-11-02 00:05:00+00
+ 910000001 | 2026-11-09      | 2026-11-15    |            1 | COMPLETED | CONSERVED         |            | ADAPT_LOCALIZED    | 2026-11-09 08:00:00+00
+ 910000002 | 2026-11-16      | 2026-11-22    |            1 | COMPLETED | CONSERVED         |            |                    | 2026-11-16 08:00:00+00
+ 910000003 | 2026-11-23      | 2026-11-29    |            1 | ACTIVE    | CONSERVED         |            |                    | 2026-11-23 08:00:00+00
+(4 rows)
+
+ planes | activos | con_ia 
+--------+---------+--------
+      4 |       1 |      0
+(1 row)
+
+  status   | sesiones 
+-----------+----------
+ COMPLETED |       13
+ PARTIAL   |        1
+(2 rows)
+
+  plan_id  | week_start_date |  status   | entrenamientos 
+-----------+-----------------+-----------+----------------
+ 910000000 | 2026-11-02      | COMPLETED |              3
+ 910000000 | 2026-11-02      | PARTIAL   |              1
+ 910000000 | 2026-11-02      | SKIPPED   |              1
+ 910000001 | 2026-11-09      | COMPLETED |              5
+ 910000002 | 2026-11-16      | COMPLETED |              5
+ 910000003 | 2026-11-23      | SCHEDULED |              3
+ 910000003 | 2026-11-23      | SKIPPED   |              2
+(7 rows)
+
+ attempt_id | new_week_start_date | source_plan_id | resulting_plan_id |    decision     |  status   | ai_calls | observed_adherence_pct | progressed_sessions |       created_at       
+------------+---------------------+----------------+-------------------+-----------------+-----------+----------+------------------------+---------------------+------------------------
+  910000000 | 2026-11-09          |      910000000 |         910000001 | ADAPT_LOCALIZED | RESPALDO  |        0 |                  67.81 | {}                  | 2026-11-09 08:00:00+00
+  910000001 | 2026-11-16          |      910000001 |         910000002 | NO_CHANGE       | SIN_ORDEN |        0 |                 100.00 | {}                  | 2026-11-16 08:00:00+00
+  910000002 | 2026-11-23          |      910000002 |         910000003 | NO_CHANGE       | SIN_ORDEN |        0 |                 100.00 | {910000010}         | 2026-11-23 08:00:00+00
+(3 rows)
+
+ week_start_date |  plan_id  | scheduled_workouts | valid_workouts | completed_workouts | skipped_workouts | weighted_adherence_pct | risk_level |     calculated_at      
+-----------------+-----------+--------------------+----------------+--------------------+------------------+------------------------+------------+------------------------
+ 2026-11-02      | 910000000 |                  5 |              4 |                  3 |                1 |                  67.81 | LOW        | 2026-11-09 08:00:00+00
+ 2026-11-09      | 910000001 |                  5 |              5 |                  5 |                0 |                 100.00 | LOW        | 2026-11-16 08:00:00+00
+ 2026-11-16      | 910000002 |                  5 |              5 |                  5 |                0 |                 100.00 | LOW        | 2026-11-23 08:00:00+00
+(3 rows)
+
+ exclusion_id | exercise_id |                name_es                 |       reason       | status | event_date |  recorded_by  | reactivated_at | identified_at 
+--------------+-------------+----------------------------------------+--------------------+--------+------------+---------------+----------------+---------------
+    910000000 |        1025 | Aperturas de pecho sentado con palanca | DOLOR_IDENTIFICADO | ACTIVA | 2026-11-05 | CICLO_SEMANAL |                | 
+(1 row)
+
+  goal_type  |                       goal_text                       | fitness_level | training_location | days_per_week | session_minutes | height_cm | current_weight_kg | birth_date 
+-------------+-------------------------------------------------------+---------------+-------------------+---------------+-----------------+-----------+-------------------+------------
+ GAIN_MUSCLE | Ganar masa muscular (usuario de demostracion de Kora) | INTERMEDIATE  | GYM               |             5 |              60 |    176.00 |             74.00 | 1995-04-12
+(1 row)
+
+ROLLBACK
+
+## Instantánea: 29 tablas (tabla|filas|md5 del contenido ordenado)
+account_deletion_tokens|0|-
+account_deletions|0|-
+body_parts|10|f95d9d7798be6d911049439e513c9cbe
+calculation_configs|9|10769d8a05d9d85123fb811d6e94cf9f
+equipment_types|38|26c75b82b617b76a833412fcb1b3e27a
+exercise_difficulty_approvals|4|da1d3bcf473fedac5096f2195a051228
+exercise_equipment_requirements|1522|1194b159cce638ed26cabd13724e3795
+exercises|1376|4d21ee00b09dabe792e73663234d598f
+flyway_schema_history|68|ac528bb6877dde46e24372ffd2967eba
+notification_deliveries|0|-
+notification_events|0|-
+notification_preferences|0|-
+password_reset_tokens|0|-
+plan_adaptation_attempts|3|1430f7114a7d31ab6a879b35788d285a
+plan_generation_operations|0|-
+plan_generation_predictions|0|-
+planned_workout_exercises|120|5859f7e3131c74745ac9e768696d5fc5
+planned_workouts|20|3b937348b5f2c8f965e519e55bba21af
+push_devices|0|-
+safe_regeneration_attempts|0|-
+user_consents|0|-
+user_interventions|3|7fc8ea7a50333a4b5030035873575a65
+user_profiles|1|1526e5795407f1d2eb70c0d54529fe6a
+user_safety_exclusions|1|6a3b56bd3cee9cae5bf9cd6697b3eafa
+users|1|017dd7485961f4167210967c42d85570
+weekly_training_plans|4|ad12c604b703f98ddcd88468f64801d9
+weekly_user_metrics|3|7f497c989a0cf5db837324d2d961e725
+workout_session_exercises|83|3af164a614367f322baa475fd3cf94f2
+workout_sessions|14|630509ec8716bf0e32061bf972014322
+
+## Backend 77b9df3 arrancado sobre la copia: diff antes → tras arranque
+(sin cambios)
+
+## 18 lecturas GET del Mobile (o20_grabar_live_test, modo demo, 06:20:30–06:20:33 UTC): diff arranque → tras lecturas
+25c25
+< users|1|017dd7485961f4167210967c42d85570
+---
+> users|1|6ae5b721d0430c61ef812983d2672775
+## Restaurando solo users.last_login_at y users.updated_at a sus valores previos, el md5 de users vuelve a 017dd7485961f4167210967c42d85570 (el original): el login es la única escritura.
+
+## Tarea programada del Backend a las 06:30:00 UTC (sin intervención del Mobile): diff tras lecturas → tras :30
+18c18
+< planned_workouts|20|3b937348b5f2c8f965e519e55bba21af
+---
+> planned_workouts|20|403171cfc3b6112e1aa0b2f98c96d1be
+2026-11-27T06:30:00.100ZanCommandServiceImpl : Marcados 2 entrenamientos vencidos como SKIPPED
+2026-11-27T06:30:00.121ZeWorkoutScheduler    : Tarea de vencimiento: 2 entrenamientos cerrados
+planned_workouts del plan vigente 910000003 tras la tarea:
+ planned_workout_id | scheduled_date |  status   |       expires_at       |          updated_at           
+--------------------+----------------+-----------+------------------------+-------------------------------
+          910000015 | 2026-11-23     | SKIPPED   | 2026-11-24 04:59:00+00 | 2026-11-25 05:30:00.103023+00
+          910000016 | 2026-11-24     | SKIPPED   | 2026-11-25 04:59:00+00 | 2026-11-25 05:30:00.113785+00
+          910000017 | 2026-11-25     | SKIPPED   | 2026-11-26 04:59:00+00 | 2026-11-27 06:30:00.104226+00
+          910000018 | 2026-11-26     | SKIPPED   | 2026-11-27 04:59:00+00 | 2026-11-27 06:30:00.115019+00
+          910000019 | 2026-11-27     | SCHEDULED | 2026-11-28 04:59:00+00 | 2026-11-23 08:00:00+00
+(5 rows)
+
+## Planes / adaptaciones / métricas tras todo: 4 / 3 / 3
+
+## App Kora real (web) F01–F09 sobre la copia: diff antes → después del recorrido de la interfaz
+25c25
+< users|1|6ae5b721d0430c61ef812983d2672775
+---
+> users|1|562d4c8e7468d99ed65371a0168fe2a3
+(solo users: last_login_at/updated_at del login; push_devices sin cambios)
+
+## Respuestas GET del Backend 77b9df3 frente a los fixtures fusionados test/fixtures/o20_demo_kora (sin campos de hora): 18/18 iguales

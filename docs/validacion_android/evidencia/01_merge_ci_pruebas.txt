@@ -1,0 +1,19 @@
+# 01 · Merge de la PR #24, análisis y pruebas
+
+PR #24 fusionada: merge 76dcf340908a61fba0314b6705352759cafc0b2f (2026-11-27T06:12:40Z), head 09cae40d5e9e7697c6f6c1a879418bdfc26849ed, base generation@5b9de9f.
+Comprobado antes: abierta, mergeable clean, CI verify success, solo 2 archivos de docs, sin secretos, SQL sin escrituras.
+main sin cambios: 3a4e26d1fed5170c6790cd05c9129f58ce88b4d0. CI de generation@76dcf34: verify completed/success (run 45950405203).
+
+## flutter pub get / analyze / test sobre generation@76dcf34 (Flutter 3.50.1, Dart 3.14.0)
+flutter analyze: No issues found!
+flutter test: +422 ~31: All tests passed! (las 31 omitidas son las pruebas live, que necesitan Backend)
+
+## Regresiones por área (área | resultado)
+O20 | +46 All tests passed!
+P1 | +14 All tests passed!
+P2 | +28 All tests passed!
+D-M1 | +28 All tests passed!
+Firebase/push | +83 All tests passed!
+Generación | +68 All tests passed!
+Sesión/401/cuentas | +37 All tests passed!
+Contrato Backend | +53 All tests passed!
