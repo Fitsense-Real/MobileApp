@@ -18,7 +18,7 @@ final metrics = jsonRows(fixture['metrics']);          // newest week first, as 
 final interventions = jsonRows(fixture['interventions']);
 
 String pct(num value) => metricValue(value, suffix: '%');
-String pp(num value) => '${value >= 0 ? '+' : ''}${metricValue(value)} pp';
+String pp(num value) => '${value >= 0 ? '+' : ''}${metricValue(value)} puntos frente a la semana anterior';
 
 Future<void> openProgress(WidgetTester tester) async {
   tester.view.physicalSize = const Size(430, 2200); tester.view.devicePixelRatio = 1;
@@ -73,14 +73,14 @@ void main() {
       final label = 'week ${week['weekNumber']}';
       expect(find.text(pct(value)), findsOneWidget, reason: label);
       if (previous == null) {
-        expect(find.textContaining(' pp'), findsNothing, reason: 'first week has no previous one');
+        expect(find.textContaining('frente a la semana anterior'), findsNothing, reason: 'first week has no previous one');
       } else {
         expect(find.text(pp(value - previous)), findsOneWidget, reason: label);
       }
       expect(find.text('${metricValue(week['completedWorkouts'])} / ${metricValue(week['scheduledWorkouts'])}', findRichText: true), findsOneWidget, reason: label);
       expect(find.text('${week['totalTrainingMinutes']} min entrenados'), findsOneWidget, reason: label);
       expect(find.textContaining('Riesgo de abandono: ${risk[week['riskLevel']]}'), findsOneWidget, reason: label);
-      expect(find.textContaining('Calculado: ${displayDate(week['calculatedAt'])}'), findsOneWidget, reason: label);
+      expect(find.textContaining('Actualizado el ${displayDate(week['calculatedAt'])}'), findsOneWidget, reason: label);
     }
   });
 
@@ -89,12 +89,12 @@ void main() {
     final week4 = metrics.firstWhere((m) => m['weekNumber'] == 4);
     await selectWeek(tester, week4);
     expect(find.text('16.7%'), findsOneWidget);
-    expect(find.text('-32.2 pp'), findsOneWidget);
+    expect(find.text('-32.2 puntos frente a la semana anterior'), findsOneWidget);
     expect(find.textContaining('Riesgo de abandono: Crítico'), findsOneWidget);
     final week5 = metrics.firstWhere((m) => m['weekNumber'] == 5);
     await selectWeek(tester, week5);
     expect(find.text('76.5%'), findsOneWidget);
-    expect(find.text('+59.8 pp'), findsOneWidget);
+    expect(find.text('+59.8 puntos frente a la semana anterior'), findsOneWidget);
   });
 
   testWidgets('"Plan adaptado a ti" only for weeks whose plan came from a real adjustment', (tester) async {

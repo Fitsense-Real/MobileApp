@@ -4,6 +4,8 @@ import '../core/network/auth_interceptor.dart';
 import '../features/authentication/presentation/providers/auth_provider.dart';
 import '../features/pain/presentation/pain_confirmation_sheet.dart';
 import '../features/push/presentation/push_controller.dart';
+import '../features/reminders/data/reminder_scheduler.dart';
+import '../features/reminders/presentation/reminders_controller.dart';
 
 import '../shared/theme/app_theme.dart';
 import 'router/app_router.dart';
@@ -47,6 +49,9 @@ class _FitSenseAppState
     // Back from the permission dialog, the phone settings or without network:
     // register what is still missing.
     _lifecycle = AppLifecycleListener(onResume: () => ref.read(pushControllerProvider).onResumed());
+    // M-32: learn at once whether a reminder opened the app.
+    final reminders = ref.read(reminderSchedulerProvider);
+    if (reminders is LocalNotificationScheduler) reminders.warmUp();
     // The push permission explanation is shown at the end of the profile
     // setup, before the first plan (OnboardingPage), not on Inicio.
   }

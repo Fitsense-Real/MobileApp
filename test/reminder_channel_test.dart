@@ -36,7 +36,8 @@ void main() {
     final scheduler = LocalNotificationScheduler();
     expect(await scheduler.requestPermission(), isTrue);
     await scheduler.cancelAll();
-    expect(calls.map((c) => c.method), ['initialize', 'requestNotificationsPermission', 'cancelAll']);
+    // getNotificationAppLaunchDetails: a reminder that opened the app is remembered (M-32).
+    expect(calls.map((c) => c.method), ['initialize', 'getNotificationAppLaunchDetails', 'requestNotificationsPermission', 'cancelAll']);
     // The monochrome Kora icon kept from the release shrinker (res/raw/keep.xml).
     expect((calls.first.arguments as Map)['defaultIcon'], 'ic_stat_kora');
   });
@@ -48,8 +49,8 @@ void main() {
       PlannedReminder(id: 102, at: DateTime(2030, 3, 6, 19, 0), title: 'Te espera tu rutina', body: 'Cardio · 30 min', payload: 'workout:10'),
     ], timezone: 'America/Lima');
 
-    expect(calls.map((c) => c.method), ['initialize', 'cancelAll', 'zonedSchedule', 'zonedSchedule']);
-    final first = calls[2].arguments as Map;
+    expect(calls.map((c) => c.method), ['initialize', 'getNotificationAppLaunchDetails', 'cancelAll', 'zonedSchedule', 'zonedSchedule']);
+    final first = calls[3].arguments as Map;
     expect(first['id'], 101);
     expect(first['title'], 'Hoy toca entrenar');
     expect(first['body'], 'Fuerza · 45 min');
@@ -60,7 +61,7 @@ void main() {
     expect(android['channelId'], 'workout_reminders');
     expect(android['channelName'], 'Recordatorios de entrenamiento');
     expect(android['scheduleMode'], 'inexactAllowWhileIdle', reason: 'no SCHEDULE_EXACT_ALARM permission needed');
-    expect((calls[3].arguments as Map)['scheduledDateTime'], '2030-03-06T19:00:00');
+    expect((calls[4].arguments as Map)['scheduledDateTime'], '2030-03-06T19:00:00');
   });
 
   test('an unknown time zone falls back to America/Lima instead of failing', () async {

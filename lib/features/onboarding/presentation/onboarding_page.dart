@@ -270,6 +270,51 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
     context.go(welcomeTourRoute);
   }
 
+  /// M-35: from the first step there is no Inicio without a plan to go back
+  /// to: offer to sign out instead (the profile is not saved yet).
+  Future<void> leaveSetup() async {
+    final leave = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('¿Salir de la configuración?'),
+      content: const Text('Tu perfil todavía no se guardó. Podrás completarlo cuando vuelvas a iniciar sesión.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Seguir configurando')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Cerrar sesión')),
+      ],
+    ));
+    if (leave != true || !mounted) return;
+    await ref.read(authViewModelProvider.notifier).logout();
+    if (mounted) context.go(AppRoutes.login);
+  }
+
+  /// M-38: everything that will be used, before it stays fixed for the study.
+  Widget reviewCard() {
+    String days_() => (days.toList()..sort()).map((d) => ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][d - 1]).join(', ');
+    final avoided = [for (final e in permissionLabels.entries) if (permissions[e.key] == false) e.value.toLowerCase()];
+    final equipmentNames = [for (final code in selectedEquipment) equipment.where((e) => e.code == code).firstOrNull?.name ?? (code == bodyWeightCode ? 'Peso corporal' : code)];
+    Widget row(String title, String value, int toStep) => Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: Text.rich(TextSpan(children: [TextSpan(text: '$title: ', style: const TextStyle(fontWeight: FontWeight.w700)), TextSpan(text: value)]), style: const TextStyle(fontSize: 15, height: 1.4))),
+        TextButton(onPressed: () { setState(() { step = toStep; error = null; }); scroll.jumpTo(0); }, child: const Text('Editar')),
+      ]),
+    );
+    return KoraCard(key: const Key('profile-review'), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Revisa tu perfil antes de generar tu plan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+      const Text('Tu perfil no se podrá cambiar durante el estudio.', style: TextStyle(color: Kora.muted, fontSize: 14)),
+      row('Objetivo', '${goals[goal]}${goalText.text.trim().isEmpty ? '' : ' · ${goalText.text.trim()}'}', 0),
+      row('Datos físicos', [
+        if (birth.text.isNotEmpty) 'nacimiento ${birth.text}',
+        if (height.text.trim().isNotEmpty) '${height.text.trim()} cm',
+        if (weight.text.trim().isNotEmpty) '${weight.text.trim()} kg',
+        if (target.text.trim().isNotEmpty) 'objetivo ${target.text.trim()} kg',
+        '${levels[level]}',
+      ].join(' · '), 1),
+      row('Disponibilidad', '${days_()} · ${minutes.text.trim()} min por sesión', 2),
+      row('Equipo', '${locations[location]} · ${equipmentNames.isEmpty ? 'sin equipo' : equipmentNames.join(', ')}', 3),
+      row('Movimientos a evitar', avoided.isEmpty ? 'ninguno' : avoided.join(', '), 4),
+    ]));
+  }
+
   Widget field(String label, TextEditingController controller, {String? Function(String?)? validator, TextInputType? keyboard, int? maxLength, int lines = 1}) => Padding(key: ValueKey(label), padding: const EdgeInsets.only(bottom: 20), child: TextFormField(controller: controller, maxLength: maxLength, maxLines: lines, style: const TextStyle(fontSize: 16), keyboardType: keyboard, decoration: InputDecoration(labelText: label, alignLabelWithHint: true), validator: validator));
   Widget choices(String label, Map<String, String> options, String selected, ValueChanged<String> choose) => Padding(padding: const EdgeInsets.only(bottom: 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)), const SizedBox(height: 12), Wrap(spacing: 8, runSpacing: 8, children: [for (final item in options.entries) ChoiceChip(label: Text(item.value), selected: selected == item.key, selectedColor: Kora.lime, onSelected: (_) => setState(() { choose(item.key); profileSaved = false; }))])]));
   Future<void> pickEquipment() async {
@@ -311,7 +356,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
     if (loadFailed) return KoraPage(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(error!), const SizedBox(height: 20), KoraButton(label: 'Reintentar', onPressed: load), TextButton(onPressed: () => context.go(AppRoutes.login), child: const Text('Iniciar sesión'))])));
     const titles = [('¿Cuál es tu', 'objetivo?'), ('Perfil', 'físico.'), ('Tu ritmo', 'semanal.'), ('¿Qué equipo', 'tienes?'), ('Tu movimiento,', 'tu bienestar.')];
     return KoraPage(maxWidth: 560, child: ListView(controller: scroll, padding: const EdgeInsets.all(24), children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(onPressed: () { if (step > 0) { setState(() { step--; error = null; }); scroll.jumpTo(0); } else { context.go(AppRoutes.dashboard); } }, icon: const Icon(Icons.arrow_back), tooltip: 'Volver'), Expanded(child: Text('Paso ${step + 1} de 5', textAlign: TextAlign.center, style: const TextStyle(color: Kora.muted))), const KoraLogo(width: 70)]),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [IconButton(onPressed: () { if (step > 0) { setState(() { step--; error = null; }); scroll.jumpTo(0); } else { leaveSetup(); } }, icon: const Icon(Icons.arrow_back), tooltip: 'Volver'), Expanded(child: Text('Paso ${step + 1} de 5', textAlign: TextAlign.center, style: const TextStyle(color: Kora.muted))), const KoraLogo(width: 70)]),
       const SizedBox(height: 16), LinearProgressIndicator(value: (step + 1) / 5, color: Kora.lime, backgroundColor: Colors.white), const SizedBox(height: 28),
       KoraHeading(titles[step].$1, accent: titles[step].$2), const SizedBox(height: 24),
       Form(key: form, onChanged: () => profileSaved = false, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -361,6 +406,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> with SingleTick
           const Text('Las notas son informativas. Usa los interruptores para excluir movimientos.', style: TextStyle(fontSize: 14,color: Kora.muted)),
         ],
       ])),
+      if (step == 4) ...[const SizedBox(height: 16), reviewCard()],
       if (error != null) Padding(padding: const EdgeInsets.symmetric(vertical:16), child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 15))),
       const SizedBox(height: 24), KoraButton(label: step < 4 ? 'Continuar' : profileSaved ? 'Reintentar generación' : 'Generar mi plan', onPressed: step < 4 ? advance : submit), const SizedBox(height: 24),
     ]));

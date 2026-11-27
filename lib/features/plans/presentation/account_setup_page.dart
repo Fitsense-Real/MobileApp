@@ -13,6 +13,8 @@ import '../../welcome/presentation/welcome_routes.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_eligibility.dart';
 import 'no_plan_available_page.dart';
+import '../../reminders/data/reminder_scheduler.dart';
+import '../../reminders/presentation/reminders_controller.dart';
 
 /// Checks server state on every login, before allowing entry to the home page.
 class AccountSetupPage extends ConsumerStatefulWidget {
@@ -87,7 +89,9 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
       }
       ref.read(generatedPlanProvider.notifier).setPlan(plan);
       ref.invalidate(currentPlanProvider);
-      context.go(AppRoutes.dashboard);
+      // A reminder tapped while Kora was closed opens its screen (M-32).
+      final launch = ReminderLaunch.take();
+      context.go(launch == null ? AppRoutes.dashboard : reminderRoute(launch));
     } catch (e) {
       if (mounted) setState(() => error = apiError(e));
     }

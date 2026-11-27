@@ -34,6 +34,16 @@ class StudyConfig {
   /// without inventing an address.
   static const contact = String.fromEnvironment('STUDY_CONTACT');
 
+  /// Safety message about pain approved by the study team (M-24), shown when
+  /// pain is reported and in Ayuda. Empty: not shown (the app writes no
+  /// medical advice of its own).
+  static const painSafetyMessage = String.fromEnvironment('PAIN_SAFETY_MESSAGE');
+
+  /// Shows the backend's dropout risk level in Progreso. On by default so the
+  /// study intervention does not change without a methodological decision
+  /// (M-15); `--dart-define=SHOW_DROPOUT_RISK=false` hides it.
+  static const showDropoutRisk = bool.fromEnvironment('SHOW_DROPOUT_RISK', defaultValue: true);
+
   /// Time zone preselected when signing up (IANA).
   static const defaultTimezone = String.fromEnvironment('DEFAULT_TIMEZONE', defaultValue: 'America/Lima');
 }

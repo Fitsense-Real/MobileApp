@@ -20,6 +20,8 @@ import '../dashboard_tour_targets.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/config/app_links.dart';
 import '../../../consents/data/consents_repository.dart';
+import '../../../../core/config/study_config.dart';
+import '../../../help/presentation/help_sheet.dart';
 import '../../../consents/domain/legal_documents.dart';
 import '../../../consents/presentation/document_reader_page.dart';
 import '../../domain/plan_week_label.dart';
@@ -74,6 +76,9 @@ String avoidedMovements(Json profile) {
   final avoided = [for (final e in movementLabels.entries) if (profile[e.key] == false) e.value];
   return avoided.isEmpty ? '' : '\nEvitas: ${avoided.join(', ')}';
 }
+
+/// M-15: the dropout risk is shown only while the study keeps it visible.
+const showDropoutRisk = StudyConfig.showDropoutRisk;
 
 const riskLevelLabels = {'LOW': 'Bajo', 'MODERATE': 'Moderado', 'HIGH': 'Alto', 'CRITICAL': 'Crítico'};
 
@@ -241,11 +246,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       letterSpacing: -.8,
     ),
   );
-  Widget label(String text, {Color color = Kora.sage}) => Text(
+  Widget label(String text, {Color color = Kora.muted}) => Text(
     text.toUpperCase(),
     style: TextStyle(
       color: color,
-      fontSize: 9,
+      fontSize: 12,
       fontWeight: FontWeight.w800,
       letterSpacing: 1.7,
     ),
@@ -352,7 +357,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: Text(
                         categoryOf(workout).toUpperCase(),
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -398,7 +403,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             style: const TextStyle(
                               color: Kora.lime,
                               fontWeight: FontWeight.w800,
-                              fontSize: 9,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -414,9 +419,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         Text(
                           workoutStatus(workout['status']),
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             letterSpacing: .6,
-                            color: Kora.sage,
+                            color: Kora.muted,
                           ),
                         ),
                       ],
@@ -490,23 +495,32 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: const KoraLogo(width: 48),
                     ),
                     const SizedBox(width: 8),
+                    // Label and week on two lines: side by side, a 12 px label
+                    // broke inside a word («SEMA/NA») on 320 px phones.
                     Expanded(
-                      child: label(
-                        (plan['planVersion'] as num? ?? 1) > 1
-                            ? 'Tu plan de la semana · v${plan['planVersion']}'
-                            : 'Tu plan de la semana',
-                        color: Kora.lime,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          label(
+                            (plan['planVersion'] as num? ?? 1) > 1
+                                ? 'Tu plan de la semana · v${plan['planVersion']}'
+                                : 'Tu plan de la semana',
+                            color: Kora.lime,
+                          ),
+                          if (weekLabel != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              weekLabel,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (weekLabel != null)
-                      Text(
-                        weekLabel,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 22),
@@ -516,7 +530,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text.rich(
+                          // Scales down instead of breaking a word («Muévet/e» at 320 px).
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: const Text.rich(
                             TextSpan(
                               text: 'Muévete\n',
                               children: [
@@ -533,7 +548,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               fontWeight: FontWeight.w900,
                               letterSpacing: -.8,
                             ),
-                          ),
+                          )),
                           const SizedBox(height: 16),
                           FilledButton(
                             onPressed: () => setState(() {
@@ -543,18 +558,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             style: FilledButton.styleFrom(
                               backgroundColor: Kora.lime,
                               foregroundColor: Kora.forest,
-                              visualDensity: VisualDensity.compact,
-                              minimumSize: const Size(0, 34),
+                              minimumSize: const Size(48, 48),
+                              tapTargetSize: MaterialTapTargetSize.padded,
                               shape: const StadiumBorder(),
                             ),
-                            child: const Text(
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text(
                               'VER PLAN  ›',
+                              softWrap: false,
                               style: TextStyle(
                                 fontFamily: 'Poppins',
-                                fontSize: 10,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1,
-                              ),
+                              )),
                             ),
                           ),
                         ],
@@ -609,7 +625,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   Text(
                     metricValue(percent, suffix: '%'),
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -627,14 +643,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   Text(
                     metric == null
-                        ? 'Sin métricas calculadas'
+                        ? 'Tus datos aparecerán al cerrar tu primera semana'
                         : '${metricValue(metric['completedWorkouts'])}/${metricValue(metric['scheduledWorkouts'])} entrenamientos',
-                    style: const TextStyle(fontSize: 10, color: Kora.sage),
+                    style: const TextStyle(fontSize: 12, color: Kora.muted),
                   ),
                   if (metric != null)
                     Text(
                       'Semana del ${displayDate(metric['weekStartDate'])}',
-                      style: const TextStyle(fontSize: 9, color: Kora.sage),
+                      style: const TextStyle(fontSize: 12, color: Kora.muted),
                     ),
                 ],
               ),
@@ -695,7 +711,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
               trainingDay(workout['scheduledDate']),
-              style: const TextStyle(color: Kora.sage, fontSize: 11),
+              style: const TextStyle(color: Kora.muted, fontSize: 12),
             ),
           ),
           routineCard(workout, large: true),
@@ -749,7 +765,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     label: Text(
                       value.toUpperCase(),
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -771,9 +787,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: Text(
               trainingDay(day),
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Kora.sage,
+                color: Kora.muted,
               ),
             ),
           ),
@@ -795,7 +811,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget progress(List<Json> rows, List<Json> interventions, [List<Json>? adaptations]) {
     if (rows.isEmpty) {
       return surface(
-        const Text('Todavía no hay métricas semanales calculadas.'),
+        const Text('Todavía no hay métricas semanales calculadas. Aparecerán cuando termine tu primera semana con plan: se calculan cada lunes con lo que registraste.'),
       );
     }
     final metric =
@@ -840,7 +856,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   value: '${r['weekStartDate']}',
                   child: Text(
                     'Semana del ${displayDate(r['weekStartDate'])}',
-                    style: const TextStyle(fontSize: 11, color: Kora.sage),
+                    style: const TextStyle(fontSize: 12, color: Kora.muted),
                   ),
                 ),
             ],
@@ -877,11 +893,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   if (change != null)
                     Text(
-                      '${change >= 0 ? '+' : ''}${metricValue(change)} pp',
+                      '${change >= 0 ? '+' : ''}${metricValue(change)} puntos frente a la semana anterior',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        color: Kora.sage,
+                        fontSize: 12,
+                        color: Kora.muted,
                       ),
                     ),
                 ],
@@ -907,7 +923,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       ? ((r['weightedAdherencePct'] as num)
                                                     .clamp(0, 100) /
                                                 100 *
-                                                125)
+                                                110)
                                             .toDouble()
                                       : 0,
                                   constraints: const BoxConstraints(
@@ -925,8 +941,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               Text(
                                 displayDate(r['weekStartDate']).substring(0, 5),
                                 style: const TextStyle(
-                                  color: Kora.sage,
-                                  fontSize: 8,
+                                  color: Kora.muted,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -942,12 +958,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ),
         ),
         const SizedBox(height: 20),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: surface(
+        // Two cards side by side, stacked on narrow phones so no word is split.
+        LayoutBuilder(builder: (context, box) {
+          final sessions = surface(
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -977,18 +990,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       Text(
                         '${metricValue(metric['totalTrainingMinutes'])} min entrenados',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.white70,
                         ),
                       ),
                     ],
                   ),
                   color: Kora.forest,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: surface(
+                );
+          final adaptationCard = surface(
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1008,19 +1018,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ],
                   ),
                   color: Kora.lime,
-                ),
-              ),
-            ],
-          ),
-        ),
+                );
+          if (box.maxWidth < 360) return Column(children: [sessions, const SizedBox(height: 16), adaptationCard]);
+          return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: sessions), const SizedBox(width: 16), Expanded(child: adaptationCard),
+          ]));
+        }),
         const SizedBox(height: 12),
         Text(
           [
-            'Calculado: ${displayDate(metric['calculatedAt'])}',
-            if (riskLevelLabels[metric['riskLevel']] != null)
+            'Actualizado el ${displayDate(metric['calculatedAt'])}',
+            if (showDropoutRisk && riskLevelLabels[metric['riskLevel']] != null)
               'Riesgo de abandono: ${riskLevelLabels[metric['riskLevel']]}',
           ].join(' · '),
-          style: const TextStyle(color: Kora.sage, fontSize: 10),
+          style: const TextStyle(color: Kora.muted, fontSize: 12),
         ),
         // V30: how much of the week has a record. A low value means missing
         // data, not 0 % adherence, so the observed value is shown apart.
@@ -1031,20 +1042,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               [
                 'Registraste ${metricValue(metric['recordedWorkouts'])} de ${metricValue(metric['scheduledWorkouts'])} entrenamientos (${metricValue(coverage, suffix: '%')})',
                 if (coverage < 100 && observed != null)
-                  'Cumplimiento en lo registrado: ${metricValue(observed, suffix: '%')}',
+                  'De lo que registraste, cumpliste el ${metricValue(observed, suffix: '%')}',
               ].join(' · '),
-              style: const TextStyle(color: Kora.sage, fontSize: 10),
+              style: const TextStyle(color: Kora.muted, fontSize: 12),
             ),
           ),
         if (notFeasibleExplanation(adaptation) case final text?)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(text, style: const TextStyle(color: Kora.sage, fontSize: 10)),
+            child: Text(text, style: const TextStyle(color: Kora.muted, fontSize: 12)),
           )
         else if (adaptation?['motivoTexto'] != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('${adaptation!['motivoTexto']}', style: const TextStyle(color: Kora.sage, fontSize: 10)),
+            child: Text('${adaptation!['motivoTexto']}', style: const TextStyle(color: Kora.muted, fontSize: 12)),
           ),
       ],
     );
@@ -1058,7 +1069,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       label('Historial de adaptaciones'),
       const SizedBox(height: 12),
       if (rows.isEmpty)
-        const Text('Todavía no hay semanas cerradas con su adaptación.', style: TextStyle(fontSize: 12, color: Kora.sage)),
+        const Text('Todavía no hay semanas cerradas con su adaptación.', style: TextStyle(fontSize: 12, color: Kora.muted)),
       for (final row in adaptationHistoryOf(rows))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: AdaptationCard(adaptation: row, showWeek: true)),
     ],
@@ -1073,7 +1084,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         if (rows.isEmpty)
           const Text(
             'Tu plan aún no tiene ajustes registrados.',
-            style: TextStyle(fontSize: 12, color: Kora.sage),
+            style: TextStyle(fontSize: 12, color: Kora.muted),
           ),
         for (final (i, row) in rows.indexed) ...[
           if (i > 0) const Divider(height: 24),
@@ -1101,8 +1112,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     Text(
                       '${row['messageShown'] ?? 'Ajuste aplicado al plan.'}',
                       style: const TextStyle(
-                        color: Kora.sage,
-                        fontSize: 11,
+                        color: Kora.muted,
+                        fontSize: 12,
                         height: 1.6,
                       ),
                     ),
@@ -1192,22 +1203,35 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget planLimitations() {
     final items = jsonRows(ref.watch(planLimitationsProvider).asData?.value['limitations']);
     if (items.isEmpty) return const SizedBox.shrink();
+    // M-14: informative notes of the plan, folded so they never hide the
+    // routines; pain and safety notices stay above, always open.
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: surface(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            label('Lo que tu plan no puede cubrir'),
-            for (final item in items) ...[
-              const SizedBox(height: 12),
-              Text('${item['title'] ?? item['code']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              if (item['message'] != null)
-                Text('${item['message']}', style: const TextStyle(color: Kora.sage, fontSize: 11, height: 1.5)),
+        Material(
+          type: MaterialType.transparency,
+          child: ExpansionTile(
+            key: const Key('plan-limitations'),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: Text(items.length == 1 ? 'Tu plan tiene 1 nota' : 'Tu plan tiene ${items.length} notas', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            subtitle: const Text('Lo que tu plan de esta semana no puede cubrir. Toca para leerlas.', style: TextStyle(color: Kora.muted, fontSize: 13)),
+            children: [
+              for (final item in items) ...[
+                const SizedBox(height: 10),
+                Text('${item['title'] ?? 'Nota del plan'}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                if (item['message'] != null)
+                  Text('${item['message']}', style: const TextStyle(color: Kora.muted, fontSize: 13, height: 1.5)),
+              ],
+              const SizedBox(height: 8),
             ],
-          ],
+          ),
         ),
         color: Kora.ivory,
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
       ),
     );
   }
@@ -1254,10 +1278,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final user = ref.watch(authViewModelProvider).user;
     if (user == null) return const SizedBox.shrink();
     if (!user.studyParticipant) {
-      return const Text('No participas en el estudio.', style: TextStyle(color: Kora.sage));
+      return const Text('No participas en el estudio.', style: TextStyle(color: Kora.muted));
     }
     if (user.withdrawnAt != null) {
-      return Text('Te retiraste del estudio el ${displayDate(user.withdrawnAt!.toIso8601String())}.', style: const TextStyle(color: Kora.sage));
+      return Text('Te retiraste del estudio el ${displayDate(user.withdrawnAt!.toIso8601String())}.', style: const TextStyle(color: Kora.muted));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Participas en el estudio${user.participantCode == null ? '' : ' · código ${user.participantCode}'}.'),
@@ -1309,7 +1333,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       context: sheetContext,
       builder: (context) => AlertDialog(
         title: const Text('Retirarme del estudio'),
-        content: const Text('Dejarás de participar en el estudio. Los datos ya recolectados no se borran y puedes seguir usando la app.'),
+        content: const Text('Dejarás de participar en el estudio. Los datos que ya registraste no se borran. '
+            'Desde ese momento Kora no prepara rutinas nuevas: podrás consultar tu historial y el plan de la semana en curso.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retirarme')),
@@ -1353,7 +1378,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       Center(
         child: Text(
           email,
-          style: const TextStyle(fontSize: 11, color: Kora.sage),
+          style: const TextStyle(fontSize: 12, color: Kora.muted),
         ),
       ),
       const SizedBox(height: 34),
@@ -1373,7 +1398,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               }),
             ),
             const Divider(height: 1),
-            menuRow(Icons.notifications_none, 'Notificaciones', notifications),
+            menuRow(Icons.notifications_none, 'Novedades de tu plan', notifications),
             const Divider(height: 1),
             menuRow(Icons.alarm, 'Recordatorios', reminders, key: widget.tourTargets?.reminders),
             const Divider(height: 1),
@@ -1418,7 +1443,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           () => ref.invalidate(dashboardProfileProvider),
                         ),
                         const SizedBox(height: 20),
-                        const Text('Perfil de solo lectura: se mantiene durante todo el estudio.', style: TextStyle(color: Kora.sage)),
+                        const Text('Perfil de solo lectura: se mantiene durante todo el estudio.', style: TextStyle(color: Kora.muted)),
                         const SizedBox(height: 20),
                         studyStatus(),
                         consentsSummary(),
@@ -1447,9 +1472,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             menuRow(
               Icons.help_outline,
               'Ayuda y soporte',
-              () => showInfo(
-                'Tu entrenamiento',
-                'Abre una rutina de tu plan para ver los GIF y registrar cada ejercicio. Puedes indicar que lo completaste, lo realizaste parcialmente o no lo hiciste. Desliza hacia abajo para actualizar tus datos.',
+              () => showModalBottomSheet<void>(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (_) => const SafeArea(child: HelpSheet()),
               ),
             ),
             const Divider(height: 1),
@@ -1471,7 +1498,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             Expanded(
               child: Text(
                 'Tu rutina también cuenta.\nSigue adelante.',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               ),
             ),
             Icon(Icons.eco_outlined, color: Kora.lime),
@@ -1507,12 +1534,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 9,
+              fontSize: 12,
               letterSpacing: 1,
               fontWeight: FontWeight.w800,
               color: states.contains(WidgetState.selected)
                   ? Kora.forest
-                  : Kora.sage.withValues(alpha: .55),
+                  : Kora.muted,
             ),
           ),
           iconTheme: WidgetStateProperty.resolveWith(
@@ -1520,7 +1547,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               size: 22,
               color: states.contains(WidgetState.selected)
                   ? Kora.forest
-                  : Kora.sage.withValues(alpha: .45),
+                  : Kora.muted,
             ),
           ),
         ),
@@ -1579,7 +1606,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 if (tab == 0) ...[
                   tool(
                     Icons.notifications_none,
-                    'Notificaciones',
+                    'Novedades de tu plan',
                     notifications,
                   ),
                   const SizedBox(width: 8),
@@ -1607,7 +1634,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 4),
               const Text(
                 'Hoy también cuentas.',
-                style: TextStyle(color: Kora.sage, fontSize: 12),
+                style: TextStyle(color: Kora.muted, fontSize: 12),
               ),
               const SizedBox(height: 26),
               KeyedSubtree(

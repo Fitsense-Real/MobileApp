@@ -61,6 +61,9 @@ class LocalNotificationScheduler implements ReminderScheduler {
     }
   }
 
+  /// Initialises the plugin at start-up so a reminder that launched the app is known.
+  Future<void> warmUp() async { await _ensureInitialized(); }
+
   Future<bool> _ensureInitialized() => _initialized ??= () async {
     if (!_supported) return false;
     try {
@@ -77,6 +80,12 @@ class LocalNotificationScheduler implements ReminderScheduler {
         ),
         onDidReceiveNotificationResponse: (response) => onTap?.call(response.payload),
       );
+      // M-32: a reminder tapped while Kora was closed opens its screen once the
+      // session is restored (ReminderLaunch, read by account setup).
+      try {
+        final launch = await _plugin.getNotificationAppLaunchDetails();
+        if (launch?.didNotificationLaunchApp == true) ReminderLaunch.payload = launch?.notificationResponse?.payload;
+      } catch (_) {}
       return true;
     } catch (e) {
       debugPrint('Recordatorios no disponibles: $e');
@@ -139,5 +148,16 @@ class LocalNotificationScheduler implements ReminderScheduler {
     try {
       await _plugin.cancelAll();
     } catch (_) {}
+  }
+}
+
+/// Payload of the reminder that launched the app, consumed once.
+class ReminderLaunch {
+  ReminderLaunch._();
+  static String? payload;
+  static String? take() {
+    final value = payload;
+    payload = null;
+    return value;
   }
 }
