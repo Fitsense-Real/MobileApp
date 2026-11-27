@@ -34,7 +34,7 @@ void main() {
     expect(card.flagsCollection.isImage, isFalse);
     expect(card.label, contains('Sentadilla de baño'));
     expect(card.label, contains('3 series · 6 repeticiones por serie'));
-    expect(card.label, contains('Descanso: 150 s'));
+    expect(card.label, contains('Descanso entre series: 2 min 30 s'));
     expect(find.bySemanticsLabel('Ver instrucciones'), findsOneWidget);
     // Nothing anywhere on the page is an image node coming from the GIF.
     final images = <SemanticsNode>[];

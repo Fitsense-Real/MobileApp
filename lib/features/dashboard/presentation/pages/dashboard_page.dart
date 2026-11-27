@@ -310,7 +310,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Future<void> openWorkout(Json workout) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PlannedWorkoutPage(workout: workout),
+        builder: (_) => PlannedWorkoutPage(workout: workout, effortGuidance: ref.read(currentPlanProvider).asData?.value?['effortGuidance']),
       ),
     );
     if (mounted) await refresh();

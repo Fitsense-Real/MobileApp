@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../../../core/api/json.dart';
-import '../../catalog/data/catalog_repository.dart';
 import '../../pain/data/pain_exclusion_repository.dart';
 import '../../pain/domain/pain_safety.dart';
 import '../../pain/presentation/pain_confirmation_sheet.dart';
@@ -14,13 +13,21 @@ import '../data/pending_results_store.dart';
 import '../data/workout_repository.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 
+import '../data/equipment_names.dart';
+import '../domain/effort_guidance.dart';
+import '../domain/exercise_labels.dart';
+import 'exercise_detail_page.dart';
 import 'exercise_media.dart';
 import 'exercise_result_dialog.dart';
 import 'session_timer.dart';
 
 class PlannedWorkoutPage extends ConsumerStatefulWidget {
-  const PlannedWorkoutPage({super.key, required this.workout});
+  const PlannedWorkoutPage({super.key, required this.workout, this.effortGuidance});
   final Json workout;
+
+  /// `effortGuidance` of the plan this routine belongs to, when the caller has
+  /// it; refreshed from the plan every time the routine is confirmed.
+  final Object? effortGuidance;
   @override
   ConsumerState<PlannedWorkoutPage> createState() => _PlannedWorkoutPageState();
 }
@@ -34,6 +41,9 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   /// backend marks the exercises that can no longer be done
   /// (`safetyBlockReason`), the app never decides it.
   late Json workout = widget.workout;
+
+  /// How hard each series should feel, exactly as the backend wrote it (M-07).
+  late EffortGuidance? guidance = EffortGuidance.fromJson(widget.effortGuidance);
   /// The routine is no longer in the active plan (replaced by a new version).
   bool outdated = false;
   bool busy = true, closed = false, reporting = false;
@@ -182,6 +192,7 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       return RoutineCheck.unreachable;
     }
     if (!mounted) return RoutineCheck.unreachable;
+    guidance = EffortGuidance.fromJson(plan?['effortGuidance']) ?? guidance;
     final fresh = jsonRows(plan?['workouts'] ?? []).where((w) => w['plannedWorkoutId'] == workout['plannedWorkoutId']).firstOrNull;
     if (fresh == null) {
       // A new plan version replaced it, or there is no plan this week. A
@@ -509,15 +520,23 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
   Json? resultFor(Json exercise) => (reporting ? drafts.values : jsonRows(session?['exercises'] ?? []))
       .where((e) => e['plannedExerciseId'] == exercise['plannedExerciseId']).firstOrNull;
 
-  Future<void> showInstructions(Json exercise) => showModalBottomSheet<void>(
-    context: context, showDragHandle: true, isScrollControlled: true,
-    builder: (_) => ExerciseInstructions(exerciseId: (exercise['exerciseId'] as num).toInt(), fallbackName: '${exercise['exerciseName'] ?? 'Ejercicio'}'),
-  );
+  List<Json> get orderedExercises => jsonRows(workout['exercises'] ?? [])
+    ..sort((a, b) => ((a['exerciseOrder'] as num?) ?? 0).compareTo((b['exerciseOrder'] as num?) ?? 0));
+
+  /// Full-screen exercise view (M-09): animation, instructions and guidance
+  /// together; going back returns to the routine as it was.
+  Future<(ExerciseDetailAction, Json)?> showInstructions(Json exercise) {
+    final list = orderedExercises;
+    final index = list.indexWhere((e) => e['plannedExerciseId'] == exercise['plannedExerciseId']);
+    return ExerciseDetailPage.open(context, exercises: list, index: index < 0 ? 0 : index, guidance: guidance);
+  }
 
   @override
   Widget build(BuildContext context) {
     final effective = this.effective;
-    final exercises = jsonRows(workout['exercises'] ?? [])..sort((a,b) => ((a['exerciseOrder'] as num?) ?? 0).compareTo((b['exerciseOrder'] as num?) ?? 0));
+    final exercises = orderedExercises;
+    final equipmentNames = ref.watch(equipmentNamesProvider).asData?.value ?? const <String, String>{};
+    final effort = guidance?.forRoutine(exercises) ?? const <String>[];
     final canStart = canStartWorkout(workout);
     final canReport = canReportWorkout(workout);
     final editable = !closed && !outdated && (ownSession || reporting || (session == null && (canStart || canReport)));
@@ -559,12 +578,21 @@ class _PlannedWorkoutPageState extends ConsumerState<PlannedWorkoutPage> {
       if (!closed && status == 'SKIPPED' && workout['skipReason'] != null) KoraCard(child: Text('Omitido: ${skipReasons[workout['skipReason']] ?? workout['skipReason']}. Si lo realizaste, puedes registrarlo.')),
       if (reporting) const KoraCard(child: Text('Registro de un entrenamiento ya realizado. Los resultados están pendientes de envío hasta pulsar Guardar entrenamiento.')),
       if (closed) KoraCard(child: Text(session?['completionPercentage'] == null ? 'Entrenamiento omitido.' : 'Sesión guardada · ${session!['completionPercentage']}% completado')),
+      if (effort.isNotEmpty && !closed) Padding(padding: const EdgeInsets.only(top: 8), child: KoraCard(
+        key: const Key('effort-guidance'),
+        color: const Color(0xFFF1F7E4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Cómo esforzarte hoy', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          for (final text in effort) Padding(padding: const EdgeInsets.only(top: 6), child: Text(text, style: const TextStyle(fontSize: 15, height: 1.45))),
+        ]),
+      )),
       for (final exercise in exercises) Padding(padding: const EdgeInsets.only(top: 16), child: KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ExerciseMedia(gifPath: exercise['gifPath'], attribution: exercise['mediaAttribution'] as String?),
+        ExerciseMedia(source: ExerciseMediaSource.of(exercise), onTap: exercise['exerciseId'] is num ? () => showInstructions(exercise) : null),
         const SizedBox(height: 12),
         Text('${exercise['exerciseName'] ?? 'Ejercicio'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)), const SizedBox(height: 8),
         Text(exercisePrescription(exercise)),
-        if (exercise['restSeconds'] != null) Text('Descanso: ${exercise['restSeconds']} s'),
+        if ((exercise['restSeconds'] as num? ?? 0) > 0) Text('Descanso entre series: ${restLabel(exercise['restSeconds'] as num)}'),
+        if (equipmentName(exercise['equipment'], equipmentNames) case final equipment?) Text('Equipo: $equipment'),
         if (exercise['notes'] != null) Text('${exercise['notes']}'),
         if (isUnsafeExercise(exercise)) Container(
           key: Key('blocked-${exercise['plannedExerciseId']}'),
@@ -673,32 +701,6 @@ String displayDay(Object? value) {
   if (date == null) return '$value';
   const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   return '${days[date.weekday - 1]} ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-}
-
-/// Instructions and muscles from `GET /catalog/exercises/{id}`.
-class ExerciseInstructions extends ConsumerWidget {
-  const ExerciseInstructions({super.key, required this.exerciseId, required this.fallbackName});
-  final int exerciseId;
-  final String fallbackName;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(exerciseDetailProvider(exerciseId));
-    return SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(24, 0, 24, 24), child: detail.when(
-      loading: () => const Padding(padding: EdgeInsets.all(24), child: LinearProgressIndicator()),
-      error: (e, _) => Column(mainAxisSize: MainAxisSize.min, children: [Text(apiError(e)), TextButton(onPressed: () => ref.invalidate(exerciseDetailProvider(exerciseId)), child: const Text('Reintentar'))]),
-      data: (data) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('${data['name'] ?? fallbackName}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        Text([
-          if (data['targetMuscle'] != null) 'Músculo principal: ${data['targetMuscle']}',
-          if ((data['secondaryMuscles'] as List?)?.isNotEmpty == true) 'Secundarios: ${(data['secondaryMuscles'] as List).join(', ')}',
-        ].join('\n'), style: const TextStyle(color: Kora.muted)),
-        const SizedBox(height: 16),
-        Text('${data['instructions'] ?? 'El catálogo no incluye instrucciones para este ejercicio.'}', style: const TextStyle(height: 1.5)),
-        if (data['mediaAttribution'] != null) Padding(padding: const EdgeInsets.only(top: 16), child: Text('${data['mediaAttribution']}', style: const TextStyle(fontSize: 11, color: Kora.muted))),
-      ]),
-    )));
-  }
 }
 
 class FinishDialog extends StatefulWidget {

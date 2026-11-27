@@ -407,7 +407,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Ver instrucciones').first); await tester.pumpAndSettle();
       expect(find.text('Baja con la espalda recta.'), findsOneWidget);
-      expect(find.textContaining('Secundarios: glutes'), findsOneWidget);
+      // M-08: catalog muscle codes are shown in Spanish, never raw.
+      expect(find.textContaining('Secundarios: glúteos'), findsOneWidget);
+      expect(find.textContaining('Músculo principal: cuádriceps'), findsOneWidget);
+      expect(find.textContaining('glutes'), findsNothing);
     });
     testWidgets('dashboard renders a full WeeklyTrainingPlanResource', (tester) async {
       tester.view.physicalSize = const Size(420, 900); tester.view.devicePixelRatio = 1;
