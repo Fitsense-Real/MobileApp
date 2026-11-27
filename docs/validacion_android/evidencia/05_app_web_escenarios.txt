@@ -1,0 +1,26 @@
+# 05 · App Kora real (compilación web profile de generation@76dcf34) contra el Backend real 77b9df3, cuentas sintéticas
+# Cortes de red: modo sin conexión de Chromium (ctx.setOffline) o interceptando una sola petición (la respuesta perdida).
+# Comprobación en la base después de cada paso. NO es un teléfono Android: es la misma app y el mismo código Dart en Chromium.
+
+06:55:21 cuenta A <sintética>@e2e.local: plan 22, rutina 64 (2026-11-30) con 8 ejercicios; compartido con 65: Gancho de izquierda (boxeo)
+06:55:58 OK   [S01] Comenzar entrenamiento abre la sesión en el Backend — sesión 11
+06:56:06 OK   [S01] «Lo completé» en Sentadilla con alcance por encima llega al Backend una vez — COMPLETED:2:16:0
+06:56:27 OK   [S03] Sin conexión: aviso y «Pendiente de enviar»; nada llega al Backend — No pudimos confirmar con el servidor que tu rutina sigue vigente. Tu resultado se guardó en este teléfono y no
+06:57:03 OK   [S04] Al reabrir, el resultado sigue «Pendiente de enviar» y no se envía solo
+06:57:21 OK   [S05] «Reintentar envío» confirma la rutina y envía una sola vez — PUT=1 fila=COMPLETED:2:16:0; antes del PUT: /users/me/plan/current, /users/me/plan/current, /users/me/plan/current
+06:57:42 OK   [S08] Respuesta perdida: el Backend lo guardó y la app lo marca para comprobar antes de repetir — fila=COMPLETED:2:16:0
+06:58:00 OK   [S08] Al reintentar consulta la sesión, ve que ya llegó y no repite el PUT — PUT antes=1 después=1; GET /sessions/current=2
+06:58:23 OK   [S13] Sin conexión, Gancho de izquierda (boxeo) queda pendiente
+06:58:23 otro dispositivo: omitir 65 por dolor → ""
+06:58:59 OK   [S06] La nueva exclusión O20 llega a la rutina abierta: el ejercicio aparece «No disponible por ahora»
+06:58:59 OK   [S07] El pendiente incompatible pasa a «Retenido: no se enviará» y no se envía
+06:59:44 OK   [S09] Otra cuenta en el mismo teléfono no ve pendientes ni retenidos de A
+07:00:32 OK   [S09] De vuelta en A (dentro de 48 h), su retenido reaparece
+07:00:48 OK   [S07] «Descartar» quita el retenido sin enviarlo
+07:02:03 OK   [S01] Todos los ejercicios registrados (el bloqueado solo como «No lo hice») — SKIPPED:0:0:0
+07:02:15 OK   [S01] Finalizar sesión: el Backend la cierra con un registro por ejercicio, sin duplicados — COMPLETED 88 %; 8 filas para 8 ejercicios
+07:03:02 FALLA [S12] 401: la app vuelve al inicio de sesión sin quedarse en un estado roto —  (0 peticiones)
+07:03:02 15/16 comprobaciones superadas
+
+La comprobación S12 del recorrido principal falló por el guion (seguía en la pantalla de la rutina, sin pestañas, y no salió ninguna petición). Se repitió aislada (s12.js):
+S12 401 real: OK — pantalla de inicio de sesión: true; respuestas 401: 9 (GET /users/me/pain-exclusions/confirmation-requests, GET /users/me/plan/limitations, GET /users/me/plan/adaptations, GET /users/me/metrics/weekly, GET /users/me/interventions, GET /users/me/profile)

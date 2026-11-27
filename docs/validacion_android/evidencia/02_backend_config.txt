@@ -1,0 +1,55 @@
+# 02 · Backend local: configuración real (Fitsense-Real/Backend generation 77b9df3) y ausencia de llamadas externas
+
+Jar compilado desde el tarball de 77b9df3 (mvn -o -DskipTests package). Cambios 98276a9→77b9df3: solo ReplicateTrainingPlanGenerator (transporte), pruebas y docs; sin controladores, contratos ni migraciones.
+
+## Propiedades relevantes (application.properties; secretos omitidos)
+10:spring.flyway.enabled=true
+15:authorization.jwt.expiration.days=7
+53:fitsense.cors.allowed-origins=${FITSENSE_CORS_ORIGINS:}
+60:fitsense.cycle.manual-run.enabled=${FITSENSE_MANUAL_CYCLE_ENABLED:false}
+66:fitsense.ai.enabled=${FITSENSE_AI_ENABLED:true}
+74:fitsense.ai.base-url=${FITSENSE_AI_BASE_URL:https://api.replicate.com/v1/models/openai/gpt-5-mini/predictions}
+232:fitsense.push.enabled=${FITSENSE_PUSH_ENABLED:false}
+server.port / server.address: no definidos → 8080 en todas las interfaces
+Perfiles: application, application-local-dev (ai.enabled=false, base local), application-prod
+
+## Tareas programadas (@EnableScheduling global, sin propiedad para desactivarlas)
+WeeklyCycleScheduler  cron 0 0 * * * *  → lunes 03:00 hora local de cada participante: cierre semanal + adaptación + plan nuevo
+OverdueWorkoutScheduler cron 0 30 * * * * → SCHEDULED con expires_at vencido → SKIPPED
+StaleSessionScheduler cron 0 35 * * * *  → IN_PROGRESS de más de 6 h → ABANDONED
+PlanGenerationWorker  @ConditionalOnProperty fitsense.plan-generation.worker.enabled (por defecto true)
+DetectorEventosPush / EmisorPush: no hacen nada con fitsense.push.enabled=false
+
+## IA: ReplicateProperties.isUsable() = enabled && apiToken no vacío; todas las rutas de IA (PlanGenerationPipeline, AdaptedWeekCommandService, ReplicateSessionFixGenerator) lo consultan.
+Arranque usado: --fitsense.ai.enabled=false --fitsense.ai.api-token= --fitsense.push.enabled=false, variables REPLICATE_API_TOKEN/FITSENSE_AI_ENABLED/JAVA_TOOL_OPTIONS/proxy eliminadas, -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=9.
+2026-11-27T06:19:58.134Zmmand.DbValidate     : Successfully validated 68 migrations (execution time 00:00.216s)
+2026-11-27T06:19:58.203Zmmand.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-11-27T06:20:05.265Ziguracion            : Notificaciones push apagadas (fitsense.push.enabled=false): no se envia nada.
+2026-11-27T06:20:05.489ZicaTiemposGeneracion : Generacion asincrona: prediccion <= 331 s, pipeline <= 1113 s, latido 20000 ms, lease 90 s, operacion <= 1800 s (IA apagada)
+2026-11-27T06:22:46.966Zmmand.DbValidate     : Successfully validated 68 migrations (execution time 00:00.206s)
+2026-11-27T06:22:50.368Zmmand.DbMigrate      : Successfully applied 68 migrations to schema "public", now at version v65 (execution time 00:02.098s)
+2026-11-27T06:22:57.362Ziguracion            : Notificaciones push apagadas (fitsense.push.enabled=false): no se envia nada.
+2026-11-27T06:22:57.553ZicaTiemposGeneracion : Generacion asincrona: prediccion <= 331 s, pipeline <= 1113 s, latido 20000 ms, lease 90 s, operacion <= 1800 s (IA apagada)
+
+## Todas las llamadas connect() de los 4 procesos Backend (strace -f -e trace=connect), agrupadas por destino
+-- av48-connect.trace
+     12 127.0.0.1:5432
+      1 192.0.2.2:8091
+      4 sun_path="/var/run/nscd/socket"
+-- av48-connect-ui.trace
+     12 127.0.0.1:5432
+      1 192.0.2.2:8091
+      4 sun_path="/var/run/nscd/socket"
+-- avs-connect.trace
+     12 127.0.0.1:5432
+      1 192.0.2.2:8092
+      4 sun_path="/var/run/nscd/socket"
+-- avs-connect2.trace
+     22 127.0.0.1:5432
+      1 192.0.2.2:8092
+      4 sun_path="/var/run/nscd/socket"
+127.0.0.1:5432 = PostgreSQL local; 192.0.2.2:<puerto propio> = la IP del contenedor, Tomcat desbloqueando su propio acceptor al apagarse; nscd = resolución de nombres local. Ningún destino externo (Replicate, OpenAI, Firebase).
+
+## Base sintética fitsense_avs tras todas las pruebas
+planes RULE_ENGINE modelo=ninguno: 25
+operaciones de generación COMPLETED: 25

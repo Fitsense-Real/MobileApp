@@ -1,0 +1,33 @@
+# 06 · App Kora real (web profile, generation@76dcf34) con la cuenta Demo Kora en la COPIA LOCAL (fitsense_av48), Backend 77b9df3
+
+07:10:26 OK   [F01] Inicio de sesión: entra a Inicio con su nombre
+07:10:26 OK   [F06] Inicio · «Tu progreso» con la última semana medida (100 %, 5/5) —  100% Tu progreso 5/5 entrenamientos Semana del 16/11/2026 100 
+07:10:40 OK   [F03] Rutina vigente: los 5 entrenamientos de la semana del 23/11 — Empuje, Traccion, Piernas, Tren superior, Tren inferior
+07:10:40 OK   [F08] Ningún entrenamiento vigente contiene el ejercicio excluido (1025) ni aparece «No disponible por ahora»
+07:10:55 OK   [F06] Progreso: adherencia de la última semana medida (100 %)
+07:10:55 OK   [F07] P2: «Historial de adaptaciones» con las 3 semanas en lenguaje natural — Tu rutina avanzó un paso · Tu rutina se mantiene igual · Se sustituyó un ejercicio por seguridad
+07:10:55 OK   [F07] Sin códigos técnicos en Progreso (ADAPT_LOCALIZED, NO_CHANGE…)
+07:11:19 OK   [F02] Perfil: nombre y correo; en «Cuenta», objetivo, altura y peso — ausuario.demo.kora@example.comGanar masa muscular (usuario de demostracion de Kora) Cumpleaños: 12/0
+07:11:51 OK   [F04] Historial de planes: 4 semanas con etiquetas comprensibles — 4 semanas; Vigente · 5 días · Progresión | Completado · 5 días · Sin cambios | Completado · 5 días · Sustitución por seguridad
+07:11:51 OK   [F07] Historial de planes sin códigos (ADAPT_LOCALIZED)
+07:12:04 OK   [F05] Sesiones de la semana del 02/11: completados, parcial y omitido — Completado×2 Parcial×2 Omitido×2
+07:12:35 OK   [F08] O20: el 1025 aparece excluido por dolor (05/11/2026) —  Aperturas de pecho sentado con palanca Lo marcaste con dolor. · 05/11/2026 Ya no me duele 
+07:13:04 OK   [F09] Al volver del segundo plano se vuelven a pedir la rutina vigente y las exclusiones — GET /users/me/plan/limitations, GET /users/me/pain-exclusions/confirmation-requests, GET /users/me/plan/current, GET /users/me/plan/adaptations
+07:13:04 OK   [F01-F09] Solo lectura: ninguna petición de escritura (aparte del login) — 35 peticiones; métodos: POST, GET
+07:13:04 14/14 comprobaciones superadas
+
+## Peticiones de la app durante el recorrido (método y ruta)
+  1 POST /auth/login
+  1 GET /users/me
+  2 GET /users/me/consents
+  2 GET /users/me/profile
+  3 GET /users/me/plan/current
+  1 GET /users/me/metrics/weekly
+  1 GET /users/me/interventions
+ 12 GET /users/me/plan/limitations
+  4 GET /users/me/pain-exclusions/confirmation-requests
+  4 GET /users/me/plan/adaptations
+  1 GET /users/me/plans
+  1 GET /users/me/plan/910000000
+  1 GET /users/me/pain-exclusions/effective
+  1 GET /users/me/pain-exclusions
