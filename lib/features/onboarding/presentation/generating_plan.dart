@@ -279,7 +279,7 @@ class _Pill extends StatelessWidget {
       children: [
         Container(width: 6, height: 6, decoration: const BoxDecoration(color: Kora.lime, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x80D9FF59), blurRadius: 8)])),
         const SizedBox(width: 10),
-        Flexible(child: Text(label, style: const TextStyle(color: Kora.lime, fontWeight: FontWeight.w800, fontSize: 9, letterSpacing: 2))),
+        Flexible(child: Text(label, style: const TextStyle(color: Kora.lime, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 1.6))),
       ],
     ),
   );

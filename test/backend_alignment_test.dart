@@ -524,7 +524,7 @@ void main() {
       ]));
       await tester.pumpAndSettle();
       expect(find.textContaining('Registraste 2 de 3 entrenamientos (66.7%)'), findsOneWidget);
-      expect(find.textContaining('Cumplimiento en lo registrado: 60%'), findsOneWidget);
+      expect(find.textContaining('De lo que registraste, cumpliste el 60%'), findsOneWidget);
       expect(find.text('Sin ajustes registrados'), findsOneWidget);
       // P2: the backend's reason, in the week card and in the history of adaptations.
       expect(find.text('No hubo cambios válidos que aplicar.'), findsNWidgets(2));
@@ -541,7 +541,11 @@ void main() {
         dashboardProfileProvider.overrideWith((ref) async => null),
       ]));
       await tester.pumpAndSettle();
-      expect(find.text('LO QUE TU PLAN NO PUEDE CUBRIR'), findsOneWidget);
+      // M-14: folded, so the routines stay on the first screen; opened on demand.
+      expect(find.text('Tu plan tiene 1 nota'), findsOneWidget);
+      expect(find.text('Sin ejercicios de tracción'), findsNothing);
+      await tester.tap(find.text('Tu plan tiene 1 nota'));
+      await tester.pumpAndSettle();
       expect(find.text('Sin ejercicios de tracción'), findsOneWidget);
       expect(find.textContaining('Una banda lo resolvería'), findsOneWidget);
     });

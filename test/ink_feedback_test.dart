@@ -5,6 +5,7 @@ import 'package:fitsense_mobile/shared/theme/app_theme.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fitsense_mobile/features/help/presentation/help_sheet.dart';
 
 // Flutter 3.50: a ListTile inside a DecoratedBox with a background paints its
 // ink on a Material *below* that background, so the press feedback was hidden.
@@ -46,7 +47,7 @@ void main() {
     await gesture.up(); await tester.pumpAndSettle();
 
     // And the tap still runs the row's action.
-    expect(find.text('Tu entrenamiento'), findsOneWidget);
+    expect(find.byType(HelpSheet), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

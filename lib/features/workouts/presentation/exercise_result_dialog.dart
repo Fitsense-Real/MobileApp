@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import '../../../core/api/json.dart';
+import '../../../core/config/study_config.dart';
 import '../domain/effort_guidance.dart';
 import '../domain/workout_rules.dart';
 
@@ -225,6 +226,9 @@ class _ExerciseResultDialogState extends State<ExerciseResultDialog> {
       padding: EdgeInsets.only(top: 10),
       child: Text('Si te duele, detén este ejercicio. Kora dejará de proponértelo, y también sus variantes equivalentes, en tus próximos planes.'),
     ),
+    // M-24: only the message approved by the study team, when it exists.
+    if (reason == 'PAIN_OR_DISCOMFORT' && outcome != 'complete' && StudyConfig.painSafetyMessage.trim().isNotEmpty)
+      Padding(padding: const EdgeInsets.only(top: 8), child: Text(StudyConfig.painSafetyMessage.trim(), key: const Key('pain-safety-message'), style: const TextStyle(fontWeight: FontWeight.w600))),
     if (message != null) Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
   ]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')), FilledButton(onPressed: save, child: Text(widget.draft ? 'Usar resultado' : 'Guardar'))]);
 }

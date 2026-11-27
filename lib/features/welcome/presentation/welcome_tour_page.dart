@@ -222,7 +222,7 @@ class TourCard extends StatelessWidget {
                 label: 'Paso ${step + 1} de $total',
                 child: ExcludeSemantics(
                   child: Text('PASO ${step + 1} DE $total',
-                      style: const TextStyle(color: Kora.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
+                      style: const TextStyle(color: Kora.muted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
                 ),
               ),
             ),

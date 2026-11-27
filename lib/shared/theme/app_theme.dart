@@ -325,7 +325,7 @@ class AppTheme {
         ),
 
         bodySmall: TextStyle(
-          fontSize: 11.5,
+          fontSize: 12,
           color: secondaryText,
           height: 1.4,
         ),
