@@ -1,0 +1,37 @@
+# flutter analyze y flutter test — rama generation 76dcf34 (sin cambios de código)
+# Fecha: 2026-11-27 · Entorno: contenedor Linux de la auditoría (sin teléfono, sin emulador)
+
+Flutter 3.50.1 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision ae9b586f34 (8 days ago) • 2026-11-18 17:01:07 -0800
+Engine • hash 51379e6df48ea8ee7205623b90fe66491cad8df3 (revision 4d35714800) (9 days ago) • 2026-11-18 01:50:07.000Z
+Tools • Dart 3.14.0 • DevTools 2.61.0
+Dart SDK version: 3.14.0 (stable) (Wed Nov 4 16:28:39 2026 -0800) on "linux_x64"
+No issues found! (ran in 14.6s)
+analyze exit=0
+01:34 +422 ~31: All tests passed!
+test exit=0
+
+## Resumen
+01:34 +422 ~31: All tests passed!
+Aprobadas: 422 · Fallidas: 0 · Omitidas: 31
+
+## Omitidas (31)
+- 16 pruebas en vivo (test/live/): requieren KORA_LIVE_API_BASE_URL y, algunas, un Backend preparado por etapas (KORA_O20_*).
+- 15 pruebas de capturas (test/screenshots/): generan imágenes de documentación; se omiten por defecto.
+
+test/live/o20_cierre_live_test.dart: REACTIVACION_RECHAZADA_POR_SEGURIDAD: the exercise stays excluded, by every route	Skip: needs KORA_LIVE_API_BASE_URL, KORA_O20_CIERRE and KORA_O20_STAGE
+test/live/o20_cierre_live_test.dart: scenarios 2 and 3 in an open session: equivalent and precaution blocked by the backend	Skip: needs KORA_LIVE_API_BASE_URL, KORA_O20_CIERRE and KORA_O20_STAGE
+test/live/o20_dos_semanas_live_test.dart: O20 two weeks with a plan: null	Skip: needs KORA_LIVE_API_BASE_URL, KORA_O20_STAGE and KORA_O20_STATE
+test/live/o20_grabar_live_test.dart: record the backend answers: null	Skip: needs KORA_LIVE_API_BASE_URL, KORA_O20_RECORD and KORA_O20_MODE
+test/live/o20_validacion_live_test.dart: S1 S4 S5 S8 · pain skip, blocked prescriptions, 422 on live and retroactive records, session with the rest	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/o20_validacion_live_test.dart: S12 · a new login (app closed and reopened): the same restrictions and history, from the backend	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/o20_validacion_live_test.dart: S2 S3 · equivalents and precautions: listed, explained, blocked wherever prescribed, not reactivable	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/o20_validacion_live_test.dart: S6 S7 S8 S10 · identification with unrelatedExerciseIds, invalid answers, reactivation refused and authorized	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/pain_o20_live_test.dart: pain skip → /effective, blocked prescriptions, 422, identification with unrelated, reactivation	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/push_backend_live_test.dart: Mobile push code against the real backend contract	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/push_generation_live_test.dart: A · permission already granted: no sheet, synchronised directly, PUT 201 before the generation; restored session renews	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/push_generation_live_test.dart: B · new user accepts the sheet: Android permission, PUT 201, and only then the generation	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/push_generation_live_test.dart: C · new user picks «Ahora no»: the generation goes on, no device	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/timed_exercise_live_test.dart: complete session: «Lo completé» on a timed exercise is 100 %, the one-series value of main was 33 %	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/timed_exercise_live_test.dart: partial session: only the seconds really done count; the session is the mean the backend computes	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
+test/live/timed_exercise_live_test.dart: whole workout report («Ya lo hice»): «Lo completé» on every exercise is 100 %	Skip: KORA_LIVE_API_BASE_URL not set (needs a running backend)
