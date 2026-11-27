@@ -85,6 +85,8 @@ void main() {
   Future<void> partialSquat(WidgetTester tester) async {
     await tap(tester, find.text('Registrar ejercicio').at(1));
     await tap(tester, find.text('Lo hice parcialmente'));
+    // Totals typed directly (M-10 also offers series by series): same body.
+    await tap(tester, find.text('Escribir los totales'));
     await tester.enterText(find.widgetWithText(TextFormField, 'Repeticiones totales (todas las series)'), '12');
     await tester.enterText(find.widgetWithText(TextFormField, 'Series realizadas'), '1');
     await tap(tester, find.byType(DropdownButtonFormField<String>));

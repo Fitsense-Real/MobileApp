@@ -87,6 +87,8 @@ void main() {
     Json? result;
     await open(tester, (value) => result = value);
     await tester.tap(find.text('Lo hice parcialmente')); await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Escribir los totales')); await tester.pumpAndSettle();
+    await tester.tap(find.text('Escribir los totales')); await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'Series realizadas'), '1');
     await tester.ensureVisible(find.byType(DropdownButtonFormField<String>)); await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButtonFormField<String>)); await tester.pumpAndSettle();
@@ -116,7 +118,7 @@ void main() {
     expect(find.text('Indica el resultado de cada ejercicio antes de guardar.'), findsOneWidget);
     await tester.tap(find.text('Registrar ejercicio')); await tester.pumpAndSettle();
     await tester.tap(find.text('Lo completé')); await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(find.widgetWithText(TextFormField, 'Repeticiones totales (todas las series)')).controller!.text, '30');
+    expect(find.textContaining('30 repeticiones en total'), findsOneWidget);
     expect(find.text('Comenzar entrenamiento'), findsNothing);
     await tester.tap(find.text('Usar resultado')); await tester.pumpAndSettle();
     expect(repository.body, isNull);

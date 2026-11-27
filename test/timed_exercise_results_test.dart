@@ -40,6 +40,12 @@ Future<void> tap(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+/// Partial results are entered series by series by default (M-10); these
+/// tests type the totals, which must produce exactly the same body (D-M1).
+Future<void> useTotals(WidgetTester tester) async {
+  if (find.text('Escribir los totales').evaluate().isNotEmpty) await tap(tester, find.text('Escribir los totales'));
+}
+
 Future<void> chooseReason(WidgetTester tester) async {
   await tap(tester, find.byType(DropdownButtonFormField<String>));
   await tester.tap(find.text('Fatiga').last);
@@ -92,7 +98,7 @@ void main() {
       await openDialog(tester, plank, (v) => result = v);
       expect(find.text('3 series · 120 s por serie'), findsOneWidget);
       await tap(tester, find.text('Lo completé'));
-      expect(fieldText(tester, secondsLabel), '360');
+      expect(find.text('Se guardará lo indicado en tu plan: 3 series, 360 s en total.'), findsOneWidget);
       await tap(tester, find.text('Guardar'));
       expect(result?['actualDurationSeconds'], 360);
       expect(result?['actualSets'], 3);
@@ -103,6 +109,7 @@ void main() {
       await openDialog(tester, plank, (v) => result = v);
       await tap(tester, find.text('Lo completé'));
       await tap(tester, find.text('Lo hice parcialmente'));
+      await useTotals(tester);
       expect(fieldText(tester, secondsLabel), isEmpty, reason: 'never 360 s that were not done');
       expect(fieldText(tester, setsLabel), isEmpty);
       await chooseReason(tester);
@@ -123,6 +130,7 @@ void main() {
       await openDialog(tester, plank, (v) => result = v);
       await tap(tester, find.text('No lo hice'));
       await tap(tester, find.text('Lo hice parcialmente'));
+      await useTotals(tester);
       expect(fieldText(tester, secondsLabel), isEmpty);
       await tester.enterText(find.widgetWithText(TextFormField, secondsLabel), '100');
       await chooseReason(tester);
@@ -134,6 +142,7 @@ void main() {
       Json? result;
       await openDialog(tester, plank, (v) => result = v);
       await tap(tester, find.text('Lo hice parcialmente'));
+      await useTotals(tester);
       await tester.enterText(find.widgetWithText(TextFormField, secondsLabel), '360');
       await chooseReason(tester);
       await tap(tester, find.text('Guardar'));
@@ -148,6 +157,7 @@ void main() {
       Json? result;
       await openDialog(tester, squat, (v) => result = v);
       await tap(tester, find.text('Lo hice parcialmente'));
+      await useTotals(tester);
       await tester.enterText(find.widgetWithText(TextFormField, repsLabel), '36');
       await chooseReason(tester);
       await tap(tester, find.text('Guardar'));
@@ -159,11 +169,57 @@ void main() {
       expect(result?['actualDurationSeconds'], 0);
     });
 
+    testWidgets('series by series (default): totals computed, same body as typing them', (tester) async {
+      Json? result;
+      await openDialog(tester, plank, (v) => result = v);
+      await tap(tester, find.text('Lo hice parcialmente'));
+      expect(find.text('Serie 1 (segundos)'), findsOneWidget);
+      expect(find.text('Serie 3 (segundos)'), findsOneWidget);
+      expect(find.text(repsLabel), findsNothing, reason: 'only the fields of a timed exercise');
+      await tester.enterText(find.byKey(const Key('series-0')), '120');
+      await tester.enterText(find.byKey(const Key('series-1')), '30');
+      await tester.pumpAndSettle();
+      expect(find.text('Total: 150 s en 2 series'), findsOneWidget);
+      await chooseReason(tester);
+      await tap(tester, find.text('Guardar'));
+      expect(result, {'actualSets': 2, 'actualRepsTotal': 0, 'actualDurationSeconds': 150, 'actualLoadKg': null, 'skipReason': 'FATIGUE'},
+          reason: 'identical to the totals path above (D-M1)');
+    });
+
+    testWidgets('series by series on repetitions: load field only where it applies; whole prescription still asks for «Lo completé»', (tester) async {
+      Json? result;
+      await openDialog(tester, squat, (v) => result = v);
+      await tap(tester, find.text('Lo hice parcialmente'));
+      expect(find.text('Carga utilizada (kg)'), findsOneWidget, reason: 'the plan suggests a load');
+      for (var i = 0; i < 3; i++) { await tester.enterText(find.byKey(Key('series-$i')), '12'); }
+      await chooseReason(tester);
+      await tap(tester, find.text('Guardar'));
+      expect(result, isNull);
+      expect(find.textContaining('36 repeticiones en total'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('series-2')), '');
+      await tap(tester, find.text('Guardar'));
+      expect(result?['actualRepsTotal'], 24);
+      expect(result?['actualSets'], 2);
+    });
+
+    testWidgets('a body-weight exercise does not ask for a load', (tester) async {
+      await openDialog(tester, {...squat, 'targetLoadKg': null, 'equipment': 'body weight'}, (_) {});
+      await tap(tester, find.text('Lo hice parcialmente'));
+      expect(find.text('Carga utilizada (kg)'), findsNothing);
+    });
+
+    testWidgets('nothing is shown before choosing what happened', (tester) async {
+      await openDialog(tester, squat, (_) {});
+      expect(find.byType(TextFormField), findsNothing);
+      expect(find.text('¿Qué pasó con este ejercicio?'), findsOneWidget);
+    });
+
     testWidgets('editing a saved partial keeps its real amounts', (tester) async {
       Json? result;
       await openDialog(tester, plank, (v) => result = v,
           existing: {'actualSets': 2, 'actualRepsTotal': 0, 'actualDurationSeconds': 150, 'skipReason': 'FATIGUE'});
       await tap(tester, find.text('Lo hice parcialmente'));
+      await useTotals(tester);
       expect(fieldText(tester, secondsLabel), '150');
       await tap(tester, find.text('Guardar'));
       expect(result?['actualDurationSeconds'], 150);
@@ -222,6 +278,7 @@ void main() {
         () async {
           await tap(tester, find.text('Lo completé'));
           await tap(tester, find.text('Lo hice parcialmente'));
+          await useTotals(tester);
           await tester.enterText(find.widgetWithText(TextFormField, setsLabel), '2');
           await tester.enterText(find.widgetWithText(TextFormField, secondsLabel), '150');
           await chooseReason(tester);
