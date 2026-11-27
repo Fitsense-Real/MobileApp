@@ -42,6 +42,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     String timezone = 'America/Lima',
     bool acceptsStudyParticipation = false,
+    String? acceptedTermsVersion,
+    String? acceptedPrivacyVersion,
   }) async {
 
     final response = await remoteDataSource.register(
@@ -52,6 +54,8 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         timezone: timezone,
         acceptsStudyParticipation: acceptsStudyParticipation,
+        acceptedTermsVersion: acceptedTermsVersion,
+        acceptedPrivacyVersion: acceptedPrivacyVersion,
       ),
     );
 

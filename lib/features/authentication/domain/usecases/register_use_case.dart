@@ -13,6 +13,8 @@ class RegisterUseCase {
     required String password,
     String timezone = 'America/Lima',
     bool acceptsStudyParticipation = false,
+    String? acceptedTermsVersion,
+    String? acceptedPrivacyVersion,
   }) {
     return repository.register(
       firstName: firstName,
@@ -21,6 +23,8 @@ class RegisterUseCase {
       password: password,
       timezone: timezone,
       acceptsStudyParticipation: acceptsStudyParticipation,
+      acceptedTermsVersion: acceptedTermsVersion,
+      acceptedPrivacyVersion: acceptedPrivacyVersion,
     );
   }
 }

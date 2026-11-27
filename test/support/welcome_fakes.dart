@@ -57,12 +57,16 @@ class FakeGeneration extends PlanGenerationRepository {
   }
 }
 
+/// Signed-in study participant (the only accounts the backend prepares plans for).
 class SignedIn extends AuthViewModel {
-  SignedIn([this.id = 7]);
+  SignedIn([this.id = 7, this.participant = true, this.withdrawnAt]);
   final int id;
+  final bool participant;
+  final DateTime? withdrawnAt;
   @override
   AuthState build() {
     super.build();
-    return AuthState(isAuthenticated: true, user: User(id: id, firstName: 'Ana', lastName: 'Demo', email: 'ana$id@example.com', timezone: 'America/Lima'));
+    return AuthState(isAuthenticated: true, user: User(id: id, firstName: 'Ana', lastName: 'Demo', email: 'ana$id@example.com', timezone: 'America/Lima',
+        studyParticipant: participant, participantCode: participant ? 'P-00$id' : null, enrolledAt: participant ? DateTime.utc(2026, 11, 20) : null, withdrawnAt: withdrawnAt));
   }
 }

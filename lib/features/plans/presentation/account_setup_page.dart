@@ -11,6 +11,8 @@ import '../../welcome/data/welcome_store.dart';
 import '../../welcome/presentation/first_plan_generation_controller.dart';
 import '../../welcome/presentation/welcome_routes.dart';
 import '../data/plan_repository.dart';
+import '../domain/plan_eligibility.dart';
+import 'no_plan_available_page.dart';
 
 /// Checks server state on every login, before allowing entry to the home page.
 class AccountSetupPage extends ConsumerStatefulWidget {
@@ -22,6 +24,9 @@ class AccountSetupPage extends ConsumerStatefulWidget {
 class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
   String? error;
 
+  /// The backend will not prepare a plan for this account (M-01).
+  PlanIneligibility? blocked;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +35,7 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
 
   Future<void> checkAccount() async {
     if (!mounted) return;
-    setState(() => error = null);
+    setState(() { error = null; blocked = null; });
     try {
       // Newly published terms / privacy policy (V63) are accepted first. While no
       // document is approved there is nothing pending; an older backend without
@@ -45,6 +50,13 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
       } catch (_) {}
       final profile = await ref.read(profileRepositoryProvider).fetch();
       if (!mounted) return;
+      // Not a participant (or withdrawn): no profile setup or generation that
+      // can only end in a refusal. A current plan is still shown below.
+      final ineligible = planIneligibility(ref.read(authViewModelProvider).user, plansForNonParticipants: ref.read(plansForNonParticipantsProvider));
+      if (profile == null && ineligible != null) {
+        setState(() => blocked = ineligible);
+        return;
+      }
       if (profile == null) {
         context.go('/onboarding');
         return;
@@ -53,6 +65,10 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
       final userId = ref.read(authViewModelProvider).user?.id;
       final progress = userId == null ? const WelcomeProgress() : await ref.read(welcomeStoreProvider).load(userId);
       if (!mounted) return;
+      if (plan == null && ineligible != null) {
+        setState(() => blocked = ineligible);
+        return;
+      }
       if (plan == null) {
         // First plan: generated in the background (resumed if it was already
         // requested) while the welcome tour runs or, if the tour is done,
@@ -77,8 +93,19 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
     }
   }
 
+  /// The study team may have enrolled the person: read the account again.
+  Future<void> checkAgain() async {
+    try {
+      await ref.read(authViewModelProvider.notifier).loadCurrentUser();
+    } catch (_) {}
+    await checkAccount();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (blocked case final reason?) {
+      return PopScope(canPop: false, child: NoPlanAvailableView(reason: reason, onCheckAgain: checkAgain));
+    }
     return PopScope(canPop: false, child: Scaffold(
       backgroundColor: Kora.forest,
       body: SafeArea(child: Center(child: Padding(

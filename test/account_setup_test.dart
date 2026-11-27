@@ -41,7 +41,10 @@ class PlanStub extends PlanRepository {
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
-  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans, {FakeGeneration? generation, ConsentsStub? consents}) async {
+  Future<void> open(WidgetTester tester, Map<String, dynamic>? profile, PlanStub plans, {FakeGeneration? generation, ConsentsStub? consents, SignedIn Function()? user}) async {
+    tester.view.physicalSize = const Size(1080, 4800);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     final router = GoRouter(initialLocation: '/account-setup', routes: [
       GoRoute(path: '/account-setup', builder: (_, __) => const AccountSetupPage()),
       GoRoute(path: '/onboarding', builder: (_, __) => const Scaffold(body: Text('Crear perfil'))),
@@ -52,7 +55,7 @@ void main() {
     ]);
     addTearDown(router.dispose);
     await tester.pumpWidget(ProviderScope(overrides: [
-      authViewModelProvider.overrideWith(SignedIn.new),
+      authViewModelProvider.overrideWith(user ?? SignedIn.new),
       profileRepositoryProvider.overrideWithValue(ProfileStub(profile)),
       planRepositoryProvider.overrideWithValue(plans),
       planGenerationRepositoryProvider.overrideWithValue(generation ?? FakeGeneration()),
@@ -121,5 +124,43 @@ void main() {
   testWidgets('a failed consents check (older backend, no network) never blocks the account', (tester) async {
     await open(tester, {'userId': 7}, PlanStub({'planId': 1}), consents: ConsentsStub(consentsJson(), fails: true));
     expect(find.text('Inicio'), findsOneWidget);
+  });
+
+  // M-01: the backend prepares plans only for active participants.
+  group('account the backend will not prepare a plan for', () {
+    testWidgets('not a participant, no profile: no onboarding and no generation; explanation, contact and sign out', (tester) async {
+      final generation = FakeGeneration();
+      final plans = PlanStub(null);
+      await open(tester, null, plans, generation: generation, user: () => SignedIn(7, false));
+      await tester.pumpAndSettle();
+      expect(find.text('Crear perfil'), findsNothing);
+      expect(find.textContaining('prepara rutinas solo para las personas que participan'), findsOneWidget);
+      expect(find.textContaining('ana7@example.com'), findsOneWidget, reason: 'the account the team must look for');
+      expect(find.text('Cerrar sesión'), findsOneWidget);
+      expect(find.text('Reintentar generación'), findsNothing, reason: 'never a retry that can only fail');
+      expect(generation.startCalls, 0);
+      expect(plans.attempts, isEmpty);
+    });
+
+    testWidgets('not a participant with a saved profile and no plan: no generation is requested', (tester) async {
+      final generation = FakeGeneration();
+      await open(tester, {'birthDate': '1995-05-20'}, PlanStub(null), generation: generation, user: () => SignedIn(7, false));
+      await tester.pumpAndSettle();
+      expect(find.text('Recorrido'), findsNothing);
+      expect(generation.startCalls, 0);
+    });
+
+    testWidgets('withdrawn and no plan this week: says since when and that the data are kept', (tester) async {
+      await open(tester, {'birthDate': '1995-05-20'}, PlanStub(null), user: () => SignedIn(7, true, DateTime.utc(2026, 11, 25, 15)));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Te retiraste del estudio el 25/11/2026'), findsOneWidget);
+      expect(find.textContaining('se conservan'), findsOneWidget);
+    });
+
+    testWidgets('withdrawn but the plan of this week exists: still enters to see it', (tester) async {
+      await open(tester, {'birthDate': '1995-05-20'}, PlanStub({'planId': 9}), user: () => SignedIn(7, true, DateTime.utc(2026, 11, 25)));
+      await tester.pumpAndSettle();
+      expect(find.text('Inicio'), findsOneWidget);
+    });
   });
 }

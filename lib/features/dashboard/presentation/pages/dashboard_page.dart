@@ -20,6 +20,8 @@ import '../dashboard_tour_targets.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/config/app_links.dart';
 import '../../../consents/data/consents_repository.dart';
+import '../../../consents/domain/legal_documents.dart';
+import '../../../consents/presentation/document_reader_page.dart';
 import '../../domain/plan_week_label.dart';
 import '../../../plans/domain/adaptation_text.dart';
 import '../widgets/plan_history_sheet.dart';
@@ -1272,15 +1274,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget consentsSummary() => Consumer(builder: (context, ref, _) {
     final status = ref.watch(consentStatusProvider).asData?.value;
     if (status == null) return const SizedBox.shrink();
-    String line(ConsentType type) {
+    final documents = SignUpDocuments.fromConfig();
+    Widget row(ConsentType type) {
       final current = status.currentVersions[type];
       final accepted = status.acceptedVersion(type);
-      if (current == null) return '${type.label}: todavía sin versión publicada.';
-      return accepted == current ? '${type.label}: aceptada (versión $current).' : '${type.label}: pendiente de aceptar (versión $current).';
+      final text = type == ConsentType.studyParticipation
+          ? (accepted == null ? '${type.label}: sin consentimiento registrado.' : '${type.label}: aceptada (versión $accepted).')
+          : current == null
+              ? '${type.label}: todavía sin versión publicada.'
+              : accepted == current ? '${type.label}: aceptada (versión $current).' : '${type.label}: pendiente de aceptar (versión $current).';
+      final url = accepted == null ? null : documents.urlFor(type, accepted);
+      return Row(children: [
+        Expanded(child: Text(text, style: const TextStyle(color: Kora.muted, height: 1.5))),
+        if (url != null)
+          TextButton(
+            onPressed: () => DocumentReaderPage.open(context, LegalDocument(type: type, title: type.label, url: url, version: accepted!)),
+            child: const Text('Leer'),
+          ),
+      ]);
     }
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Text('${line(ConsentType.termsOfService)}\n${line(ConsentType.privacyPolicy)}', style: const TextStyle(color: Kora.sage, height: 1.5)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Documentos', style: TextStyle(fontWeight: FontWeight.w800)),
+        row(ConsentType.studyParticipation),
+        row(ConsentType.termsOfService),
+        row(ConsentType.privacyPolicy),
+      ]),
     );
   });
 
