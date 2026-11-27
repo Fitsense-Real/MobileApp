@@ -1,0 +1,16 @@
+# Recuperación de contraseña contra Backend generation 77b9df3 LOCAL (entrega dev-log: el código solo se lee del log local; no se muestra)
+
+register 201
+login 200
+request 202 Si el correo corresponde a una cuenta, recibiras un codigo para restablecer tu contrasena.
+codigo recibido (solo log local): longitud 43 | caduca 2026-11-27T07:03:49.357652832Z
+confirm con clave de solo espacios 400 La solicitud tiene campos invalidos. ['newPassword: must not be blank']
+confirm valido 204
+GET /users/me con el JWT anterior 401 Se requiere un token valido.
+reutilizar el codigo 400 El codigo de recuperacion no es valido o ha caducado.
+login con la clave anterior 401
+login con la clave nueva 200
+request #2 en la misma hora 202
+request #3 en la misma hora 202
+request #4 en la misma hora 202
+request #5 en la misma hora 202
