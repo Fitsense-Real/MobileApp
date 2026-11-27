@@ -19,12 +19,12 @@ cada una parte de la anterior. Se revisan y fusionan **en orden**; cada una est�
 
 | PR | Rama | Base | Último commit | Contenido | Pruebas al cerrar |
 |---|---|---|---|---|---|
-| Mobile-M1 | `claude/mobile-m1-registro-consentimientos` | `generation` | `947448b` | Registro, participación, documentos, zona horaria, login tras registro | 442 ✓ · 0 ✗ · 31 omitidas |
-| Mobile-M2 | `claude/mobile-m2-recuperacion-cuenta` | M1 | `a3839f9` | Recuperación de contraseña; revisión de eliminación de cuenta | 454 ✓ · 0 ✗ · 31 |
-| Mobile-M3 | `claude/mobile-m3-ejercicios` | M2 | `1ce8779` | Ficha del ejercicio, guía de esfuerzo, medios preparados, etiquetas en español | 467 ✓ · 0 ✗ · 31 |
-| Mobile-M4 | `claude/mobile-m4-registro-entrenamientos` | M3 | `24aa690` | Barra de acciones, registro por series, «Marcar varios», dolor en 2 toques, escala explicada | 483 ✓ · 0 ✗ · 31 |
-| Mobile-M5 | `claude/mobile-m5-navegacion-accesibilidad` | M4 | `1a71644` | Accesibilidad, Progreso, notas del plan, ayuda, revisión del perfil, recordatorios | 494 ✓ · 0 ✗ · 31 |
-| Mobile-M6 | `claude/mobile-m6-integracion-documentacion` | M5 | (este) | Auditoría incorporada, pruebas de integración, capturas, guía Android, matriz actualizada y esta documentación | 494 ✓ · 0 ✗ · 31 |
+| Mobile-M1 ([#26](https://github.com/Fitsense-Real/MobileApp/pull/26)) | `claude/mobile-m1-registro-consentimientos` | `generation` | `947448b` | Registro, participación, documentos, zona horaria, login tras registro | 442 ✓ · 0 ✗ · 31 omitidas |
+| Mobile-M2 ([#27](https://github.com/Fitsense-Real/MobileApp/pull/27)) | `claude/mobile-m2-recuperacion-cuenta` | M1 | `a3839f9` | Recuperación de contraseña; revisión de eliminación de cuenta | 454 ✓ · 0 ✗ · 31 |
+| Mobile-M3 ([#28](https://github.com/Fitsense-Real/MobileApp/pull/28)) | `claude/mobile-m3-ejercicios` | M2 | `1ce8779` | Ficha del ejercicio, guía de esfuerzo, medios preparados, etiquetas en español | 467 ✓ · 0 ✗ · 31 |
+| Mobile-M4 ([#29](https://github.com/Fitsense-Real/MobileApp/pull/29)) | `claude/mobile-m4-registro-entrenamientos` | M3 | `24aa690` | Barra de acciones, registro por series, «Marcar varios», dolor en 2 toques, escala explicada | 483 ✓ · 0 ✗ · 31 |
+| Mobile-M5 ([#30](https://github.com/Fitsense-Real/MobileApp/pull/30)) | `claude/mobile-m5-navegacion-accesibilidad` | M4 | `1a71644` | Accesibilidad, Progreso, notas del plan, ayuda, revisión del perfil, recordatorios | 494 ✓ · 0 ✗ · 31 |
+| Mobile-M6 ([#31](https://github.com/Fitsense-Real/MobileApp/pull/31)) | `claude/mobile-m6-integracion-documentacion` | M5 | (este) | Auditoría incorporada, pruebas de integración, capturas, guía Android, matriz actualizada y esta documentación | 494 ✓ · 0 ✗ · 31 |
 
 Referencia de la auditoría: 422 ✓ · 0 ✗ · 31 omitidas. Las 72 pruebas nuevas no sustituyen a ninguna existente; las
 pruebas existentes que se modificaron cambian solo textos de pantalla o la forma de escribir un resultado, nunca el
