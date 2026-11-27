@@ -76,7 +76,7 @@ void main() {
       ];
 
   group('M-19 accessibility on a 320 × 568 phone', () {
-    testWidgets('the four tabs lay out without overflow and no text is smaller than 12 px', (tester) async {
+    testWidgets('the four tabs lay out without overflow, no text is smaller than 12 px and no word is split', (tester) async {
       await openDashboard(tester, const Size(320, 568));
       for (final tab in ['Inicio', 'Rutinas', 'Progreso', 'Perfil']) {
         await tester.tap(find.widgetWithText(NavigationDestination, tab));
@@ -84,6 +84,13 @@ void main() {
         expect(tester.takeException(), isNull, reason: tab);
         final small = paragraphs(tester).where((p) => p.$2 != null && p.$2! < 12 && p.$1.trim().isNotEmpty).toList();
         expect(small, isEmpty, reason: '$tab: $small');
+        // No word split across lines: a paragraph narrower than its longest
+        // word (its minimum intrinsic width) breaks inside that word («SEMA/NA»).
+        final broken = [
+          for (final p in tester.renderObjectList<RenderParagraph>(find.byType(RichText)))
+            if (p.text.toPlainText().trim().isNotEmpty && p.size.width + 0.5 < p.getMinIntrinsicWidth(double.infinity)) p.text.toPlainText(),
+        ];
+        expect(broken, isEmpty, reason: '$tab: $broken');
       }
     });
 

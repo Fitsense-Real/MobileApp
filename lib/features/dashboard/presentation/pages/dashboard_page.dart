@@ -495,23 +495,32 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: const KoraLogo(width: 48),
                     ),
                     const SizedBox(width: 8),
+                    // Label and week on two lines: side by side, a 12 px label
+                    // broke inside a word («SEMA/NA») on 320 px phones.
                     Expanded(
-                      child: label(
-                        (plan['planVersion'] as num? ?? 1) > 1
-                            ? 'Tu plan de la semana · v${plan['planVersion']}'
-                            : 'Tu plan de la semana',
-                        color: Kora.lime,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          label(
+                            (plan['planVersion'] as num? ?? 1) > 1
+                                ? 'Tu plan de la semana · v${plan['planVersion']}'
+                                : 'Tu plan de la semana',
+                            color: Kora.lime,
+                          ),
+                          if (weekLabel != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              weekLabel,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (weekLabel != null)
-                      Text(
-                        weekLabel,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 22),
@@ -553,7 +562,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               tapTargetSize: MaterialTapTargetSize.padded,
                               shape: const StadiumBorder(),
                             ),
-                            child: const Text(
+                            child: const FittedBox(fit: BoxFit.scaleDown, child: Text(
                               'VER PLAN  ›',
                               softWrap: false,
                               style: TextStyle(
@@ -561,7 +570,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1,
-                              ),
+                              )),
                             ),
                           ),
                         ],
@@ -949,12 +958,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ),
         ),
         const SizedBox(height: 20),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: surface(
+        // Two cards side by side, stacked on narrow phones so no word is split.
+        LayoutBuilder(builder: (context, box) {
+          final sessions = surface(
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -991,11 +997,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ],
                   ),
                   color: Kora.forest,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: surface(
+                );
+          final adaptationCard = surface(
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1015,11 +1018,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ],
                   ),
                   color: Kora.lime,
-                ),
-              ),
-            ],
-          ),
-        ),
+                );
+          if (box.maxWidth < 360) return Column(children: [sessions, const SizedBox(height: 16), adaptationCard]);
+          return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: sessions), const SizedBox(width: 16), Expanded(child: adaptationCard),
+          ]));
+        }),
         const SizedBox(height: 12),
         Text(
           [
