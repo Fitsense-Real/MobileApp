@@ -71,6 +71,8 @@ class AuthViewModel extends Notifier<AuthState> {
     required String password,
     String timezone = 'America/Lima',
     bool acceptsStudyParticipation = false,
+    String? acceptedTermsVersion,
+    String? acceptedPrivacyVersion,
   }) async {
     state = state.copyWith(
       isLoading: true,
@@ -85,6 +87,8 @@ class AuthViewModel extends Notifier<AuthState> {
         password: password,
         timezone: timezone,
         acceptsStudyParticipation: acceptsStudyParticipation,
+        acceptedTermsVersion: acceptedTermsVersion,
+        acceptedPrivacyVersion: acceptedPrivacyVersion,
       );
 
       state = AuthState(user: user);

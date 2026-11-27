@@ -14,6 +14,8 @@ abstract class AuthRepository {
     required String password,
     String timezone = 'America/Lima',
     bool acceptsStudyParticipation = false,
+    String? acceptedTermsVersion,
+    String? acceptedPrivacyVersion,
   });
 
   Future<User?> getCurrentUser();

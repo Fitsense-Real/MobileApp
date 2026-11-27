@@ -6,7 +6,16 @@ import 'package:fitsense_mobile/app/router/app_routes.dart';
 import 'package:fitsense_mobile/features/consents/data/consents_repository.dart';
 import 'package:fitsense_mobile/features/consents/presentation/consent_page.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+import 'package:fitsense_mobile/features/consents/data/document_text_repository.dart';
+import 'package:fitsense_mobile/features/consents/domain/legal_documents.dart';
+import 'package:dio/dio.dart';
 import 'support/consents_fakes.dart';
+
+class _Texts extends DocumentTextRepository {
+  _Texts() : super(Dio());
+  @override
+  Future<String> fetch(String url) async => 'Texto sintético de prueba ($url). No es un documento aprobado.';
+}
 
 void main() {
   group('ConsentStatus (EstadoResource of backend 5977d28)', () {
@@ -36,29 +45,58 @@ void main() {
     });
   });
 
-  testWidgets('separate unchecked boxes per document; accepts each current version', (tester) async {
+  Future<ConsentsStub> openPage(WidgetTester tester, {Map<ConsentType, String> urls = const {
+    ConsentType.termsOfService: 'https://docs.test/terminos', ConsentType.privacyPolicy: 'https://docs.test/privacidad'}}) async {
+    tester.view.physicalSize = const Size(1080, 6000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     final stub = ConsentsStub(consentsJson(terms: 'prueba-terminos-1', privacy: 'prueba-privacidad-1'));
     final router = GoRouter(initialLocation: AppRoutes.consents, routes: [
       GoRoute(path: AppRoutes.consents, builder: (_, __) => const ConsentPage()),
       GoRoute(path: AppRoutes.accountSetup, builder: (_, __) => const Scaffold(body: Text('Preparando cuenta'))),
     ]);
     addTearDown(router.dispose);
-    await tester.pumpWidget(ProviderScope(overrides: [consentsRepositoryProvider.overrideWithValue(stub)],
-        child: MaterialApp.router(routerConfig: router, theme: AppTheme.light)));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      consentsRepositoryProvider.overrideWithValue(stub),
+      legalDocumentUrlsProvider.overrideWithValue(urls),
+      documentTextRepositoryProvider.overrideWithValue(_Texts()),
+    ], child: MaterialApp.router(routerConfig: router, theme: AppTheme.light)));
     await tester.pumpAndSettle();
+    return stub;
+  }
+
+  Future<void> read(WidgetTester tester) async {
+    await tester.tap(find.text('Leer').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('He leído el documento'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('separate unchecked boxes per document, each enabled only after reading it; accepts each current version', (tester) async {
+    final stub = await openPage(tester);
     final boxes = tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile)).toList();
     expect(boxes, hasLength(2), reason: 'terms and privacy are two different authorisations');
     expect(boxes.every((b) => b.value == false), isTrue, reason: 'never pre-checked');
-    expect(find.text('Versión prueba-terminos-1'), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+    expect(boxes.every((b) => b.onChanged == null), isTrue, reason: 'nothing can be accepted unread');
+    expect(find.text('Política de privacidad · versión prueba-privacidad-1'), findsOneWidget);
+    await read(tester);
     await tester.tap(find.text('Acepto las condiciones de uso'));
     await tester.pump();
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull, reason: 'both are needed');
+    await read(tester);
     await tester.tap(find.text('He leído la política de privacidad'));
     await tester.pump();
     await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
     expect(stub.accepted, ['TERMS_OF_SERVICE=prueba-terminos-1', 'PRIVACY_POLICY=prueba-privacidad-1']);
     expect(find.text('Preparando cuenta'), findsOneWidget);
+  });
+
+  testWidgets('a document without an address in this build cannot be accepted: it says so', (tester) async {
+    final stub = await openPage(tester, urls: const {});
+    expect(find.text('Leer'), findsNothing);
+    expect(find.textContaining('todavía no se puede leer en la app'), findsNWidgets(2));
+    expect(tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile)).every((b) => b.onChanged == null), isTrue);
+    expect(stub.accepted, isEmpty);
   });
 }
