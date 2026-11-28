@@ -1,5 +1,10 @@
 # 10 · Pendientes para el piloto y recomendación
 
+> **Actualización 28/11/2026 — opción A decidida.** Kora es exclusiva para participantes del estudio; la opción B ya no
+> existe en Mobile (`PLANS_FOR_NON_PARTICIPANTS` eliminada en la PR #33). Las versiones de los documentos salen ahora
+> de `GET /legal-documents`, no de `--dart-define`. Estado actual: [`docs/integracion_final_estudio/`](../integracion_final_estudio/).
+> Lo que sigue se conserva como evidencia histórica.
+
 > **Actualización 27/11/2026 (merge final):** las PR #26–#31 y #25 están fusionadas en `generation`
 > (`f8f5e244dea62daa3963dc9a8a0b1a96445c4d3b`); `main` sin cambios. La validación posmerge (494 ✓ · 0 ✗ · 31; 12/12 en
 > vivo; 15 escenarios en la app real contra el Backend local) está en [11](11_MERGE_FINAL_Y_VALIDACION.md). Ningún

@@ -1,0 +1,33 @@
+# Recuperación de contraseña contra el Backend 41c498a LOCAL (M4)
+# Backend Fitsense-Real/Backend generation 41c498a LOCAL: base aislada kora_integracion_final, IA apagada (sin token),
+# push apagado, correo dev-log (el código se lee del log local y nunca se imprime), exigencia de consentimientos FORZADA solo
+# en esta instancia y documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA (no es una aprobacion real)»).
+# Solo cuentas @audit.local. Contraseña por variable de entorno; no figura en ningún archivo. 28/11/2026 (hora UTC).
+
+## App real: flujo «recuperacion» de docs/cierre_preproduccion/evidencia/arnes/visual_cierre.js (compilación con PASSWORD_RECOVERY_ENABLED=true SOLO para esta prueba)
+02:40:32 B · Recuperación de contraseña de punta a punta (código del log local)
+02:40:38   captura A5-recuperar-correo
+02:40:42   [api] POST /auth/password-reset/request 202
+02:40:44   captura A8-recuperar-codigo
+02:40:51   [api] POST /auth/password-reset/confirm 204
+02:40:53   captura A9-login-correo-escrito
+02:40:54   [api] POST /auth/login 200
+02:40:55   login con la clave nueva: true
+02:40:55 fin
+
+## Contrato (evidencia/arnes/recuperacion_api.py)
+RECUPERACION login inicial -> 200
+RECUPERACION solicitar codigo -> 202
+RECUPERACION solicitar uno nuevo -> 202
+RECUPERACION el codigo nuevo es distinto del anterior -> True
+RECUPERACION confirmar con el codigo ANTERIOR -> 204 None
+RECUPERACION confirmar con espacios/saltos (la app los quita; el Backend no) -> 400
+RECUPERACION confirmar con el codigo vigente -> 400
+RECUPERACION sesion anterior (JWT viejo) -> 401
+RECUPERACION reutilizar el mismo codigo -> 400
+RECUPERACION login con la clave nueva -> 200
+RECUPERACION correo inexistente -> 202 (misma respuesta)
+RECUPERACION solicitudes repetidas -> 429 tras 17 peticiones; Retry-After 883 | {"timestamp":"2026-11-28T02:40:58.3820723Z","status":429,"error":"Too Many Requests","message":"Dema
+
+# Observación para el Backend: pedir un código nuevo NO invalida el anterior. El primero sirvió (204) y, al usarse,
+# invalidó el segundo (400). Mobile no dice lo contrario (no promete que el código anterior caduque).

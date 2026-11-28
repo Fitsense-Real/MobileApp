@@ -55,6 +55,10 @@ fórmulas de adherencia, Firebase, el Backend ni el usuario 48. **No se implemen
 
 ## 4. Configuración nueva (toda vacía o igual a hoy por defecto)
 
+> **28/11/2026:** `PLANS_FOR_NON_PARTICIPANTS`, `TERMS_VERSION`, `PRIVACY_VERSION`, `STUDY_CONSENT_URL` y
+> `STUDY_CONSENT_VERSION` se eliminan en la PR #33 (opción A; documentos desde el Backend). Ver
+> [`docs/integracion_final_estudio/03`](../integracion_final_estudio/03_DOCUMENTOS_Y_CONSENTIMIENTOS.md).
+
 | `--dart-define` | Por defecto | Para qué |
 |---|---|---|
 | `PLANS_FOR_NON_PARTICIPANTS` | `false` | Opción B de M-01 cuando el Backend genere planes a no participantes |

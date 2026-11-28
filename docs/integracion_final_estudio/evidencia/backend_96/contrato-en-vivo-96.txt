@@ -1,0 +1,91 @@
+# Contrato de registro en vivo contra Backend #96
+# Backend Fitsense-Real/Backend: generation 41c498a + PR #96 (cabecera 401ca56, SIN FUSIONAR), compilado y ejecutado en LOCAL.
+# Base aislada kora_integracion_96, cuentas @audit.local, documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA
+# (no es una aprobacion real)»), exigencia de consentimientos FORZADA solo en esta instancia, IA apagada salvo donde se
+# indica un proveedor SIMULADO local (nunca Replicate), push apagado, correo dev-log. Mobile: combinación local de
+# generation 1cd9f97 + #33 + #34 + #35. Contraseñas por variable de entorno; no figuran en ningún archivo. 28/11/2026 (UTC).
+
+## Con documentos y exigencia (cabecera 035e961 de #96)
+CONTRATO I-01 GET /legal-documents → enforcedOnSignup=true, privacyRecord=acceptance, TERMS_OF_SERVICE=T-QA-1, PRIVACY_POLICY=P-QA-1, STUDY_PARTICIPATION=C-QA-1
+CONTRATO I-05 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de TERMS_OF_SERVICE no es la vigente (T-QA-1).»
+CONTRATO I-05 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-06 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de PRIVACY_POLICY no es la vigente (P-QA-1).»
+CONTRATO I-06 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-07 POST /auth/register → 422 CONSENTIMIENTO_REQUERIDO «Para participar en el estudio tienes que aceptar la version vigente del consentimiento informado.»
+CONTRATO I-07 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-08 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de STUDY_PARTICIPATION no es la vigente (C-QA-1).»
+CONTRATO I-08 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-04 POST /auth/register {firstName: Contrato, lastName: i04, email: audit-contrato-i04-1795840425717@audit.local, timezone: America/Lima, acceptsStudyParticipation: true, acceptedTermsVersion: T-QA-1, acceptedPrivacyVersion: P-QA-1, acceptedStudyConsentVersion: C-QA-1} → 201, studyParticipant=true
+CONTRATO I-09 historial STUDY_PARTICIPATION: versión C-QA-1, CASILLA_REGISTRO, 2026-11-28T04:33:46.474835Z
+CONTRATO I-09 historial TERMS_OF_SERVICE: versión T-QA-1, CASILLA_REGISTRO, 2026-11-28T04:33:46.477406Z
+CONTRATO I-09 historial PRIVACY_POLICY: versión P-QA-1, CASILLA_REGISTRO, 2026-11-28T04:33:46.477975Z
+CONTRATO I-10 POST /auth/register sin participar → 422 PARTICIPACION_REQUERIDA «Kora solo esta disponible para las personas que participan en el estudio. Para registrarte tienes que aceptar participar.»
+CONTRATO I-11 generación 3fab02f5-eed8-41c3-9f67-5f45d83da8c2 → GenerationStatus.completed, plan 1
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 plan actual antes 1, después 1
+CONTRATO I-12 POST /users/me/withdraw → withdrawnAt=2026-11-28 04:33:49.789018Z
+CONTRATO I-12 POST /users/me/plan/generation → 422 PARTICIPACION_NO_VIGENTE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-12 historial: STUDY_PARTICIPATION retirado=true
+CONTRATO I-13 login con clave incorrecta repetida → 429 «Demasiados intentos de inicio de sesion. Espera antes de volver a intentarlo. Podrás intentarlo de nuevo en 15 minutos.»
+00:04 +11 ~1: All tests passed!
+
+## Repetido con la cabecera 401ca56 de #96 (añade requiredForSignup y PERFIL_INCOMPLETO)
+CONTRATO I-01 GET /legal-documents → enforcedOnSignup=true, privacyRecord=acceptance, TERMS_OF_SERVICE=T-QA-1, PRIVACY_POLICY=P-QA-1, STUDY_PARTICIPATION=C-QA-1
+CONTRATO I-05 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de TERMS_OF_SERVICE no es la vigente (T-QA-1).»
+CONTRATO I-05 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-06 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de PRIVACY_POLICY no es la vigente (P-QA-1).»
+CONTRATO I-06 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-07 POST /auth/register → 422 CONSENTIMIENTO_REQUERIDO «Para participar en el estudio tienes que aceptar la version vigente del consentimiento informado.»
+CONTRATO I-07 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-08 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de STUDY_PARTICIPATION no es la vigente (C-QA-1).»
+CONTRATO I-08 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-04 POST /auth/register {firstName: Contrato, lastName: i04, email: audit-contrato-i04-1795841633525@audit.local, timezone: America/Lima, acceptsStudyParticipation: true, acceptedTermsVersion: T-QA-1, acceptedPrivacyVersion: P-QA-1, acceptedStudyConsentVersion: C-QA-1} → 201, studyParticipant=true
+CONTRATO I-09 historial STUDY_PARTICIPATION: versión C-QA-1, CASILLA_REGISTRO, 2026-11-28T04:53:54.074758Z
+CONTRATO I-09 historial TERMS_OF_SERVICE: versión T-QA-1, CASILLA_REGISTRO, 2026-11-28T04:53:54.077125Z
+CONTRATO I-09 historial PRIVACY_POLICY: versión P-QA-1, CASILLA_REGISTRO, 2026-11-28T04:53:54.077756Z
+CONTRATO I-10 POST /auth/register sin participar → 422 PARTICIPACION_REQUERIDA «Kora solo esta disponible para las personas que participan en el estudio. Para registrarte tienes que aceptar participar.»
+CONTRATO I-11 generación 0f31d2a9-9a26-4d00-9085-fc193589d5fc → GenerationStatus.completed, plan 18
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 plan actual antes 18, después 18
+CONTRATO I-12 POST /users/me/withdraw → withdrawnAt=2026-11-28 04:53:57.341212Z
+CONTRATO I-12 POST /users/me/plan/generation → 422 PARTICIPACION_NO_VIGENTE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-12 historial: STUDY_PARTICIPATION retirado=true
+CONTRATO I-13 login con clave incorrecta repetida → 429 «Demasiados intentos de inicio de sesion. Espera antes de volver a intentarlo. Podrás intentarlo de nuevo en 15 minutos.»
+00:04 +11 ~1: All tests passed!
+
+## Sin documentos (I-02)
+CONTRATO I-02 GET /legal-documents → enforcedOnSignup=false, 0 documentos, registro cerrado
+00:00 +1 ~11: All tests passed!
+
+## GET /legal-documents con 401ca56
+enforcedOnSignup=true; STUDY_PARTICIPATION C-QA-1 requiredForSignup=true; TERMS_OF_SERVICE T-QA-1 true; PRIVACY_POLICY P-QA-1 true
+
+# I-14: el Backend real es idempotente (dos peticiones simultáneas → 200 COMPLETED, mismo plan). El 409 se probó con un
+# servidor SIMULADO en test/first_plan_participation_test.dart (PR #33).
+
+## Repetido contra el Backend generation FINAL 434a9dc (merge de #96, mismo código que 401ca56), base kora_integracion_434
+CONTRATO I-01 GET /legal-documents → enforcedOnSignup=true, privacyRecord=acceptance, TERMS_OF_SERVICE=T-QA-1, PRIVACY_POLICY=P-QA-1, STUDY_PARTICIPATION=C-QA-1
+CONTRATO I-05 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de TERMS_OF_SERVICE no es la vigente (T-QA-1).»
+CONTRATO I-05 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-06 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de PRIVACY_POLICY no es la vigente (P-QA-1).»
+CONTRATO I-06 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-07 POST /auth/register → 422 CONSENTIMIENTO_REQUERIDO «Para participar en el estudio tienes que aceptar la version vigente del consentimiento informado.»
+CONTRATO I-07 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-08 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de STUDY_PARTICIPATION no es la vigente (C-QA-1).»
+CONTRATO I-08 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-04 POST /auth/register {firstName: Contrato, lastName: i04, email: audit-contrato-i04-1795842523299@audit.local, timezone: America/Lima, acceptsStudyParticipation: true, acceptedTermsVersion: T-QA-1, acceptedPrivacyVersion: P-QA-1, acceptedStudyConsentVersion: C-QA-1} → 201, studyParticipant=true
+CONTRATO I-09 historial STUDY_PARTICIPATION: versión C-QA-1, CASILLA_REGISTRO, 2026-11-28T05:08:43.895474Z
+CONTRATO I-09 historial TERMS_OF_SERVICE: versión T-QA-1, CASILLA_REGISTRO, 2026-11-28T05:08:43.898241Z
+CONTRATO I-09 historial PRIVACY_POLICY: versión P-QA-1, CASILLA_REGISTRO, 2026-11-28T05:08:43.898895Z
+CONTRATO I-10 POST /auth/register sin participar → 422 PARTICIPACION_REQUERIDA «Kora solo esta disponible para las personas que participan en el estudio. Para registrarte tienes que aceptar participar.»
+CONTRATO I-11 generación 1fbd9a9f-faba-4031-9603-7903e4f0dc30 → GenerationStatus.completed, plan 1
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 plan actual antes 1, después 1
+CONTRATO I-12 POST /users/me/withdraw → withdrawnAt=2026-11-28 05:08:47.193149Z
+CONTRATO I-12 POST /users/me/plan/generation → 422 PARTICIPACION_NO_VIGENTE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-12 historial: STUDY_PARTICIPATION retirado=true
+CONTRATO I-13 login con clave incorrecta repetida → 429 «Demasiados intentos de inicio de sesion. Espera antes de volver a intentarlo. Podrás intentarlo de nuevo en 15 minutos.»
+00:04 +11 ~1: All tests passed!

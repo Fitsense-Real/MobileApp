@@ -1,0 +1,28 @@
+# Regresión en vivo de D-M1, O20, push y recuperación contra Backend #96 (exigencia apagada: pruebas sintéticas)
+# Backend Fitsense-Real/Backend: generation 41c498a + PR #96 (cabecera 401ca56, SIN FUSIONAR), compilado y ejecutado en LOCAL.
+# Base aislada kora_integracion_96, cuentas @audit.local, documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA
+# (no es una aprobacion real)»), exigencia de consentimientos FORZADA solo en esta instancia, IA apagada salvo donde se
+# indica un proveedor SIMULADO local (nunca Replicate), push apagado, correo dev-log. Mobile: combinación local de
+# generation 1cd9f97 + #33 + #34 + #35. Contraseñas por variable de entorno; no figuran en ningún archivo. 28/11/2026 (UTC).
+
+COMPLETA workout=13 ejercicio=103 3x90 s: una serie (90s) → 33.33 % PARTIAL; todas (270s) → 100.0 % COMPLETED; sesión 100.0 % COMPLETED
+PARCIAL workout=15 ejercicio=117: 150/270 s → 55.56 % PARTIAL; sesión 94.45 % COMPLETED (media de 8 ejercicios = 94.44 %)
+REPORTE workout=14: 3x40=120s, 3x90=270s, 3x90=270s, 3x90=270s, 2x30=60s → sesión 100.0 %
+00:01 +3: All tests passed!
+push_backend: 00:00 +1: All tests passed!
+pain_o20: 00:01 +1: All tests passed!
+o20_validacion: 00:17 +4: All tests passed!
+push_generation: 00:00 +3: All tests passed!
+
+RECUPERACION login inicial -> 200
+RECUPERACION solicitar codigo -> 202
+RECUPERACION solicitar uno nuevo -> 202
+RECUPERACION el codigo nuevo es distinto del anterior -> True
+RECUPERACION confirmar con el codigo ANTERIOR -> 204 None
+RECUPERACION confirmar con espacios/saltos (la app los quita; el Backend no) -> 400
+RECUPERACION confirmar con el codigo vigente -> 400
+RECUPERACION sesion anterior (JWT viejo) -> 401
+RECUPERACION reutilizar el mismo codigo -> 400
+RECUPERACION login con la clave nueva -> 200
+RECUPERACION correo inexistente -> 202 (misma respuesta)
+RECUPERACION solicitudes repetidas -> 429 tras 18 peticiones; Retry-After 897 | {"timestamp":"2026-11-28T04:52:43.155850357Z","status":429,"error":"Too Many Requests","message":"De

@@ -1,0 +1,62 @@
+# Retirada durante la generación (Backend #96: comprobación de elegibilidad AL PUBLICAR)
+# Backend Fitsense-Real/Backend: generation 41c498a + PR #96 (cabecera 401ca56, SIN FUSIONAR), compilado y ejecutado en LOCAL.
+# Base aislada kora_integracion_96, cuentas @audit.local, documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA
+# (no es una aprobacion real)»), exigencia de consentimientos FORZADA solo en esta instancia, IA apagada salvo donde se
+# indica un proveedor SIMULADO local (nunca Replicate), push apagado, correo dev-log. Mobile: combinación local de
+# generation 1cd9f97 + #33 + #34 + #35. Contraseñas por variable de entorno; no figuran en ningún archivo. 28/11/2026 (UTC).
+# El Backend arranca con el perfil por defecto (local-dev prohíbe encender la IA) y fitsense.ai.base-url apuntando a
+# evidencia/arnes/ia_simulada.py: responde a los 20 s con 503; el Backend cae al motor de reglas y llega a publicar.
+
+## Contrato (test/live/retirada_durante_generacion_live_test.dart), cabecera 035e961
+RETIRADA 1. POST /users/me/plan/generation → GenerationStatus.pending (453abc86-a5d4-413b-b11f-7fa90ff12006)
+RETIRADA 2. la operación está en GenerationStatus.processing: la IA simulada todavía no respondió
+RETIRADA 3. POST /users/me/withdraw durante la generación → withdrawnAt=2026-11-28 04:36:54.241108Z
+RETIRADA 4. la operación termina → GenerationStatus.failed NO_GENERABLE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.» planId=null
+RETIRADA 5. GET /users/me/plan/current → 404
+RETIRADA 6. nueva petición de generación → 422 [PARTICIPACION_NO_VIGENTE]
+00:25 +1: All tests passed!
+
+## Repetido con la cabecera 401ca56
+RETIRADA 1. POST /users/me/plan/generation → GenerationStatus.pending (193f2f7b-d2c6-441b-ab6d-ba6de8810028)
+RETIRADA 2. la operación está en GenerationStatus.processing: la IA simulada todavía no respondió
+RETIRADA 3. POST /users/me/withdraw durante la generación → withdrawnAt=2026-11-28 04:56:54.133312Z
+RETIRADA 4. la operación termina → GenerationStatus.failed NO_GENERABLE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.» planId=null
+RETIRADA 5. GET /users/me/plan/current → 404
+RETIRADA 6. nueva petición de generación → 422 [PARTICIPACION_NO_VIGENTE]
+00:23 +1: All tests passed!
+
+## Log del Backend (401ca56): la IA simulada responde tarde, el motor de reglas prepara la semana y NO se publica
+04:56:52.5050-exec-6] f.p.a.i.g.PlanGenerationOperationService : Generacion inicial 193f2f7b-d2c6-441b-ab6d-ba6de8810028 registrada para el usuario N (semana 2026-11-30)
+04:57:14.251nicial-1] f.p.i.g.a.ReplicateTrainingPlanGenerator : Replicate no respondio correctamente: http 503
+04:57:14.324nicial-1] m.w.s.f.p.a.i.c.PlanGenerationPipeline   : GENERACION_TIEMPOS user=38 semana=1 origen=RESPALDO motivo_respaldo=PROVEEDOR intentos_ia=1 ia_ms=[20132] validacion_ms=0 respaldo_ms=66 fitsense_ms
+04:57:14.334nicial-1] f.p.a.i.g.PlanGenerationOperationService : Generacion inicial 193f2f7b-d2c6-441b-ab6d-ba6de8810028 FAILED para el usuario N: Tu cuenta no tiene una participacion activa en el estudio: Kora n
+05:00:19.6130-exec-9] f.p.a.i.g.PlanGenerationOperationService : Generacion inicial ac1ca599-e444-4e7a-b2d3-4c0b379e6f8d registrada para el usuario N (semana 2026-11-30)
+05:00:20.151nicial-2] f.p.a.i.g.PlanGenerationOperationService : Generacion inicial ac1ca599-e444-4e7a-b2d3-4c0b379e6f8d FAILED para el usuario N: Tu cuenta no tiene una participacion activa en el estudio: Kora n
+
+## App real (combinación): retirada mientras la app espera la primera rutina
+### Antes de la corrección de #33 (d6f3471): con la retirada antes de la petición, la app pedía DOS veces (ambas 422)
+04:57:24 retirada por la API durante la espera -> 200
+04:57:24   [api] POST /users/me/plan/generation 422
+04:57:45   [api] POST /users/me/plan/generation 422
+04:57:46 la app muestra el estado de retirada: true
+04:57:46   captura R96-retirada-en-espera
+04:57:46 «Algo salió mal» o «Intentar de nuevo» visibles: false
+04:57:54 POST de generación en total: 2 (debe ser 1)
+### Con la corrección, intento 1
+05:00:19 retirada por la API durante la espera -> 200
+05:00:19   [api] POST /users/me/plan/generation 202
+05:00:40 la app muestra el estado de retirada: true
+05:00:40   captura R96-retirada-en-espera
+05:00:41 «Algo salió mal» o «Intentar de nuevo» visibles: false
+05:00:49 POST de generación en total: 1 (debe ser 1)
+### Con la corrección, intento 2
+05:01:00 retirada por la API durante la espera -> 200
+05:01:00   [api] POST /users/me/plan/generation 422
+05:01:21 la app muestra el estado de retirada: true
+05:01:21   captura R96-retirada-en-espera
+05:01:22 «Algo salió mal» o «Intentar de nuevo» visibles: false
+05:01:30 POST de generación en total: 1 (debe ser 1)
+
+## App real: cuenta retirada durante la generación, al volver a entrar
+Te retiraste del estudio el 28/11/2026. Desde entonces Kora no prepara rutinas nuevas. Los datos que ya registraste se conservan. 
+POST generacion: 0

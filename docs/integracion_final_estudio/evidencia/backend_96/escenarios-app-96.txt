@@ -1,0 +1,135 @@
+# Recorridos de la app real (combinación #33+#34+#35) contra Backend #96
+# Backend Fitsense-Real/Backend: generation 41c498a + PR #96 (cabecera 401ca56, SIN FUSIONAR), compilado y ejecutado en LOCAL.
+# Base aislada kora_integracion_96, cuentas @audit.local, documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA
+# (no es una aprobacion real)»), exigencia de consentimientos FORZADA solo en esta instancia, IA apagada salvo donde se
+# indica un proveedor SIMULADO local (nunca Replicate), push apagado, correo dev-log. Mobile: combinación local de
+# generation 1cd9f97 + #33 + #34 + #35. Contraseñas por variable de entorno; no figuran en ningún archivo. 28/11/2026 (UTC).
+# Las líneas [api] GET se omiten. UA4: el recuento de cuentas del arnés consultaba la base de la prueba anterior
+# (kora_integracion_final → 0); en kora_integracion_96 hay exactamente 1 cuenta con ese correo (comprobado con psql).
+
+04:41:00 UA1 (I-03) · Rechazar participar en la app
+04:41:06 OK    explica el estudio antes de escribir nada
+04:41:06   captura C1-01-registro-arriba
+04:41:18   captura C1-02-documentos-sin-leer
+04:41:21 OK    mensaje respetuoso y claro
+04:41:21   captura C1-03-no-deseo-participar
+04:41:23 OK    sale del registro
+04:41:23 OK    ningún POST /auth/register
+04:41:23 fin
+
+04:41:23 UA2 (I-04, I-09) · Aceptar con los documentos publicados, perfil, plan y Perfil › Documentos
+04:42:16   captura C1-04-todo-aceptado
+04:42:17   [api] POST /auth/register 201
+04:42:18   [api] POST /auth/login 200
+04:42:19 OK    entra al perfil
+04:42:19   cuerpo enviado: {"firstName":"Auditoria","lastName":"Opcion A","email":"audit-ui-acepta-1795840883700@audit.local","timezone":"America/Lima","acceptsStudyParticipation":true,"acceptedTermsVersion":"T-QA-1","acceptedPrivacyVersion":"P-QA-1","acceptedStudyConsentVersion":"C-QA-1"}
+04:42:19 OK    envía las cuatro versiones leídas
+04:42:45   [api] POST /users/me/profile 201
+04:42:46   [api] POST /users/me/plan/generation 202
+04:43:41 OK    plan visible
+04:43:47 OK    Perfil muestra el consentimiento con su versión
+04:43:47 OK    distingue condiciones y privacidad
+04:43:48   captura C1-05-perfil-documentos
+04:43:48 fin
+
+04:43:48 UA2b (I-09) · Perfil › Cuenta › Documentos de la cuenta creada en UA2
+04:43:56   [api] POST /auth/login 200
+04:44:18 OK    Perfil muestra el consentimiento con su versión
+04:44:18 OK    distingue condiciones y privacidad
+04:44:18   captura C1-05-perfil-documentos
+04:44:19 fin
+
+04:44:19 UA3 (§5.4) · La versión cambia mientras la persona se registra
+04:45:26   Backend reiniciado: términos T-QA-2 documentos si
+04:45:30 OK    explica el cambio
+04:45:30   captura C1-06-documentos-cambiaron
+04:45:30 OK    no envía la versión desactualizada
+04:45:33 OK    muestra la versión vigente
+04:46:07   [api] POST /auth/register 201
+04:46:07   [api] POST /auth/login 200
+04:46:09 OK    con la versión vigente sí se crea
+04:46:09 OK    envía T-QA-2
+04:46:23   Backend reiniciado: términos T-QA-1 documentos si
+04:46:23 fin
+
+04:46:24 UA4 (I-15) · Se pierde la conexión al crear la cuenta
+04:47:18   [falla] http://localhost:8080/api/v1/auth/register net::ERR_INTERNET_DISCONNECTED
+04:47:22 OK    sigue en el registro con un mensaje
+04:47:22   captura C1-07-sin-conexion-al-crear
+04:47:30   [api] POST /auth/register 201
+04:47:30   [api] POST /auth/login 200
+04:47:32 OK    con conexión, mismo formulario, se crea una sola cuenta
+04:47:33 FALLA una sola cuenta en la base (0)
+04:47:33 fin
+
+04:47:33 UA5 (I-10, I-12) · Cuenta sin participación y cuenta retirada en la app
+04:47:33 C1-08-sin-participacion: sin cuenta (el Backend rechaza crearla sin participar)
+04:47:41   [api] POST /auth/login 200
+04:47:42 OK    C1-09-retirada: estado correcto
+04:47:44 OK    C1-09-retirada: sin «Reintentar generación» ni error genérico
+04:47:48 OK    C1-09-retirada: ninguna petición de generación (0)
+04:47:48   captura C1-09-retirada
+04:47:48 fin
+
+04:47:48 UA6 (I-13) · 429 al iniciar sesión con la clave mal repetida
+04:47:56   [api] POST /auth/login 401
+04:47:59   [api] POST /auth/login 401
+04:48:03   [api] POST /auth/login 401
+04:48:06   [api] POST /auth/login 401
+04:48:10   [api] POST /auth/login 401
+04:48:13   [api] POST /auth/login 429
+04:48:17   [api] POST /auth/login 429
+04:48:20 OK    mensaje del Backend, sin códigos internos
+04:48:20   captura C1-10-limite-429
+04:48:20 fin
+
+04:48:20 UA7 (I-02) · Sin documentos publicados el registro queda cerrado
+04:48:34   Backend reiniciado: términos T-QA-1 documentos no
+04:48:40 OK    registro cerrado con explicación
+04:48:40 OK    sin formulario ni casilla de participación
+04:48:40 OK    ningún POST
+04:48:40   captura C1-11-registro-cerrado
+04:48:55   Backend reiniciado: términos T-QA-1 documentos si
+04:48:55 fin
+
+04:53:58 UA2 (I-04, I-09) · Aceptar con los documentos publicados, perfil, plan y Perfil › Documentos
+04:54:51   captura C1-04-todo-aceptado
+04:54:52   [api] POST /auth/register 201
+04:54:53   [api] POST /auth/login 200
+04:54:54 OK    entra al perfil
+04:54:54   cuerpo enviado: {"firstName":"Auditoria","lastName":"Opcion A","email":"audit-ui-acepta-1795841638184@audit.local","timezone":"America/Lima","acceptsStudyParticipation":true,"acceptedTermsVersion":"T-QA-1","acceptedPrivacyVersion":"P-QA-1","acceptedStudyConsentVersion":"C-QA-1"}
+04:54:54 OK    envía las cuatro versiones leídas
+04:55:20   [api] POST /users/me/profile 201
+04:55:21   [api] POST /users/me/plan/generation 202
+04:56:16 OK    plan visible
+04:56:21 OK    Perfil muestra el consentimiento con su versión
+04:56:21 OK    distingue condiciones y privacidad
+04:56:22   captura C1-05-perfil-documentos
+04:56:22 fin
+
+04:49:22 S4 · Cierre de sesión y cambio de cuenta
+04:49:29   [api] POST /auth/login 200
+04:49:46 OK    primera cuenta entra
+04:49:52 OK    vuelve al inicio de sesión
+04:49:52   captura P8a-tras-cerrar-sesion
+04:49:55   [api] POST /auth/login 200
+04:50:12 OK    la otra cuenta entra
+04:50:14 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+04:50:14   captura P8-otra-cuenta
+04:50:14 S5 · Error de conexión al iniciar sesión
+04:50:22   [falla] http://localhost:8080/api/v1/auth/login net::ERR_INTERNET_DISCONNECTED
+04:50:22 OK    mensaje de conexión claro
+04:50:22   captura P9-sin-conexion-login
+04:50:22 fin
+
+04:50:23 B · Recuperación de contraseña de punta a punta (código del log local)
+04:50:28   captura A5-recuperar-correo
+04:50:32   [api] POST /auth/password-reset/request 202
+04:50:34   captura A8-recuperar-codigo
+04:50:42   [api] POST /auth/password-reset/confirm 204
+04:50:44   captura A9-login-correo-escrito
+04:50:45   [api] POST /auth/login 200
+04:50:46   login con la clave nueva: true
+04:50:46 fin
+
+401 tras cerrar sesión (cuenta): 0

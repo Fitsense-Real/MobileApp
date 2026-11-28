@@ -1,5 +1,10 @@
 # 11 · Merge final y validación posmerge
 
+> **Actualización 28/11/2026 — opción A decidida.** Kora es exclusiva para participantes del estudio; la opción B ya no
+> existe en Mobile (`PLANS_FOR_NON_PARTICIPANTS` eliminada en la PR #33). Las versiones de los documentos salen ahora
+> de `GET /legal-documents`, no de `--dart-define`. Estado actual: [`docs/integracion_final_estudio/`](../integracion_final_estudio/).
+> Lo que sigue se conserva como evidencia histórica.
+
 | | |
 |---|---|
 | Orden | Revisión final y merge condicional de las PR #26–#31 (y #25) |
