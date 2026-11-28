@@ -4,6 +4,7 @@ import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
+import '../../authentication/presentation/providers/account_scope.dart';
 
 class PlanRepository {
   PlanRepository(this.dio);
@@ -79,8 +80,8 @@ final currentPlanProvider = FutureProvider<Json?>((ref) async {
   return null;
 });
 
-final planHistoryProvider = FutureProvider.autoDispose<List<Json>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final planHistoryProvider = FutureProvider.autoDispose<List<Json>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(planRepositoryProvider).history();
 });
 
@@ -88,13 +89,13 @@ final planByIdProvider = FutureProvider.autoDispose.family<Json, int>(
   (ref, id) => ref.watch(planRepositoryProvider).byId(id),
 );
 
-final planLimitationsProvider = FutureProvider.autoDispose<Json>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final planLimitationsProvider = FutureProvider.autoDispose<Json>((ref) async {
+  if (watchAccount(ref) == null) return const {};
   return ref.watch(planRepositoryProvider).limitations();
 });
 
-final planAdaptationsProvider = FutureProvider.autoDispose<List<Json>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final planAdaptationsProvider = FutureProvider.autoDispose<List<Json>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(planRepositoryProvider).adaptations();
 });
 

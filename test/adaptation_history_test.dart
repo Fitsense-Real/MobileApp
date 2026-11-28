@@ -11,6 +11,8 @@ import 'package:fitsense_mobile/core/api/json.dart';
 import 'package:fitsense_mobile/features/dashboard/presentation/widgets/plan_history_sheet.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/plans/domain/adaptation_text.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/providers/auth_provider.dart';
+import 'support/welcome_fakes.dart' show SignedIn;
 
 Json fixture(String path) => (jsonDecode(File('test/fixtures/o20_demo_kora/$path.json').readAsStringSync()) as Map<String, dynamic>)['data'] as Json;
 List<Json> fixtureRows(String path) => jsonRows((jsonDecode(File('test/fixtures/o20_demo_kora/$path.json').readAsStringSync()) as Map)['data']);
@@ -142,6 +144,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final plans = FakePlans(fixtureRows('_users_me_plans'), fixtureRows('_users_me_plan_adaptations'));
       await tester.pumpWidget(ProviderScope(overrides: [
+        authViewModelProvider.overrideWith(() => SignedIn()),
         planRepositoryProvider.overrideWithValue(plans),
         planHistoryProvider.overrideWith((ref) => plans.history()),
       ], child: const MaterialApp(home: Scaffold(body: PlanHistorySheet()))));
@@ -166,6 +169,7 @@ void main() {
       final rows = fixtureRows('_users_me_plan_adaptations');
       final plans = FakePlans(fixtureRows('_users_me_plans'), rows.take(2).toList());
       final container = ProviderContainer(overrides: [
+        authViewModelProvider.overrideWith(() => SignedIn()),
         planRepositoryProvider.overrideWithValue(plans),
         planHistoryProvider.overrideWith((ref) => plans.history()),
       ]);

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
-import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../onboarding/data/profile_repository.dart';
+import '../../authentication/presentation/providers/account_scope.dart';
 
 export '../../../core/api/json.dart';
 
@@ -29,15 +29,15 @@ class DashboardRepository {
 }
 
 final dashboardRepositoryProvider = Provider((ref) => DashboardRepository(ref.watch(dioProvider)));
-final weeklyMetricsProvider = FutureProvider.autoDispose<List<Json>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final weeklyMetricsProvider = FutureProvider.autoDispose<List<Json>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(dashboardRepositoryProvider).metrics();
 });
-final interventionsProvider = FutureProvider.autoDispose<List<Json>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final interventionsProvider = FutureProvider.autoDispose<List<Json>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(dashboardRepositoryProvider).interventions();
 });
-final dashboardProfileProvider = FutureProvider.autoDispose<Json?>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final dashboardProfileProvider = FutureProvider.autoDispose<Json?>((ref) async {
+  if (watchAccount(ref) == null) return null;
   return ref.watch(profileRepositoryProvider).fetch();
 });

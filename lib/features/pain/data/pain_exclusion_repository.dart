@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_constants.dart';
 import '../../../core/api/json.dart';
 import '../../../core/providers/dio_provider.dart';
-import '../../authentication/presentation/providers/auth_provider.dart';
 import '../domain/pain_safety.dart';
+import '../../authentication/presentation/providers/account_scope.dart';
 
 const painExclusionStatusLabels = {'ACTIVA': 'Excluido', 'REACTIVADA': 'Reactivado'};
 const painExclusionReasonLabels = {
@@ -52,17 +52,17 @@ class PainExclusionRepository {
 
 final painExclusionRepositoryProvider = Provider((ref) => PainExclusionRepository(ref.watch(dioProvider)));
 
-final painExclusionsProvider = FutureProvider.autoDispose<List<Json>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final painExclusionsProvider = FutureProvider.autoDispose<List<Json>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(painExclusionRepositoryProvider).list();
 });
 
-final effectivePainExclusionsProvider = FutureProvider.autoDispose<List<EffectiveExclusion>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final effectivePainExclusionsProvider = FutureProvider.autoDispose<List<EffectiveExclusion>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(painExclusionRepositoryProvider).effective();
 });
 
-final painConfirmationRequestsProvider = FutureProvider.autoDispose<List<PainConfirmationRequest>>((ref) {
-  ref.watch(authViewModelProvider.select((s) => s.user?.id));
+final painConfirmationRequestsProvider = FutureProvider.autoDispose<List<PainConfirmationRequest>>((ref) async {
+  if (watchAccount(ref) == null) return const [];
   return ref.watch(painExclusionRepositoryProvider).confirmationRequests();
 });
