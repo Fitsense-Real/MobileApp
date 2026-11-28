@@ -1,5 +1,11 @@
 # 10 · Pendientes para el piloto y recomendación
 
+> **Actualización 27/11/2026 (merge final):** las PR #26–#31 y #25 están fusionadas en `generation`
+> (`f8f5e244dea62daa3963dc9a8a0b1a96445c4d3b`); `main` sin cambios. La validación posmerge (494 ✓ · 0 ✗ · 31; 12/12 en
+> vivo; 15 escenarios en la app real contra el Backend local) está en [11](11_MERGE_FINAL_Y_VALIDACION.md). Ningún
+> estado de la matriz cambia por el merge: fusionar no activa nada. Cambios de este documento: M-39 desbloqueado,
+> dependencia nueva de `acceptedStudyConsentVersion` en M-03 y el paso 1 de la recomendación hecho.
+
 Estado de cada ID en la matriz actualizada
 [`docs/preproduccion/08_MATRIZ_DE_PENDIENTES.md`](../preproduccion/08_MATRIZ_DE_PENDIENTES.md) (y `.csv`).
 
@@ -9,7 +15,7 @@ Estado de cada ID en la matriz actualizada
 |---|---|---|---|
 | M-01 | BLOQUEADO POR DECISIÓN | Sin callejón sin salida: aviso antes de crear la cuenta sin participar y pantalla con motivo, contacto y salida | **Equipo del estudio + Backend:** elegir A (solo participantes) o B (también usuarios habituales). B está preparada (`PLANS_FOR_NON_PARTICIPANTS`) |
 | M-02 | BLOQUEADO POR BACKEND | Lector de documentos, lectura obligatoria, consentimiento antes de la casilla, documentos aceptados en Perfil | **Equipo del estudio / comité:** textos aprobados. **Backend:** servir texto o dirección por versión y ligar `MVP-1.0` a un documento |
-| M-03 | PREPARADO SIN ACTIVAR | Mobile envía las versiones mostradas y explica los 422 | **Backend + Mobile, a la vez:** configurar versiones y encender `enforce-on-signup` con una compilación que tenga las mismas versiones |
+| M-03 | PREPARADO SIN ACTIVAR | Mobile envía las versiones mostradas y explica los 422 | **Backend + Mobile, a la vez:** configurar versiones y encender `enforce-on-signup` con una compilación que tenga las mismas versiones. Si se fusiona la PR del Backend #91 (B2), Mobile debe enviar antes `acceptedStudyConsentVersion` (con la exigencia encendida, el registro con participación sin ella se rechaza) y puede leer `GET /api/v1/legal-documents` ([11](11_MERGE_FINAL_Y_VALIDACION.md) §3) |
 | M-04 | BLOQUEADO POR BACKEND | Recuperación completa y probada de punta a punta (log local) | **Backend/infraestructura:** proveedor de correo, remitente y plantilla; prueba con correo real; después encender `PASSWORD_RECOVERY_ENABLED` |
 | M-05 | PENDIENTE DE DISPOSITIVO | Guía completa ([08](08_PRUEBAS_ANDROID.md)) | **Propietario:** ejecutarla en dos teléfonos |
 
@@ -18,7 +24,7 @@ Estado de cada ID en la matriz actualizada
 | Estado | IDs |
 |---|---|
 | RESUELTO (13) | M-07, M-09, M-10, M-12, M-13, M-14, M-15, M-17, M-18, M-19, M-27, M-38, M-40 |
-| PREPARADO SIN ACTIVAR (3) | M-11 (descripciones de la escala), M-24 (mensaje de seguridad), M-39 (guía complementaria; integrar tras la PR #25) |
+| PREPARADO SIN ACTIVAR (3) | M-11 (descripciones de la escala), M-24 (mensaje de seguridad), M-39 (guía complementaria; la PR #25 ya está fusionada: falta incorporar [08](08_PRUEBAS_ANDROID.md) a `GUIA_ANDROID.md`) |
 | BLOQUEADO POR DECISIÓN (4) | M-06 (licencia de medios), M-16 (política de recordatorios), M-23 (¿iOS?), M-25 (edición del perfil) |
 | BLOQUEADO POR BACKEND (1) | M-26 (correo y página de eliminación web) |
 | PENDIENTE DE DISPOSITIVO (1) | M-22 (copia de seguridad de Android) |
@@ -27,6 +33,12 @@ Estado de cada ID en la matriz actualizada
 
 RESUELTO: M-08, M-34, M-35 · BLOQUEADO POR BACKEND: M-28, M-29, M-37 · PENDIENTE DE DISPOSITIVO: M-32 · PENDIENTE:
 M-20, M-21, M-30, M-31 (parcial), M-33, M-41 · NO APLICA: M-36 (P3 excluido).
+
+**Incidencia de seguimiento detectada tras el merge (fuera de la matriz de la auditoría):**
+
+| ID | Prioridad | Qué pasa | Estado |
+|---|---|---|---|
+| I-01 | P2 | Al cerrar sesión, tres consultas de fondo del Inicio salen sin token y reciben 401. Sin efecto visible ni fuga entre cuentas. Comportamiento previo a #26–#31, no regresión ([11](11_MERGE_FINAL_Y_VALIDACION.md) §4.3) | PENDIENTE (corregir en una PR propia) |
 
 ## 4. Decisiones que esperan respuesta
 
@@ -83,10 +95,10 @@ Kora (D4), actualización (F2), copia de seguridad (F3) y rendimiento (F5).
 (uno mitigado). Sí está en condiciones de **solicitar una validación integral de preproducción** en cuanto se
 cumplan, en este orden:
 
-1. Revisar y fusionar las PR Mobile-M1 → M6 en orden (y la PR #25 de la guía).
+1. ~~Revisar y fusionar las PR Mobile-M1 → M6 en orden (y la PR #25 de la guía).~~ **Hecho el 27/11/2026** ([11](11_MERGE_FINAL_Y_VALIDACION.md)).
 2. Decidir D1, D2, D3 y D4.
 3. Backend: textos por versión, versiones configuradas, correo real; Mobile: compilación de pruebas con las mismas
    versiones y la recuperación encendida.
-4. Ejecutar la guía Android en dos teléfonos (M-05) y corregir lo que aparezca.
+4. Ejecutar la guía Android en dos teléfonos (M-05) con la matriz [`12_MATRIZ_DOS_TELEFONOS.csv`](12_MATRIZ_DOS_TELEFONOS.csv) y corregir lo que aparezca.
 5. Prueba de usabilidad con 3–5 personas ([09](09_PRUEBAS_Y_RESULTADOS.md) §7).
 6. Repetir esta matriz: solo con los P0 en RESUELTO o con una decisión explícita del equipo para cada uno, pasar al piloto.

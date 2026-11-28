@@ -1,0 +1,29 @@
+# Registro sin participación y recuperación de contraseña en la app real, sobre la generation final f8f5e24
+# Backend generation 77b9df3 LOCAL, perfil local-dev, IA apagada, entrega dev-log (el código se lee del log local y
+# nunca se imprime ni se guarda aquí), base aislada kora_merge_final, cuentas @audit.local.
+# Arnés: evidencia/arnes/visual_cierre.js, flujos «registro» y «recuperacion» (sin cambios desde #31).
+# Compilación: flutter build web --release --dart-define=API_BASE_URL=http://localhost:8080/api/v1
+#              --dart-define=ALLOW_INSECURE_API=true --dart-define=PASSWORD_RECOVERY_ENABLED=true
+# (la bandera de recuperación se enciende SOLO en esta compilación de prueba; en el código sigue apagada por defecto)
+
+21:24:42 A · Registro
+21:24:54   captura A3-registro-abajo-participacion-zona
+21:24:56   captura A7-confirmar-sin-participar
+21:24:56   [api] POST /auth/register 201
+21:24:57   [api] POST /auth/login 200
+21:24:58   captura B3-sin-rutina-disponible
+21:24:58 fin
+21:24:59 B · Recuperación de contraseña de punta a punta (código del log local)
+21:25:04   captura A5-recuperar-correo
+21:25:07   [api] POST /auth/password-reset/request 202
+21:25:09   captura A8-recuperar-codigo
+21:25:16   [api] POST /auth/password-reset/confirm 204
+21:25:17   captura A9-login-correo-escrito
+21:25:18   [api] POST /auth/login 200
+21:25:19   login con la clave nueva: true
+21:25:19 fin
+
+# Lectura: el registro sin participar pregunta antes («¿Crear la cuenta sin participar?»), entra sin volver a escribir
+# la clave y muestra «Por ahora no hay una rutina para ti» sin pasar por el perfil ni pedir generación (ningún
+# POST /users/me/profile ni /plan/generation). La recuperación pide el código (202), lo confirma (204), vuelve al
+# acceso con el correo escrito y la clave nueva funciona (200). No probado: envío por correo real (no hay proveedor).

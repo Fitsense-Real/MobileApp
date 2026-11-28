@@ -6,11 +6,11 @@ propietario**; no se presenta ningún resultado de dispositivo.
 
 ## 1. Guía base
 
-`docs/o20/validacion/GUIA_ANDROID.md`. La versión de la **PR #25 (abierta, `claude/validacion-android-informe`)**
+`docs/o20/validacion/GUIA_ANDROID.md`. La versión de la **PR #25 (fusionada el 27/11/2026, `f8f5e24`)**
 corrige lo que la auditoría señaló como desactualizado: compilar el Backend (`mvnw.cmd -DskipTests package`), arrancarlo
 con IA y push apagados, y cuándo se registra el teléfono para push. Para no chocar con esa PR, esta guía **no edita**
-`GUIA_ANDROID.md`: la complementa con las pruebas del cierre. Cuando la PR #25 se fusione, conviene incorporar este
-documento a la guía (M-39).
+`GUIA_ANDROID.md`: la complementa con las pruebas del cierre. Ahora que la PR #25 está fusionada, conviene incorporar
+este documento a la guía (M-39). Matriz rellenable para dos teléfonos: [`12_MATRIZ_DOS_TELEFONOS.csv`](12_MATRIZ_DOS_TELEFONOS.csv).
 
 Compilación de prueba (nunca de producción), en Android Studio o PowerShell:
 

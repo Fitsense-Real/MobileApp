@@ -87,7 +87,7 @@ CIERRE = {
  'M-36': ('NO APLICA', 'P3 excluido por la orden de cierre', '—'),
  'M-37': ('BLOQUEADO POR BACKEND', 'Textos del Backend', '—'),
  'M-38': ('RESUELTO', 'M5: revisión completa con «Editar» por bloque antes de «Generar mi plan»', 'M5'),
- 'M-39': ('PREPARADO SIN ACTIVAR', 'M6: guía complementaria (cierre_preproduccion/08) con Firebase, arranque del Backend y las pruebas que faltaban; GUIA_ANDROID.md no se edita para no chocar con la PR #25 abierta', 'M6'),
+ 'M-39': ('PREPARADO SIN ACTIVAR', 'M6: guía complementaria (cierre_preproduccion/08) con Firebase, arranque del Backend y las pruebas que faltaban; la PR #25 (guía base) se fusionó el 27/11/2026: falta incorporar esta guía complementaria a GUIA_ANDROID.md', 'M6'),
  'M-40': ('RESUELTO', 'M5: «Ayuda y soporte» con preguntas frecuentes y contacto; sin STUDY_CONTACT muestra una indicación genérica (contacto pendiente del equipo)', 'M5'),
  'M-41': ('PENDIENTE', 'Verificación en la consola de Google Cloud', '—'),
 }
