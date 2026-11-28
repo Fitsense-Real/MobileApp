@@ -15,6 +15,8 @@ URL del Backend, la autenticación, la generación ni las reglas de entrenamient
 
 ## 1. Flujo del registro (sin cambios)
 
+> **Sustituido el 28/11/2026** por el flujo simplificado de [12](12_TERMINOS_SIMPLIFICADOS.md). Los formatos admitidos (§2) y el tratamiento del HTML no cambian.
+
 1. Datos de la cuenta.
 2. Bajo «Documentos del estudio», cada documento (condiciones, política de privacidad y consentimiento informado) tiene
    «Leer».
@@ -113,7 +115,9 @@ Evidencia: [`evidencia/documentos_flutter/recorridos-pr36-9aa7abf.txt`](evidenci
 
 O20/V65, D-M1, P1, P2, adherencia y navegación: sus pruebas automáticas siguen en verde sin cambios.
 
-## 7. Propuesta, no implementada: simplificar «llegar al final»
+## 7. Propuesta: simplificar «llegar al final» (aplicada en [12](12_TERMINOS_SIMPLIFICADOS.md))
+
+> **Decidido el 28/11/2026:** no se exige llegar al final, para ningún documento. Se aplicó en [12](12_TERMINOS_SIMPLIFICADOS.md).
 
 Hoy la casilla se activa solo tras desplazarse hasta el final del documento y pulsar «He leído el documento». **No se
 cambia en esta PR.**

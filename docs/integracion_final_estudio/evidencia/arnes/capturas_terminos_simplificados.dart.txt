@@ -1,0 +1,113 @@
+// Copiar a test/ y ejecutar: flutter test test/zz_capturas_tc_test.dart --update-goldens (no se versiona en test/).
+// Temporary: real Flutter renders (app fonts) of the sign-up and the terms reader. Not committed.
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:fitsense_mobile/app/router/app_routes.dart';
+import 'package:fitsense_mobile/core/providers/dio_provider.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/pages/register_page.dart';
+import 'package:fitsense_mobile/features/consents/data/document_text_repository.dart';
+import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+import 'support/fake_backend.dart';
+
+final terms = File('docs/integracion_final_estudio/evidencia/terminos_simplificados/terminos-T-QA-3-SINTETICO.html.txt').readAsStringSync();
+
+class Host implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? s, Future<void>? c) async {
+    if (o.path.contains('privacidad-roto')) return ResponseBody.fromString('Not Found', 404);
+    return ResponseBody.fromBytes(utf8.encode(o.path.contains('terminos') ? terms : '<h1>DOCUMENTO SINT&Eacute;TICO DE PRUEBA</h1><p>Texto sint&eacute;tico.</p>'), 200,
+        headers: {Headers.contentTypeHeader: ['text/html; charset=utf-8']});
+  }
+  @override
+  void close({bool force = false}) {}
+}
+
+Future<void> loadFonts() async {
+  final font = FontLoader('Poppins');
+  for (final w in ['Regular', 'SemiBold', 'Bold', 'ExtraBold', 'Black']) { font.addFont(rootBundle.load('assets/fonts/Poppins-$w.ttf')); }
+  await font.load();
+  await (FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+}
+
+Map<String, dynamic> published({bool broken = false}) => {
+      'enforcedOnSignup': true, 'privacyRecord': 'ACEPTACION',
+      'documents': [
+        for (final (t, v, u) in [('TERMS_OF_SERVICE', 'T-QA-3', 'terminos'), ('PRIVACY_POLICY', 'P-QA-1', broken ? 'privacidad-roto' : 'privacidad'), ('STUDY_PARTICIPATION', 'C-QA-1', 'consentimiento')])
+          {'type': t, 'version': v, 'title': '[SINTETICO] $t', 'url': 'https://docs.test/$u', 'status': 'PUBLISHED', 'effectiveFrom': '2026-11-01', 'requiredForSignup': true},
+      ],
+    };
+
+void main() {
+  setUpAll(loadFonts);
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  Future<void> signUp(WidgetTester tester, Size size, double scale, {bool broken = false}) async {
+    tester.view.physicalSize = size * 2; tester.view.devicePixelRatio = 2; addTearDown(tester.view.reset);
+    final backend = ScriptedBackend((o) => o.path == '/legal-documents' ? (status: 200, body: published(broken: broken)) : (status: 404, body: apiErrorBody(404, 'No')));
+    final router = GoRouter(initialLocation: AppRoutes.register, routes: [GoRoute(path: AppRoutes.register, builder: (_, __) => const RegisterPage())]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [dioProvider.overrideWithValue(scriptedDio(backend)), documentTextRepositoryProvider.overrideWithValue(DocumentTextRepository(Dio()..httpClientAdapter = Host()))],
+      child: MediaQuery(data: MediaQueryData(size: size, devicePixelRatio: 2, textScaler: TextScaler.linear(scale)),
+          child: MaterialApp.router(debugShowCheckedModeBanner: false, routerConfig: router, theme: AppTheme.light)),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> show(WidgetTester tester, String key, {double alignment = 0.5}) async {
+    await tester.scrollUntilVisible(find.byKey(Key(key)), 200, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(tester.element(find.byKey(Key(key))), alignment: alignment);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapTitle(WidgetTester tester, String type, String title) async {
+    await tester.tapOnText(find.textRange.ofSubstring(title, descendentOf: find.byKey(Key('read-$type'))));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> shot(WidgetTester tester, String name) async {
+    expect(tester.takeException(), isNull);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('capturas/$name.png'));
+  }
+
+  for (final (tag, size, scale) in [('390x844-texto-100', const Size(390, 844), 1.0), ('320x640-texto-200', const Size(320, 640), 2.0), ('568x320-texto-200', const Size(568, 320), 2.0)]) {
+    testWidgets('registro $tag', (tester) async {
+      await signUp(tester, size, scale);
+      await show(tester, 'read-TERMS_OF_SERVICE', alignment: size.height < 400 ? 0.1 : 0.35);
+      await shot(tester, 'R-registro-casillas-sin-marcar-$tag');
+      await tapTitle(tester, 'TERMS_OF_SERVICE', 'Términos y condiciones');
+      await shot(tester, 'T-terminos-$tag');
+      await tester.tap(find.byTooltip('Volver').last);
+      await tester.pumpAndSettle();
+      if (tag.startsWith('390')) {
+        for (final k in ['accept-TERMS_OF_SERVICE', 'accept-PRIVACY_POLICY', 'accept-study']) {
+          await show(tester, k);
+          await tester.tap(find.byKey(Key(k)));
+          await tester.pumpAndSettle();
+        }
+        await show(tester, 'read-TERMS_OF_SERVICE', alignment: 0.35);
+        await shot(tester, 'R-registro-casillas-marcadas-$tag');
+      }
+    });
+  }
+
+  testWidgets('registro documento no disponible', (tester) async {
+    await signUp(tester, const Size(390, 844), 1, broken: true);
+    await show(tester, 'read-PRIVACY_POLICY');
+    await tapTitle(tester, 'PRIVACY_POLICY', 'Política de privacidad');
+    await shot(tester, 'P-privacidad-no-se-pudo-abrir-390x844');
+    await tester.tap(find.byTooltip('Volver').last);
+    await tester.pumpAndSettle();
+    await show(tester, 'read-TERMS_OF_SERVICE', alignment: 0.35);
+    await shot(tester, 'R-registro-privacidad-no-disponible-390x844');
+  });
+}

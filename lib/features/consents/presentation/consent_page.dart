@@ -6,6 +6,7 @@ import '../../../core/api/api_error.dart';
 import '../../../shared/widgets/kora_ui.dart';
 import '../data/consents_repository.dart';
 import '../domain/legal_documents.dart';
+import 'document_acceptance.dart';
 import 'document_reader_page.dart';
 
 /// Shown after signing in only when the backend publishes an approved
@@ -19,8 +20,8 @@ class ConsentPage extends ConsumerStatefulWidget {
 
 class _ConsentPageState extends ConsumerState<ConsentPage> {
   final checked = <ConsentType>{};
-  /// Documents read to the end in the app: only those can be accepted.
-  final read = <ConsentType>{};
+  /// Documents that could not be shown: they cannot be accepted.
+  final unavailable = <ConsentType>{};
   bool saving = false;
   String? error;
 
@@ -53,34 +54,41 @@ class _ConsentPageState extends ConsumerState<ConsentPage> {
           return ListView(padding: const EdgeInsets.all(24), children: [
             const Text('Antes de continuar', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Kora.forest)),
             const SizedBox(height: 10),
-            const Text('Se publicaron documentos nuevos de Kora. Léelos completos y acepta cada uno por separado.', style: TextStyle(color: Kora.muted, height: 1.45)),
+            const Text('Se publicaron versiones nuevas de estos documentos. Puedes leerlos pulsando su nombre y aceptar cada uno por separado.', style: TextStyle(color: Kora.muted, height: 1.45)),
             const SizedBox(height: 16),
             for (final type in pending) ...[
               Builder(builder: (context) {
                 final version = '${data.currentVersions[type]}';
-                final doc = published.find(type, version) ?? LegalDocument(type: type, title: type.documentTitle, url: '', version: version);
-                return KoraCard(padding: const EdgeInsets.fromLTRB(16, 12, 8, 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Expanded(child: Text('${type.label} · versión ${data.currentVersions[type]}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-                    if (doc.readable) TextButton(
-                      onPressed: saving ? null : () async {
-                        if (await DocumentReaderPage.open(context, doc) && mounted) setState(() => read.add(type));
-                      },
-                      child: Text(read.contains(type) ? 'Volver a leer' : 'Leer'),
-                    ),
-                  ]),
-                  if (!doc.readable) const Text('Este documento no está publicado para leerlo en la app. Contacta al equipo del estudio antes de aceptarlo.', style: TextStyle(color: Kora.muted)),
-                  Material(type: MaterialType.transparency, child: CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    value: checked.contains(type),
-                    onChanged: saving || !read.contains(type) ? null : (v) => setState(() => v == true ? checked.add(type) : checked.remove(type)),
-                    title: Text(type == ConsentType.termsOfService
-                        ? 'Acepto las condiciones de uso'
-                        : published.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
-                    subtitle: read.contains(type) ? null : const Text('Primero léelo completo.'),
-                  )),
-                ]));
+                final found = published.find(type, version);
+                final doc = found != null && found.readable ? found : null;
+                return DocumentAcceptance(
+                  type: type,
+                  before: type == ConsentType.termsOfService
+                      ? 'Acepto los '
+                      : published.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la ' : 'Acepto la ',
+                  after: ' (versión $version)',
+                  value: checked.contains(type),
+                  checkboxKey: Key('accept-${type.code}'),
+                  onChanged: doc == null || unavailable.contains(type) || saving ? null : (v) => setState(() => v ? checked.add(type) : checked.remove(type)),
+                  onOpen: doc == null || saving ? null : () async {
+                    final shown = await DocumentReaderPage.open(context, doc);
+                    if (!mounted || shown == null) return;
+                    setState(() {
+                      if (shown) {
+                        unavailable.remove(type);
+                      } else {
+                        unavailable.add(type);
+                        checked.remove(type);
+                      }
+                    });
+                  },
+                  note: doc == null
+                      ? 'Este documento no está publicado para leerlo en la app. Contacta al equipo del estudio antes de aceptarlo.'
+                      : unavailable.contains(type)
+                          ? 'No se pudo abrir el documento, así que no se puede aceptar. Pulsa «${DocumentReaderPage.titleOf(type)}» para intentarlo de nuevo.'
+                          : null,
+                  noteIsError: doc != null,
+                );
               }),
               const SizedBox(height: 8),
             ],

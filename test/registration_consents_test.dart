@@ -28,7 +28,7 @@ class FakeDocuments extends DocumentTextRepository {
   FakeDocuments() : super(Dio());
   final fetched = <String>[];
   @override
-  Future<String> fetch(String url) async {
+  Future<String> fetchRaw(String url) async {
     fetched.add(url);
     return switch (url) {
       'https://docs.test/terminos' => syntheticTerms,
@@ -41,12 +41,12 @@ class FakeDocuments extends DocumentTextRepository {
 /// The privacy policy address answers 404: its text can never be shown.
 class BrokenDocuments extends FakeDocuments {
   @override
-  Future<String> fetch(String url) async {
+  Future<String> fetchRaw(String url) async {
     if (url.contains('privacidad')) {
       throw DioException(requestOptions: RequestOptions(path: url), type: DioExceptionType.badResponse,
           response: Response(requestOptions: RequestOptions(path: url), statusCode: 404, data: 'Not Found'));
     }
-    return super.fetch(url);
+    return super.fetchRaw(url);
   }
 }
 
@@ -117,6 +117,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Taps the name of the document inside «Acepto los …» (the link).
+  Future<void> openDoc(WidgetTester tester, String type) async {
+    final sentence = find.byKey(Key('read-$type'));
+    await tester.ensureVisible(sentence);
+    await tester.pumpAndSettle();
+    final title = switch (type) { 'TERMS_OF_SERVICE' => 'Términos y condiciones', 'PRIVACY_POLICY' => 'Política de privacidad', _ => 'Consentimiento informado' };
+    await tester.tapOnText(find.textRange.ofSubstring(title, descendentOf: sentence));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> submit(WidgetTester tester) async {
     await tester.ensureVisible(find.text('CREAR CUENTA'));
     await tester.pumpAndSettle();
@@ -124,14 +134,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Opens the document of [type] and reads it to the end.
+  /// Opens the document of [type] by tapping its name, then goes back.
   Future<void> read(WidgetTester tester, String type) async {
-    await tapKey(tester, 'read-$type');
-    await tester.tap(find.text('He leído el documento'));
+    await openDoc(tester, type);
+    await tester.tap(find.byTooltip('Volver').last);
     await tester.pumpAndSettle();
   }
 
-  /// Reads the three published documents and accepts them.
+  /// Opens the three published documents and ticks their boxes by hand.
   Future<void> acceptAll(WidgetTester tester, {bool participate = true}) async {
     await fillAccount(tester);
     await read(tester, 'TERMS_OF_SERVICE');
@@ -142,19 +152,19 @@ void main() {
     if (participate) await tapKey(tester, 'accept-study');
   }
 
-  CheckboxListTile box(WidgetTester tester, String key) => tester.widget<CheckboxListTile>(find.byKey(Key(key)));
+  Checkbox box(WidgetTester tester, String key) => tester.widget<Checkbox>(find.byKey(Key(key)));
 
   group('option A: Kora is only for participants', () {
-    testWidgets('the study is explained before anything is typed; nothing is pre-checked or acceptable unread', (tester) async {
+    testWidgets('the study is explained before anything is typed; nothing is pre-checked', (tester) async {
       await open(tester);
       expect(find.text('Kora es parte de un estudio'), findsOneWidget);
       expect(find.textContaining('es exclusiva para las personas que aceptan participar'), findsOneWidget);
       expect(find.textContaining('Opcional'), findsNothing);
       for (final key in ['accept-TERMS_OF_SERVICE', 'accept-PRIVACY_POLICY', 'accept-study']) {
         expect(box(tester, key).value, isFalse, reason: '$key never pre-checked');
-        expect(box(tester, key).onChanged, isNull, reason: '$key cannot be accepted unread');
       }
-      expect(find.text('Consentimiento informado · versión C-PRUEBA-1'), findsOneWidget);
+      expect(find.text('Acepto los Términos y condiciones', findRichText: true), findsOneWidget);
+      expect(find.textContaining('Acepto participar voluntariamente en el estudio según el', findRichText: true), findsOneWidget);
     });
 
     testWidgets('without accepting to take part no account is created', (tester) async {
@@ -194,7 +204,8 @@ void main() {
       final backend = await open(tester, texts: texts);
       await acceptAll(tester);
       await submit(tester);
-      expect(texts.fetched, ['https://docs.test/terminos', 'https://docs.test/privacidad', 'https://docs.test/consentimiento']);
+      const urls = ['https://docs.test/terminos', 'https://docs.test/privacidad', 'https://docs.test/consentimiento'];
+      expect(texts.fetched, [...urls, ...urls], reason: 'opened once each, then checked again right before sending');
       final body = backend.bodyOf('POST', '/auth/register');
       expect(body['acceptsStudyParticipation'], isTrue);
       expect(body['acceptedTermsVersion'], 'T-PRUEBA-1');
@@ -218,8 +229,9 @@ void main() {
 
     testWidgets('privacy recorded as CONSTANCIA: «He leído», not «Acepto»', (tester) async {
       await open(tester, documents: [(_) => (status: 200, body: published(privacyRecord: 'CONSTANCIA'))]);
-      expect(find.text('He leído la política de privacidad'), findsOneWidget);
-      expect(find.text('Acepto la política de privacidad'), findsNothing);
+      expect(find.textContaining('He leído la Política de privacidad', findRichText: true), findsOneWidget);
+      expect(find.textContaining('Acepto la Política de privacidad', findRichText: true), findsNothing);
+      expect(box(tester, 'accept-PRIVACY_POLICY').semanticLabel, 'He leído la Política de privacidad');
     });
   });
 
@@ -266,7 +278,7 @@ void main() {
   });
 
   group('version changes and backend refusals', () {
-    testWidgets('a new version published while signing up: not sent, explained, must be read again', (tester) async {
+    testWidgets('a new version published while signing up: not sent, explained, must be accepted again', (tester) async {
       final backend = await open(tester, documents: [
         (_) => (status: 200, body: published()),
         (_) => (status: 200, body: published(documents: [
@@ -282,10 +294,18 @@ void main() {
       expect(backend.routes, isNot(contains('POST /auth/register')), reason: 'an outdated version is never sent');
       await tester.tap(find.text('Entendido'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('versión T-PRUEBA-2'), findsOneWidget, reason: 'the current version is shown');
-      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isFalse);
-      expect(box(tester, 'accept-TERMS_OF_SERVICE').onChanged, isNull, reason: 'it has to be read again');
-      expect(box(tester, 'accept-study').value, isFalse);
+      for (final key in ['accept-TERMS_OF_SERVICE', 'accept-PRIVACY_POLICY', 'accept-study']) {
+        expect(box(tester, key).value, isFalse, reason: '$key has to be accepted again');
+      }
+      await openDoc(tester, 'TERMS_OF_SERVICE');
+      expect(find.text('Versión T-PRUEBA-2'), findsOneWidget, reason: 'the current version is the one shown');
+      await tester.tap(find.byTooltip('Volver').last);
+      await tester.pumpAndSettle();
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      await tapKey(tester, 'accept-PRIVACY_POLICY');
+      await tapKey(tester, 'accept-study');
+      await submit(tester);
+      expect(backend.bodyOf('POST', '/auth/register')['acceptedTermsVersion'], 'T-PRUEBA-2', reason: 'the version now published is the one recorded');
     });
 
     for (final (name, message) in [
@@ -386,25 +406,91 @@ void main() {
   });
 
   group('reading and time zone', () {
-    testWidgets('the reader shows the whole text and its version; leaving unfinished does not count', (tester) async {
+    testWidgets('tapping «Términos y condiciones» opens the whole document and its version; it never ticks the box', (tester) async {
       await open(tester);
-      await tapKey(tester, 'read-TERMS_OF_SERVICE');
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isFalse);
+      await openDoc(tester, 'TERMS_OF_SERVICE');
+      expect(find.descendant(of: find.byType(ListView), matching: find.text('Términos y condiciones')), findsOneWidget, reason: 'title');
       expect(find.text(syntheticTerms), findsOneWidget);
       expect(find.text('Versión T-PRUEBA-1'), findsOneWidget);
-      await tester.tap(find.byTooltip('Volver'));
+      for (final none in ['He leído el documento', 'Acepto y continúo', 'Acepto']) {
+        expect(find.text(none), findsNothing, reason: 'the document is only for reading: «$none»');
+      }
+      expect(find.byType(Checkbox), findsNothing, reason: 'accepting happens only in the form');
+      await tester.tap(find.byTooltip('Volver').last);
       await tester.pumpAndSettle();
-      expect(box(tester, 'accept-TERMS_OF_SERVICE').onChanged, isNull);
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isFalse, reason: 'opening is not accepting');
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').onChanged, isNotNull);
     });
 
-    testWidgets('a document that cannot be opened (broken address): error, «Reintentar», and it can never be accepted', (tester) async {
-      await open(tester, texts: BrokenDocuments());
-      await tapKey(tester, 'read-PRIVACY_POLICY');
-      expect(find.textContaining('No se pudo abrir el documento'), findsOneWidget);
-      expect(find.text('He leído el documento'), findsNothing);
-      expect(find.text('Reintentar'), findsOneWidget);
-      await tester.tap(find.byTooltip('Volver'));
+    testWidgets('the box ticks and unticks by hand, without reading to the end; only the box changes it', (tester) async {
+      await open(tester);
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isTrue);
+      await openDoc(tester, 'TERMS_OF_SERVICE');
+      await tester.tap(find.byTooltip('Volver').last);
       await tester.pumpAndSettle();
-      expect(box(tester, 'accept-PRIVACY_POLICY').onChanged, isNull, reason: 'not shown = not read = not acceptable');
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isTrue, reason: 'opening again does not untick either');
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isFalse);
+      expect(box(tester, 'accept-PRIVACY_POLICY').value, isFalse, reason: 'each box is separate');
+    });
+
+    testWidgets('back from the document, everything typed and accepted is still there', (tester) async {
+      await open(tester);
+      await fillAccount(tester);
+      await tapKey(tester, 'accept-PRIVACY_POLICY');
+      await tapKey(tester, 'accept-study');
+      await read(tester, 'TERMS_OF_SERVICE');
+      for (final value in ['Ana', 'Prueba', 'ana@audit.local']) {
+        expect(find.widgetWithText(TextFormField, value), findsOneWidget, reason: value);
+      }
+      expect(box(tester, 'accept-PRIVACY_POLICY').value, isTrue);
+      expect(box(tester, 'accept-study').value, isTrue);
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      await submit(tester);
+      expect(find.text('Preparando cuenta'), findsOneWidget, reason: 'the kept form is sent as it was');
+    });
+
+    testWidgets('no account without every mandatory acceptance', (tester) async {
+      final backend = await open(tester);
+      await fillAccount(tester);
+      await tapKey(tester, 'accept-PRIVACY_POLICY');
+      await tapKey(tester, 'accept-study');
+      await submit(tester);
+      expect(find.textContaining('marca la aceptación de los Términos y condiciones'), findsOneWidget);
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      await tapKey(tester, 'accept-PRIVACY_POLICY');
+      await submit(tester);
+      expect(find.textContaining('marca la aceptación de los Términos y condiciones'), findsOneWidget);
+      expect(backend.routes.where((r) => r.startsWith('POST')), isEmpty);
+    });
+
+    testWidgets('a document that cannot be opened (broken address): error, «Reintentar», and it cannot be accepted', (tester) async {
+      await open(tester, texts: BrokenDocuments());
+      await openDoc(tester, 'PRIVACY_POLICY');
+      expect(find.textContaining('No se pudo abrir el documento'), findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+      await tester.tap(find.byTooltip('Volver').last);
+      await tester.pumpAndSettle();
+      expect(box(tester, 'accept-PRIVACY_POLICY').onChanged, isNull, reason: 'not shown = not acceptable');
+      expect(find.textContaining('no se puede aceptar'), findsOneWidget);
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').onChanged, isNotNull, reason: 'the others are not affected');
+    });
+
+    testWidgets('ticked without opening a document that cannot be shown: checked before sending, nothing created', (tester) async {
+      final backend = await open(tester, texts: BrokenDocuments());
+      await fillAccount(tester);
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      await tapKey(tester, 'accept-PRIVACY_POLICY');
+      await tapKey(tester, 'accept-study');
+      await submit(tester);
+      expect(find.textContaining('No se pudo abrir: Política de privacidad'), findsOneWidget);
+      expect(backend.routes, isNot(contains('POST /auth/register')));
+      expect(box(tester, 'accept-PRIVACY_POLICY').value, isFalse);
+      expect(box(tester, 'accept-PRIVACY_POLICY').onChanged, isNull);
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isTrue, reason: 'what could be shown stays accepted');
+      expect(find.widgetWithText(TextFormField, 'ana@audit.local'), findsOneWidget);
     });
 
     testWidgets('a closed list of IANA zones; the choice is what is sent', (tester) async {

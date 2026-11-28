@@ -38,8 +38,8 @@ class DocumentHost implements HttpClientAdapter {
 class PdfForPrivacy extends DocumentTextRepository {
   PdfForPrivacy() : super(Dio());
   @override
-  Future<String> fetch(String url) =>
-      (url.contains('PRIVACY') ? host(pdf, ['application/pdf']) : host(utf8.encode('Texto sintético corto.'), ['text/plain'])).fetch(url);
+  Future<String> fetchRaw(String url) =>
+      (url.contains('PRIVACY') ? host(pdf, ['application/pdf']) : host(utf8.encode('Texto sintético corto.'), ['text/plain'])).fetchRaw(url);
 }
 
 DocumentTextRepository host(List<int> body, List<String> types) => DocumentTextRepository(Dio()..httpClientAdapter = DocumentHost(body, types));
@@ -106,6 +106,13 @@ void main() {
       }
     });
 
+    test('the reader gets subtitles and paragraphs in order; the text is not changed', () {
+      expect(DocumentTextRepository.blocks('<h1>Título</h1><p>Uno &amp; dos.</p><h2>1. <b>Datos</b></h2><p>Tres.</p><ul><li>a</li><li>b</li></ul>')
+          .map((b) => '${b.heading ? '#' : ''}${b.text}'), ['#Título', 'Uno & dos.', '#1. Datos', 'Tres.', '• a', '• b']);
+      expect(DocumentTextRepository.blocks('Primero.\n\n1. Uno\n2. Dos\n\nFin.').map((b) => b.text), ['Primero.', '1. Uno\n2. Dos', 'Fin.'],
+          reason: 'plain text keeps its line breaks (lists stay lists)');
+    });
+
     test('HTML entities are decoded once (accents, ¿¡, «», numeric), unknown ones kept', () {
       expect(DocumentTextRepository.plainText('<p>Informaci&#243;n &Aacute;rea &iquest;Dudas? &iexcl;S&iacute;! &uuml; &laquo;x&raquo; &#x00E9; &mdash; &amp;lt; &desconocida;</p>'),
           'Información Área ¿Dudas? ¡Sí! ü «x» é — &lt; &desconocida;');
@@ -125,60 +132,66 @@ void main() {
     ));
   }
 
-  testWidgets('a PDF in the reader: explained, «Reintentar», and no «He leído el documento»', (tester) async {
+  testWidgets('a PDF in the reader: explained, «Reintentar», nothing to accept, and it comes back as not shown', (tester) async {
     await openReader(tester, host(pdf, ['application/pdf']));
-    final read = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
+    final shown = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
     await tester.pumpAndSettle();
     expect(find.textContaining('no está en un formato que Kora pueda mostrar'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
-    expect(find.text('He leído el documento'), findsNothing);
     await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
-    expect(await read, isFalse, reason: 'not shown = not read');
+    expect(await shown, isFalse, reason: 'not shown = cannot be accepted');
   });
 
-  testWidgets('320 × 568 with text at 200 %: readable, scrollable to the end, back to the sign-up', (tester) async {
-    await openReader(tester, host(longText, ['text/plain; charset=utf-8']), textScale: 2);
-    final read = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
+  testWidgets('the reader is only a document: white page, dark text, title, subtitles and paragraphs in order, no buttons to accept', (tester) async {
+    await openReader(tester, host(utf8.encode('<h1>Términos sintéticos</h1><p>Primer párrafo.</p><h2>1. Uso de la app</h2><p>Segundo párrafo.</p>'), ['text/html']),
+        size: const Size(390, 844));
+    final shown = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull, reason: 'nothing overflows');
-    expect(find.text('Desplázate hasta el final para continuar'), findsOneWidget);
-    final scrollable = find.descendant(of: find.byType(DocumentReaderPage), matching: find.byType(Scrollable)).first;
-    // At 200 % the synthetic document is very long: scroll until its end.
-    for (var i = 0; i < 100 && find.text('He leído el documento').evaluate().isEmpty; i++) {
-      await tester.drag(scrollable, const Offset(0, -3000));
-      await tester.pumpAndSettle();
+    expect(tester.widget<AnimatedOpacity>(find.descendant(of: find.byType(AppBar), matching: find.byType(AnimatedOpacity))).opacity, 0,
+        reason: 'the title is not repeated while the title of the text is visible');
+    final scaffold = tester.widget<Scaffold>(find.descendant(of: find.byType(DocumentReaderPage), matching: find.byType(Scaffold)));
+    expect(scaffold.backgroundColor, Colors.white);
+    final texts = tester.widgetList<Text>(find.descendant(of: find.byType(ListView), matching: find.byType(Text))).map((t) => t.data).toList();
+    expect(texts, ['Consentimiento informado', 'Versión C-PRUEBA-1', 'Términos sintéticos', 'Primer párrafo.', '1. Uso de la app', 'Segundo párrafo.']);
+    final subtitle = tester.widget<Text>(find.text('1. Uso de la app'));
+    final paragraph = tester.widget<Text>(find.text('Primer párrafo.'));
+    expect(subtitle.style!.fontWeight, FontWeight.w700);
+    expect(paragraph.style!.fontWeight, isNot(FontWeight.w700));
+    expect(paragraph.style!.color!.computeLuminance(), lessThan(0.05), reason: 'dark text on white');
+    for (final none in [FilledButton, ElevatedButton, OutlinedButton, Checkbox, Card]) {
+      expect(find.descendant(of: find.byType(DocumentReaderPage), matching: find.byType(none)), findsNothing, reason: '$none');
     }
-    expect(find.text('He leído el documento'), findsOneWidget);
-    await tester.tap(find.text('He leído el documento'));
+    expect(find.byTooltip('Volver'), findsOneWidget, reason: 'back arrow');
+    await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
-    expect(await read, isTrue);
-    expect(tester.takeException(), isNull);
+    expect(await shown, isTrue, reason: 'shown: it can be accepted in the form, without reading to the end');
   });
 
   for (final size in [const Size(320, 568), const Size(568, 320)]) {
     for (final scale in [1.0, 1.3, 2.0]) {
-      testWidgets('reader at $size, text ${(scale * 100).round()} %: no overflow, title and version, scroll to the end, back', (tester) async {
+      testWidgets('reader at $size, text ${(scale * 100).round()} %: no overflow, whole title and version, scrolls, back', (tester) async {
         await openReader(tester, host(longText, ['text/plain; charset=utf-8']), size: size, textScale: scale);
-        final read = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
+        final shown = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull, reason: 'nothing overflows');
         expect(find.text('Versión C-PRUEBA-1'), findsOneWidget);
-        expect(find.text('Consentimiento informado del estudio'), findsWidgets);
-        // The full title (the second one; the bar shows it on one line): no word is split.
-        final title = tester.renderObject<RenderParagraph>(find.text('Consentimiento informado del estudio').at(1));
+        // The full title at the start of the text (the bar may shorten it): no word is split.
+        final title = tester.renderObject<RenderParagraph>(find.descendant(of: find.descendant(of: find.byType(ListView), matching: find.text('Consentimiento informado')), matching: find.byType(RichText)));
         expect(title.getMinIntrinsicWidth(double.infinity), lessThanOrEqualTo(title.size.width + 0.5), reason: 'a word of the title would be split');
         expect(find.byTooltip('Volver').hitTestable(), findsOneWidget, reason: 'back is always reachable');
         final scrollable = find.descendant(of: find.byType(DocumentReaderPage), matching: find.byType(Scrollable)).first;
-        for (var i = 0; i < 100 && find.text('He leído el documento').evaluate().isEmpty; i++) {
+        for (var i = 0; i < 100 && find.text('Fin.').evaluate().isEmpty; i++) {
           await tester.drag(scrollable, const Offset(0, -3000));
           await tester.pumpAndSettle();
         }
-        expect(find.text('He leído el documento').hitTestable(), findsOneWidget);
-        await tester.tap(find.text('He leído el documento'));
-        await tester.pumpAndSettle();
-        expect(await read, isTrue);
+        expect(find.text('Fin.'), findsOneWidget, reason: 'the whole document can be read');
+        expect(tester.widget<AnimatedOpacity>(find.descendant(of: find.byType(AppBar), matching: find.byType(AnimatedOpacity))).opacity, 1,
+            reason: 'once the title of the text has scrolled away, the bar shows it');
         expect(tester.takeException(), isNull);
+        await tester.tap(find.byTooltip('Volver'));
+        await tester.pumpAndSettle();
+        expect(await shown, isTrue);
       });
     }
   }
@@ -213,18 +226,28 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Future<void> read(WidgetTester tester, String type) async {
-      await tapKey(tester, 'read-$type');
-      await tester.tap(find.text('He leído el documento'));
+    /// Taps the name of the document inside «Acepto los …» (the link).
+    Future<void> openDoc(WidgetTester tester, String type) async {
+      final sentence = find.byKey(Key('read-$type'));
+      await tester.ensureVisible(sentence);
+      await tester.pumpAndSettle();
+      final title = switch (type) { 'TERMS_OF_SERVICE' => 'Términos y condiciones', 'PRIVACY_POLICY' => 'Política de privacidad', _ => 'Consentimiento informado' };
+      await tester.tapOnText(find.textRange.ofSubstring(title, descendentOf: sentence));
       await tester.pumpAndSettle();
     }
 
-    CheckboxListTile box(WidgetTester tester, String key) => tester.widget<CheckboxListTile>(find.byKey(Key(key)));
+    Future<void> read(WidgetTester tester, String type) async {
+      await openDoc(tester, type);
+      await tester.tap(find.byTooltip('Volver').last);
+      await tester.pumpAndSettle();
+    }
+
+    Checkbox box(WidgetTester tester, String key) => tester.widget<Checkbox>(find.byKey(Key(key)));
 
     testWidgets('320 px with text at 200 %: every document and box can be reached, nothing overflows', (tester) async {
       await openSignUp(tester, const Size(320, 640), textScale: 2);
       expect(tester.takeException(), isNull);
-      for (final key in ['read-TERMS_OF_SERVICE', 'read-PRIVACY_POLICY', 'read-STUDY_PARTICIPATION', 'accept-study', 'decline-study']) {
+      for (final key in ['read-TERMS_OF_SERVICE', 'accept-TERMS_OF_SERVICE', 'read-PRIVACY_POLICY', 'accept-PRIVACY_POLICY', 'read-STUDY_PARTICIPATION', 'accept-study', 'decline-study']) {
         // The list builds what is near the screen: scroll down to each one.
         await tester.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
         await tester.pumpAndSettle();
@@ -233,14 +256,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    for (final (size, scale) in [(const Size(320, 640), 1.0), (const Size(320, 640), 1.3), (const Size(320, 640), 2.0), (const Size(568, 320), 2.0)]) {
+      testWidgets('$size, text ${(scale * 100).round()} %: «Acepto los Términos y condiciones» and the others read well, no word split', (tester) async {
+        await openSignUp(tester, size, textScale: scale);
+        for (final type in ['TERMS_OF_SERVICE', 'PRIVACY_POLICY', 'STUDY_PARTICIPATION']) {
+          final link = find.byKey(Key('read-$type'));
+          await tester.scrollUntilVisible(link, 200, scrollable: find.byType(Scrollable).first);
+          await tester.pumpAndSettle();
+          final sentence = tester.renderObject<RenderParagraph>(find.descendant(of: link, matching: find.byType(RichText)));
+          expect(sentence.getMinIntrinsicWidth(double.infinity), lessThanOrEqualTo(sentence.size.width + 0.5), reason: '$type: a word would be split');
+          expect(find.byKey(Key(type == 'STUDY_PARTICIPATION' ? 'accept-study' : 'accept-$type')).hitTestable(), findsOneWidget);
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('a PDF document: explained in the reader; back in the form nothing typed or accepted is lost', (tester) async {
       await openSignUp(tester, const Size(390, 844), texts: PdfForPrivacy());
       await tester.enterText(find.widgetWithText(TextFormField, 'Correo electrónico'), 'ana@audit.local');
       await read(tester, 'TERMS_OF_SERVICE');
       await tapKey(tester, 'accept-TERMS_OF_SERVICE');
-      await tapKey(tester, 'read-PRIVACY_POLICY');
+      await openDoc(tester, 'PRIVACY_POLICY');
       expect(find.textContaining('no está en un formato que Kora pueda mostrar'), findsOneWidget);
-      await tester.tap(find.byTooltip('Volver'));
+      await tester.tap(find.byTooltip('Volver').last);
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextFormField, 'ana@audit.local'), findsOneWidget);
       expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isTrue, reason: 'the other acceptance is kept');
@@ -251,7 +289,7 @@ void main() {
       testWidgets('landscape 568 × 320, text ${(scale * 100).round()} %: documents and boxes reachable, nothing overflows', (tester) async {
         await openSignUp(tester, const Size(568, 320), textScale: scale);
         expect(tester.takeException(), isNull);
-        for (final key in ['read-TERMS_OF_SERVICE', 'accept-TERMS_OF_SERVICE', 'read-PRIVACY_POLICY', 'read-STUDY_PARTICIPATION', 'accept-study', 'decline-study']) {
+        for (final key in ['read-TERMS_OF_SERVICE', 'accept-TERMS_OF_SERVICE', 'read-PRIVACY_POLICY', 'accept-PRIVACY_POLICY', 'read-STUDY_PARTICIPATION', 'accept-study', 'decline-study']) {
           await tester.scrollUntilVisible(find.byKey(Key(key)), 200, scrollable: find.byType(Scrollable).first);
           await tester.pumpAndSettle();
           expect(find.byKey(Key(key)).hitTestable(), findsOneWidget, reason: key);

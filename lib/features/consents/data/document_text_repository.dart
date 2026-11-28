@@ -10,7 +10,43 @@ class DocumentTextRepository {
       : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 20), receiveTimeout: const Duration(seconds: 20), responseType: ResponseType.plain));
   final Dio _dio;
 
-  Future<String> fetch(String url) async {
+  /// The document as ordered blocks (subtitles and paragraphs) for the reader.
+  Future<List<DocumentBlock>> fetchBlocks(String url) async => blocks(await fetchRaw(url));
+
+  Future<String> fetch(String url) async => plainText(await fetchRaw(url));
+
+  /// Subtitles (`<h1>`…`<h4>`) and paragraphs of a text or simple HTML
+  /// document, in order. The text of each block is [plainText] (entities
+  /// decoded, links with their destination, nothing active).
+  static List<DocumentBlock> blocks(String raw) {
+    const mark = '\u0001';
+    // Plain text: paragraphs are separated by blank lines; line breaks inside a
+    // paragraph (lists, numbered items) are kept as they are.
+    if (!raw.contains('<')) {
+      return [
+        for (final paragraph in plainText(raw).split(RegExp(r'\n\s*\n')))
+          if (paragraph.trim().isNotEmpty) DocumentBlock(paragraph.trim()),
+      ];
+    }
+    final marked = raw.replaceAllMapped(RegExp(r'<h[1-4][^>]*>([\s\S]*?)</h[1-4]>', caseSensitive: false),
+        (m) => '<p>$mark${m[1]!.replaceAll(RegExp(r'<[^>]+>'), ' ')}</p>');
+    final text = plainText(marked);
+    final result = <DocumentBlock>[];
+    for (final paragraph in text.split(RegExp(r'\n\s*\n|\n(?=$mark)'))) {
+      for (final line in paragraph.split('\n')) {
+        final value = line.trim();
+        if (value.isEmpty || value == mark) continue;
+        result.add(value.startsWith(mark)
+            ? DocumentBlock(value.substring(1).replaceAll(RegExp(r'\s+'), ' ').trim(), heading: true)
+            : DocumentBlock(value));
+      }
+    }
+    return result;
+  }
+
+  /// Downloads the document and checks it can be shown (text or HTML, not
+  /// empty). The only network step: [fetch] and [fetchBlocks] read from it.
+  Future<String> fetchRaw(String url) async {
     final uri = Uri.tryParse(url);
     final allowed = uri != null && (uri.scheme == 'https' || (!kReleaseMode && uri.scheme == 'http')) && uri.host.isNotEmpty;
     if (!allowed) throw const FormatException('La dirección del documento no es válida.');
@@ -22,9 +58,8 @@ class DocumentTextRepository {
     // Some servers repeat Content-Type; value() would throw, so the last one is used.
     final types = response.headers[Headers.contentTypeHeader] ?? const <String>[];
     if (!isDisplayable(types.isEmpty ? null : types.last, raw)) throw const FormatException(unsupportedFormat);
-    final text = plainText(raw);
-    if (text.trim().isEmpty) throw const FormatException('El documento está vacío.');
-    return text;
+    if (plainText(raw).trim().isEmpty) throw const FormatException('El documento está vacío.');
+    return raw;
   }
 
   static const unsupportedFormat = 'El documento no está en un formato que Kora pueda mostrar (texto o HTML). Contacta al equipo del estudio.';
@@ -81,3 +116,19 @@ class DocumentTextRepository {
 }
 
 final documentTextRepositoryProvider = Provider((ref) => DocumentTextRepository());
+
+/// A subtitle or a paragraph of a legal document.
+class DocumentBlock {
+  const DocumentBlock(this.text, {this.heading = false});
+  final String text;
+  final bool heading;
+
+  @override
+  bool operator ==(Object other) => other is DocumentBlock && other.text == text && other.heading == heading;
+
+  @override
+  int get hashCode => Object.hash(text, heading);
+
+  @override
+  String toString() => heading ? '## $text' : text;
+}

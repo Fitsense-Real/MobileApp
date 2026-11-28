@@ -1,0 +1,12 @@
+<h1>DOCUMENTO SINT&Eacute;TICO DE PRUEBA &ndash; NO APROBADO</h1>
+<p>T&eacute;rminos y condiciones de Kora (versi&oacute;n T-QA-3). Este texto existe solo para probar la aplicaci&oacute;n en un entorno local aislado. No es un documento aprobado por el equipo del estudio ni por ning&uacute;n comit&eacute;, y no debe mostrarse a participantes.</p>
+<h2>1. Objeto</h2>
+<p>P&aacute;rrafo sint&eacute;tico que describe, solo como ejemplo, para qu&eacute; sirve la aplicaci&oacute;n dentro del estudio.</p>
+<h2>2. Uso de la aplicaci&oacute;n</h2>
+<p>P&aacute;rrafo sint&eacute;tico de ejemplo sobre el uso de la aplicaci&oacute;n. Para dudas escribe a <a href="mailto:equipo@estudio.example">el equipo del estudio</a>.</p>
+<p>Segundo p&aacute;rrafo sint&eacute;tico de la misma secci&oacute;n, para comprobar la separaci&oacute;n entre p&aacute;rrafos.</p>
+<h2>3. Cuenta y datos</h2>
+<p>P&aacute;rrafo sint&eacute;tico de ejemplo sobre la cuenta. El tratamiento de los datos se describe en la pol&iacute;tica de privacidad.</p>
+<h2>4. Cambios en estos t&eacute;rminos</h2>
+<p>P&aacute;rrafo sint&eacute;tico de ejemplo: si se publica una versi&oacute;n nueva, la aplicaci&oacute;n pide aceptarla de nuevo.</p>
+<p>Fin del documento sint&eacute;tico.</p>
