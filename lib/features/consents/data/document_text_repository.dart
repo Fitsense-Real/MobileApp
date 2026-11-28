@@ -43,6 +43,15 @@ class DocumentTextRepository {
 
   /// Plain text from a text or simple HTML document: block tags become line
   /// breaks, other tags are removed and common entities decoded.
+  static const _entities = {
+    'nbsp': ' ', 'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'",
+    'aacute': 'á', 'eacute': 'é', 'iacute': 'í', 'oacute': 'ó', 'uacute': 'ú', 'ntilde': 'ñ', 'uuml': 'ü',
+    'Aacute': 'Á', 'Eacute': 'É', 'Iacute': 'Í', 'Oacute': 'Ó', 'Uacute': 'Ú', 'Ntilde': 'Ñ', 'Uuml': 'Ü',
+    'iquest': '¿', 'iexcl': '¡', 'laquo': '«', 'raquo': '»', 'ldquo': '“', 'rdquo': '”', 'lsquo': '‘', 'rsquo': '’',
+    'mdash': '—', 'ndash': '–', 'hellip': '…', 'middot': '·', 'bull': '•', 'ordm': 'º', 'ordf': 'ª', 'deg': '°',
+    'copy': '©', 'reg': '®', 'euro': '€',
+  };
+
   static String plainText(String raw) {
     if (!raw.contains('<')) return raw.trim();
     var s = raw.replaceAll(RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false), '');
@@ -57,8 +66,16 @@ class DocumentTextRepository {
     s = s.replaceAll(RegExp(r'<\s*(br|/p|/h[1-6]|/li|/div|/tr)\s*/?>', caseSensitive: false), '\n');
     s = s.replaceAll(RegExp(r'<\s*li[^>]*>', caseSensitive: false), '• ');
     s = s.replaceAll(RegExp(r'<[^>]+>'), '');
-    const entities = {'&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&aacute;': 'á', '&eacute;': 'é', '&iacute;': 'í', '&oacute;': 'ó', '&uacute;': 'ú', '&ntilde;': 'ñ'};
-    entities.forEach((k, v) => s = s.replaceAll(k, v));
+    // One pass, so «&amp;lt;» stays «&lt;»; numeric entities (&#243;, &#xE9;) and
+    // the named ones of Spanish legal texts are decoded, unknown ones are kept.
+    s = s.replaceAllMapped(RegExp(r'&(#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z]{2,8});'), (m) {
+      final e = m[1]!;
+      if (e.startsWith('#')) {
+        final code = e[1] == 'x' || e[1] == 'X' ? int.tryParse(e.substring(2), radix: 16) : int.tryParse(e.substring(1));
+        return code != null && code > 0 && code <= 0x10FFFF ? String.fromCharCode(code) : m[0]!;
+      }
+      return _entities[e] ?? m[0]!;
+    });
     return s.split('\n').map((l) => l.trim()).join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
   }
 }

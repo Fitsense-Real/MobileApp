@@ -4,8 +4,9 @@
 // accepting is not lost by rotating the phone or scrolling. Synthetic
 // documents, tests only.
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -33,6 +34,14 @@ class DocumentHost implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Short text for every document except the privacy policy, which is a PDF.
+class PdfForPrivacy extends DocumentTextRepository {
+  PdfForPrivacy() : super(Dio());
+  @override
+  Future<String> fetch(String url) =>
+      (url.contains('PRIVACY') ? host(pdf, ['application/pdf']) : host(utf8.encode('Texto sintético corto.'), ['text/plain'])).fetch(url);
+}
+
 DocumentTextRepository host(List<int> body, List<String> types) => DocumentTextRepository(Dio()..httpClientAdapter = DocumentHost(body, types));
 
 final pdf = [...utf8.encode('%PDF-1.7\n'), 0, 1, 2, 255, 254, ...utf8.encode('stream')];
@@ -40,7 +49,18 @@ final longText = utf8.encode('DOCUMENTO SINTÉTICO DE PRUEBA - NO APROBADO\n\n${
 
 const doc = LegalDocument(type: ConsentType.studyParticipation, title: 'Consentimiento informado del estudio', url: 'https://docs.test/consentimiento', version: 'C-PRUEBA-1');
 
+/// The app's real fonts: word widths (a split title) are only meaningful with them.
+Future<void> loadFonts() async {
+  final font = FontLoader('Poppins');
+  for (final w in ['Regular', 'SemiBold', 'Bold', 'ExtraBold', 'Black']) {
+    font.addFont(rootBundle.load('assets/fonts/Poppins-$w.ttf'));
+  }
+  await font.load();
+  await (FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+}
+
 void main() {
+  setUpAll(loadFonts);
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
   group('what can be shown (and therefore read)', () {
@@ -68,6 +88,27 @@ void main() {
       expect(DocumentTextRepository.plainText('<a href="https://estudio.example">https://estudio.example</a>'), 'https://estudio.example');
       expect(DocumentTextRepository.plainText('<a href="#seccion-2">Ver la sección 2</a>'), 'Ver la sección 2');
       expect(DocumentTextRepository.plainText('<a href="javascript:void(0)">Nada</a>'), 'Nada');
+    });
+
+    test('a PDF announced as HTML or text is still blocked', () async {
+      for (final types in [['text/html'], ['text/plain; charset=utf-8']]) {
+        await expectLater(host(pdf, types).fetch('https://docs.test/x'), throwsA(isA<FormatException>()), reason: '$types');
+      }
+    });
+
+    test('nothing active is run or shown: scripts, styles, iframes, event attributes, javascript: links', () {
+      final text = DocumentTextRepository.plainText('<style>p{color:red}</style><p>Hola</p><script>alert(1)</script>'
+          '<SCRIPT type="x">robar()</SCRIPT><img src=x onerror="alert(2)"><iframe src="https://malo.example"></iframe>'
+          '<a href="javascript:alert(3)">pulsa</a>');
+      expect(text, 'Hola\npulsa');
+      for (final active in ['alert', 'robar', 'color', 'onerror', 'malo.example', 'javascript']) {
+        expect(text, isNot(contains(active)), reason: active);
+      }
+    });
+
+    test('HTML entities are decoded once (accents, ¿¡, «», numeric), unknown ones kept', () {
+      expect(DocumentTextRepository.plainText('<p>Informaci&#243;n &Aacute;rea &iquest;Dudas? &iexcl;S&iacute;! &uuml; &laquo;x&raquo; &#x00E9; &mdash; &amp;lt; &desconocida;</p>'),
+          'Información Área ¿Dudas? ¡Sí! ü «x» é — &lt; &desconocida;');
     });
   });
 
@@ -115,6 +156,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final size in [const Size(320, 568), const Size(568, 320)]) {
+    for (final scale in [1.0, 1.3, 2.0]) {
+      testWidgets('reader at $size, text ${(scale * 100).round()} %: no overflow, title and version, scroll to the end, back', (tester) async {
+        await openReader(tester, host(longText, ['text/plain; charset=utf-8']), size: size, textScale: scale);
+        final read = DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), doc);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'nothing overflows');
+        expect(find.text('Versión C-PRUEBA-1'), findsOneWidget);
+        expect(find.text('Consentimiento informado del estudio'), findsWidgets);
+        // The full title (the second one; the bar shows it on one line): no word is split.
+        final title = tester.renderObject<RenderParagraph>(find.text('Consentimiento informado del estudio').at(1));
+        expect(title.getMinIntrinsicWidth(double.infinity), lessThanOrEqualTo(title.size.width + 0.5), reason: 'a word of the title would be split');
+        expect(find.byTooltip('Volver').hitTestable(), findsOneWidget, reason: 'back is always reachable');
+        final scrollable = find.descendant(of: find.byType(DocumentReaderPage), matching: find.byType(Scrollable)).first;
+        for (var i = 0; i < 100 && find.text('He leído el documento').evaluate().isEmpty; i++) {
+          await tester.drag(scrollable, const Offset(0, -3000));
+          await tester.pumpAndSettle();
+        }
+        expect(find.text('He leído el documento').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('He leído el documento'));
+        await tester.pumpAndSettle();
+        expect(await read, isTrue);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   group('sign-up', () {
     Map<String, dynamic> published() => {
           'enforcedOnSignup': true, 'privacyRecord': 'ACEPTACION',
@@ -124,7 +192,7 @@ void main() {
           ],
         };
 
-    Future<void> openSignUp(WidgetTester tester, Size size, {double textScale = 1}) async {
+    Future<void> openSignUp(WidgetTester tester, Size size, {double textScale = 1, DocumentTextRepository? texts}) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -132,7 +200,7 @@ void main() {
       final router = GoRouter(initialLocation: AppRoutes.register, routes: [GoRoute(path: AppRoutes.register, builder: (_, __) => const RegisterPage())]);
       addTearDown(router.dispose);
       await tester.pumpWidget(ProviderScope(
-        overrides: [dioProvider.overrideWithValue(scriptedDio(backend)), documentTextRepositoryProvider.overrideWithValue(host(utf8.encode('Texto sintético corto.'), ['text/plain']))],
+        overrides: [dioProvider.overrideWithValue(scriptedDio(backend)), documentTextRepositoryProvider.overrideWithValue(texts ?? host(utf8.encode('Texto sintético corto.'), ['text/plain']))],
         child: MediaQuery(data: MediaQueryData(size: size, textScaler: TextScaler.linear(textScale)), child: MaterialApp.router(routerConfig: router, theme: AppTheme.light)),
       ));
       await tester.pumpAndSettle();
@@ -164,6 +232,33 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('a PDF document: explained in the reader; back in the form nothing typed or accepted is lost', (tester) async {
+      await openSignUp(tester, const Size(390, 844), texts: PdfForPrivacy());
+      await tester.enterText(find.widgetWithText(TextFormField, 'Correo electrónico'), 'ana@audit.local');
+      await read(tester, 'TERMS_OF_SERVICE');
+      await tapKey(tester, 'accept-TERMS_OF_SERVICE');
+      await tapKey(tester, 'read-PRIVACY_POLICY');
+      expect(find.textContaining('no está en un formato que Kora pueda mostrar'), findsOneWidget);
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextFormField, 'ana@audit.local'), findsOneWidget);
+      expect(box(tester, 'accept-TERMS_OF_SERVICE').value, isTrue, reason: 'the other acceptance is kept');
+      expect(box(tester, 'accept-PRIVACY_POLICY').onChanged, isNull, reason: 'a document that failed cannot be accepted');
+    });
+
+    for (final scale in [1.0, 1.3, 2.0]) {
+      testWidgets('landscape 568 × 320, text ${(scale * 100).round()} %: documents and boxes reachable, nothing overflows', (tester) async {
+        await openSignUp(tester, const Size(568, 320), textScale: scale);
+        expect(tester.takeException(), isNull);
+        for (final key in ['read-TERMS_OF_SERVICE', 'accept-TERMS_OF_SERVICE', 'read-PRIVACY_POLICY', 'read-STUDY_PARTICIPATION', 'accept-study', 'decline-study']) {
+          await tester.scrollUntilVisible(find.byKey(Key(key)), 200, scrollable: find.byType(Scrollable).first);
+          await tester.pumpAndSettle();
+          expect(find.byKey(Key(key)).hitTestable(), findsOneWidget, reason: key);
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('acceptances survive rotating the phone and scrolling away and back', (tester) async {
       await openSignUp(tester, const Size(390, 844));
