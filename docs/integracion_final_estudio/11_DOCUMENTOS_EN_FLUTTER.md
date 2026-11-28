@@ -1,135 +1,155 @@
-# 11 · Documentos visualizados en Flutter: revisión y correcciones
+# 11 · Documentos visualizados en Flutter (PR #36)
 
-Orden: «Corrección del flujo de documentos y conservación de la integración existente». Fecha: 28/11/2026.
+Fecha: 28/11/2026.
 
 | | |
 |---|---|
-| Mobile `generation` revisado | `ba55e1dd55f3a9cca2162db6778c1154c815b3b2` (#33, #34 y #35 fusionadas) |
-| Backend de referencia | `generation` `9aa7abf` (#96–#98 y #100; ninguno cambia el registro ni los documentos) |
-| Contrato del Backend | `docs/FitSense/integracion_final_estudio/09_CONTRATO_MOBILE.md` (Backend #100) |
-| Rama de esta revisión | `claude/mobile-documentos-formato-enlaces` (PR abierta, **sin fusionar**) |
+| Mobile `generation` de partida | `ba55e1dd55f3a9cca2162db6778c1154c815b3b2` (#33, #34 y #35 fusionadas) |
+| PR | [Fitsense-Real/MobileApp#36](https://github.com/Fitsense-Real/MobileApp/pull/36), rama `claude/mobile-documentos-formato-enlaces` |
+| Backend usado en las pruebas | `generation` **`9aa7abfe800492940ff2e99970ded462e1c48db7`** (#96–#98 y #100; ninguno cambia el registro ni los documentos), en local con una base aislada. **Nunca la base Neon real** |
+| Contrato del Backend | `docs/FitSense/integracion_final_estudio/09_CONTRATO_MOBILE.md` (Backend #100), sin cambios |
+| SHA final de Mobile | El merge de la #36 se registra en el informe de cierre de la orden (se conoce después de fusionar) |
 
-## 1. Lo que ya funcionaba y no se tocó
+Arquitectura sin cambios: Flutter → Spring Boot → PostgreSQL (Neon). Mobile no se conecta a la base y la #36 no toca la
+URL del Backend, la autenticación, la generación ni las reglas de entrenamiento.
 
-| Requisito de la orden | Estado en `generation` | Cómo se comprobó |
-|---|---|---|
-| Documentos leídos dentro de Flutter (el Backend solo da tipo, versión y dirección) | ✓ El lector descarga el texto o HTML de la `url` y lo muestra en la app | Pruebas y app real |
-| Abrir, leer y volver al registro | ✓ «Leer» → lector → «He leído el documento» o «Volver» | Pruebas y app real |
-| Casilla sin marcar por defecto | ✓ Ninguna; se activa al leer el documento | Pruebas |
-| Una aceptación por documento (sin consolidar) | ✓ Condiciones, privacidad y participación en casillas separadas | Pruebas |
-| Consentimiento informado del estudio (opción A) | ✓ Obligatorio; «No deseo participar» no crea cuenta | Pruebas y app real |
-| Política de privacidad accesible | ✓ Con su propia casilla, que exige el contrato (`acceptedPrivacyVersion`); el texto se adapta a `privacyRecord` | Pruebas |
-| Registro cerrado sin documentos aprobados | ✓ «El registro todavía no está abierto» | App real contra `9aa7abf` |
-| Versiones vigentes; si cambian, revisar de nuevo | ✓ Se comprueban antes de enviar; «Los documentos cambiaron» | App real (`T-QA-1` → `T-QA-2`) |
-| Documento que no se puede abrir no cuenta como leído | ✓ Para direcciones rotas; **faltaba para un PDF** (§2) | Pruebas |
-| Contrato: `type`, `version`, `url`, `status`, `requiredForSignup`, las cuatro versiones y los códigos | ✓ Sin cambios | Contrato en vivo 11/11 |
-| Login tras registrarse, cierre de sesión sin 401, cambio de cuenta, retirada (también durante la generación) | ✓ | App real y pruebas en vivo |
+## 1. Flujo del registro (sin cambios)
 
-**`requiredForSignup`:** Mobile exige siempre los tres documentos (opción A). Eso coincide con `requiredForSignup=true` en
-el registro definitivo. Con la exigencia apagada (`false`), Mobile sigue pidiendo leerlos y aceptarlos, que es más
-estricto y compatible. No hizo falta cambiar nada.
+1. Datos de la cuenta.
+2. Bajo «Documentos del estudio», cada documento (condiciones, política de privacidad y consentimiento informado) tiene
+   «Leer».
+3. «Leer» abre el documento dentro de Kora.
+4. «He leído el documento» o «Volver» regresan al formulario.
+5. Se marca voluntariamente la casilla de ese documento, que empieza desmarcada y solo se activa tras leerlo.
+6. «CREAR CUENTA» se acepta solo con los tres documentos leídos y aceptados y con la participación aceptada.
 
-## 2. Defectos encontrados y corregidos
+La opción A no cambia: el consentimiento informado tiene su propia casilla, «No deseo participar» no crea ninguna
+cuenta, el registro sigue cerrado sin documentos aprobados y se envían las cuatro versiones leídas, comprobadas justo
+antes de enviar.
 
-Los tres se reprodujeron **antes** de corregirlos.
+## 2. Formatos admitidos
 
-| # | Defecto | Reproducción | Corrección |
-|---|---|---|---|
-| D-1 | Un documento publicado como **PDF** (o imagen, o archivo binario) se mostraba como caracteres ilegibles y se podía recorrer hasta el final y **aceptar** | `DocumentTextRepository.fetch` con `application/pdf` devolvía el contenido como texto | Solo se muestran texto y HTML (por `Content-Type` y, si falta, por el contenido). Lo demás: «El documento no está en un formato que Kora pueda mostrar (texto o HTML). Contacta al equipo del estudio.», con «Reintentar» y sin «He leído el documento» |
-| D-2 | Los **enlaces** de un documento HTML perdían su destino: «Escribe a el equipo o visita esta página.» (desaparecían el correo y la dirección) | `plainText` quitaba la etiqueta `<a>` con su `href` | El enlace se muestra con su destino: «el equipo del estudio (equipo@estudio.example)». Al ser texto seleccionable, se puede copiar |
-| D-3 | En un teléfono pequeño (320 × 568) con el **texto del sistema al 200 %**, el lector **se desbordaba 173 px**: el título y la versión fijos no dejaban sitio al documento | Prueba de interfaz a 320 × 568 y escala 2,0 | Arriba solo queda una barra compacta (volver y el título en dos líneas como máximo). El título completo y la versión abren el texto desplazable |
+**Decisión del 28/11/2026:** los documentos se publicarán en **HTML** para verse en Flutter. No se añade un visor de
+PDF.
 
-Además, una cabecera `Content-Type` repetida (la enviaba el servidor de pruebas) ya no impide abrir el documento.
-
-**Sin cambios** en el registro, el contrato, los textos de las casillas ni ninguna otra pantalla.
-
-## 3. Pruebas
-
-`test/document_reader_test.dart` (7 pruebas nuevas):
-
-| Prueba | Qué comprueba |
+| Formato | Tratamiento |
 |---|---|
-| Texto y HTML se muestran; cabecera repetida | Compatibilidad |
-| PDF, binario sin cabecera e imagen | No se pueden abrir (D-1) |
-| Enlaces | Conservan su destino (D-2) |
-| PDF en el lector | Mensaje y «Reintentar»; vuelve con `false` (no leído) |
-| Lector a 320 × 568 al 200 % | Sin desbordamiento; se llega al final; vuelve con `true` (D-3) |
-| Registro a 320 px al 200 % | Todos los documentos, casillas y «No deseo participar» alcanzables, sin desbordes |
-| Giro del teléfono y desplazamiento | Las aceptaciones se conservan |
+| HTML (`text/html`, `application/xhtml+xml`) | Se muestra como texto legible: párrafos, títulos y listas con «•», entidades traducidas (§3) y enlaces con su destino (§4). Scripts, estilos, iframes y atributos activos **no se ejecutan ni se muestran**: el lector no interpreta HTML, solo extrae su texto |
+| Texto plano (`text/plain`) | Tal cual |
+| Sin `Content-Type` | Se decide por el contenido |
+| PDF, imágenes o binarios | **Bloqueados**: «El documento no está en un formato que Kora pueda mostrar (texto o HTML). Contacta al equipo del estudio.», con «Reintentar» y **sin** «He leído el documento». No se puede aceptar y el formulario no pierde lo escrito ni las otras aceptaciones |
+| PDF anunciado como `text/html` o `text/plain` | También bloqueado (se reconoce la firma `%PDF`) |
+| `Content-Type` repetido por el servidor | Se usa el último; el documento se abre |
 
-`flutter analyze`: sin incidencias. `flutter test`: **529 aprobadas · 0 fallidas · 44 omitidas** (522 + 7). Ninguna prueba
-existente se modificó.
+Recomendación para el equipo: HTML sencillo en UTF-8, servido por `https` con un certificado válido.
 
-## 4. Pruebas contra el Backend local `9aa7abf`
+## 3. Cambios de la PR #36
 
-Entorno aislado (base `kora_documentos_9aa`), documentos **sintéticos** por HTTPS local, IA apagada, cuentas
-`@audit.local`. Evidencia: [`evidencia/documentos_flutter/recorridos-y-contrato-9aa7abf.txt`](evidencia/documentos_flutter/recorridos-y-contrato-9aa7abf.txt).
-
-| # de la orden | Prueba | Resultado |
+| # | Defecto (reproducido antes de corregirlo) | Corrección |
 |---|---|---|
-| 1 | Registro cerrado sin documentos | ✓ |
-| 2–4 | Abrir las condiciones, leer, volver; casilla desmarcada | ✓ |
-| 5 | Registro rechazado sin aceptación requerida | ✓ (422 `CONSENTIMIENTO_REQUERIDO` y `VERSION_NO_VIGENTE`; la app no envía sin las aceptaciones) |
-| 6 | Consentimiento informado | ✓ |
-| 7 | Política de privacidad accesible (HTML con enlaces) | ✓ ([captura](capturas/documentos_flutter/D-02-documento-con-enlaces.jpg)) |
-| 8 | Documento inaccesible (PDF publicado) | ✓ No se puede leer ni aceptar ([captura](capturas/documentos_flutter/D-01-documento-pdf.jpg)) |
-| 9–10 | Versión desactualizada y cambio antes de confirmar | ✓ |
-| 11 | Registro con versiones vigentes (sintéticas) | ✓ Envía las cuatro versiones |
-| 12 | Rechazar participar | ✓ Ninguna petición |
-| 13 | Usuario retirado | ✓ Estado de retirada; ninguna generación |
-| 14 | Retirada durante la generación (IA simulada) | ✓ No se publica; la app muestra la retirada; una sola petición |
-| 15 | Login tras el registro | ✓ |
-| 16 | Cierre de sesión sin solicitudes tardías | ✓ 0 respuestas 401 |
-| 17 | Cambio rápido de cuenta | ✓ Prueba automática (respuestas lentas) y app real |
-| 18 | O20, D-M1, P1, P2 | ✓ Sus pruebas automáticas, sin cambios, en verde |
+| D-1 | Un PDF se mostraba como caracteres ilegibles y se podía «leer» y aceptar | Bloqueado (§2) |
+| D-2 | Los enlaces perdían su destino (desaparecían el correo y la página de contacto) | «el equipo del estudio (equipo@estudio.example)». Se puede copiar; no se abre con un toque (sin `url_launcher`) |
+| D-3 | A 320 × 568 con texto al 200 %, el lector se desbordaba 173 px | Barra fija compacta; el título completo y la versión pasan al inicio del texto |
+| D-4 (revisión) | Las entidades HTML numéricas y muchas con nombre no se traducían: «Informaci&amp;#243;n», «&amp;iquest;Dudas?»; y «&amp;amp;lt;» se decodificaba dos veces | Una sola pasada: numéricas (`&#243;`, `&#xE9;`) y las habituales en textos legales en español (mayúsculas acentuadas, ¿ ¡ « » — comillas…). Las desconocidas se conservan |
+| D-5 (revisión) | Sin desbordarse, el lector era poco legible con texto grande: a 320 px al 200 % el título partía una palabra («Consentimie / nto») y apenas quedaba espacio para el texto; en horizontal al 200 % solo quedaban 84 px de 320 | El **texto del documento sigue creciendo hasta el 200 %**. Las partes fijas crecen menos: barra hasta el 160 % (título en una línea), título hasta el 140 % y botón hasta el 150 %. Ninguna palabra del título se parte y el texto se ve desde la primera pantalla. En horizontal al 200 %: 136 px de texto (antes 84) |
 
-También: 429 (mensaje del Backend sin códigos), pérdida de conexión al crear la cuenta (una sola cuenta) y contrato en
-vivo 11/11.
+**Archivos:** `consents/data/document_text_repository.dart`, `consents/presentation/document_reader_page.dart`,
+`test/document_reader_test.dart` y esta documentación. Nada más.
 
-## 5. Probar Kora en tu teléfono Android
+## 4. Pantallas pequeñas: evidencia
 
-Ninguna de las 46 comprobaciones de la matriz
-([`12_MATRIZ_DOS_TELEFONOS.csv`](../cierre_preproduccion/12_MATRIZ_DOS_TELEFONOS.csv)) se ha ejecutado: siguen
-**pendientes**. Para probar con tu teléfono (compilación de **desarrollo**, nunca de producción ni de Google Play):
+Capturas renderizadas por Flutter con las fuentes de la app
+([`evidencia/arnes/capturas_lector_pantalla_pequena.dart.txt`](evidencia/arnes/capturas_lector_pantalla_pequena.dart.txt)):
 
-**Preparación (una vez)**
-1. En el teléfono: Ajustes › Acerca del teléfono › tocar 7 veces «Número de compilación». Después, Opciones de
+| Tamaño y texto | Captura |
+|---|---|
+| 320 × 568, 100 % | ![](capturas/documentos_flutter/D-06-lector-320x568-texto-100.jpg) |
+| 320 × 568, 130 % | ![](capturas/documentos_flutter/D-05-lector-320x568-texto-130.jpg) |
+| 320 × 568, 200 % | ![](capturas/documentos_flutter/D-03-lector-320x568-texto-200.jpg) |
+| 568 × 320 (horizontal), 200 % | ![](capturas/documentos_flutter/D-04-lector-568x320-texto-200.jpg) |
+
+En la app real (navegador, 390 × 844):
+- política de privacidad con enlaces ([D-02](capturas/documentos_flutter/D-02-documento-con-enlaces.jpg));
+- consentimiento con entidades, `<style>` y `<script>`, que no se muestran ni se ejecutan
+  ([D-07](capturas/documentos_flutter/D-07-consentimiento-html-entidades-script.jpg));
+- PDF bloqueado ([D-01](capturas/documentos_flutter/D-01-documento-pdf.jpg)).
+
+## 5. Pruebas automatizadas
+
+`test/document_reader_test.dart`: **20 pruebas**, 7 de la primera versión y 13 de la revisión.
+
+| Grupo | Pruebas |
+|---|---|
+| Formatos | Texto y HTML (también con `Content-Type` repetido o ausente); PDF, binario e imagen bloqueados; PDF anunciado como HTML o texto bloqueado |
+| HTML | Enlaces con destino (`mailto:`, `https:`, `#`, `javascript:`); nada activo (scripts, estilos, iframes, atributos, `javascript:`); entidades |
+| Lector | PDF: mensaje, «Reintentar» y vuelve como no leído. **Matriz 320 × 568 y 568 × 320 al 100/130/200 %:** sin desbordes, título sin palabras partidas (con las fuentes reales), versión, «Volver» alcanzable, hasta el final y vuelve como leído |
+| Registro | 320 px al 200 % y horizontal al 100/130/200 %: todos los documentos, casillas y «No deseo participar» alcanzables. Documento PDF: el formulario conserva lo escrito y las otras aceptaciones, y el PDF no se puede aceptar. Aceptaciones tras girar el teléfono y desplazarse |
+
+La prueba del título falla con el lector anterior (título de 340 px en 272 px a 320 px y 200 %) y pasa con el nuevo.
+
+**Resultado:** `flutter analyze` sin incidencias; `flutter test` **542 aprobadas · 0 fallidas · 44 omitidas** (522 de
+`generation` + 20). Ninguna prueba anterior se modificó.
+
+Aceptación (pruebas de registro, sin cambios): casilla desmarcada al empezar; no se acepta un documento sin abrir ni uno
+que falló al cargar; la versión enviada es la mostrada; un cambio de versión obliga a revisarlo de nuevo; consentimientos
+separados; las aceptaciones se conservan al girar el teléfono.
+
+## 6. Pruebas de integración (Backend local `9aa7abf`)
+
+Evidencia: [`evidencia/documentos_flutter/recorridos-pr36-9aa7abf.txt`](evidencia/documentos_flutter/recorridos-pr36-9aa7abf.txt)
+(primera versión: [`recorridos-y-contrato-9aa7abf.txt`](evidencia/documentos_flutter/recorridos-y-contrato-9aa7abf.txt)).
+
+| Escenario | Resultado |
+|---|---|
+| Registro: rechazo de la participación, aceptación con las cuatro versiones, Perfil › Cuenta, cambio de versión, registro cerrado | ✓ |
+| PDF publicado | ✓ No se puede leer ni aceptar |
+| Privacidad y consentimiento en HTML (enlaces, entidades, script) | ✓ (capturas D-02 y D-07) |
+| Pérdida de conexión al crear la cuenta | ✓ Una sola cuenta |
+| Inicio de sesión tras el registro, cierre de sesión (0 respuestas 401) y cambio de cuenta | ✓ |
+| Persona retirada y retirada durante la generación (IA **simulada**) | ✓ No se publica; una sola petición |
+| 429 | ✓ Mensaje del Backend, sin códigos |
+| Recuperación de contraseña | ✓ 202 → 204 → inicio de sesión |
+| Contrato en vivo | ✓ 11/11 |
+
+O20/V65, D-M1, P1, P2, adherencia y navegación: sus pruebas automáticas siguen en verde sin cambios.
+
+## 7. Propuesta, no implementada: simplificar «llegar al final»
+
+Hoy la casilla se activa solo tras desplazarse hasta el final del documento y pulsar «He leído el documento». **No se
+cambia en esta PR.**
+
+**Propuesta:** activar la casilla cuando el documento **se abrió y se mostró correctamente**, sin exigir el
+desplazamiento hasta el final. Se mantendría que:
+- un documento que no se pudo mostrar nunca se puede aceptar;
+- la casilla nunca se marca sola y se pide de nuevo si cambia la versión;
+- el consentimiento informado conserva su casilla propia.
+
+**A favor:** un paso menos y menos frustración con documentos largos o texto grande. **En contra:** una prueba más débil
+de lectura, sobre todo del consentimiento informado. Una opción intermedia es simplificar condiciones y privacidad y
+conservar el «hasta el final» solo en el consentimiento. **Requiere la aprobación del protocolo** antes de
+implementarlo; el cambio en Mobile es pequeño.
+
+## 8. Probar Kora en un teléfono Android (guía breve)
+
+**Estado: ninguna de las 46 comprobaciones de la matriz
+([`12_MATRIZ_DOS_TELEFONOS.csv`](../cierre_preproduccion/12_MATRIZ_DOS_TELEFONOS.csv)) se ha ejecutado.** Las pruebas
+web y de escritorio no cuentan.
+
+1. **Teléfono:** Ajustes › Acerca del teléfono › tocar 7 veces «Número de compilación». Después, Opciones de
    desarrollador › «Depuración USB».
-2. En el PC: Flutter y Android SDK instalados. `flutter doctor` debe mostrar el SDK de Android sin errores.
-3. Conectar el teléfono por USB y aceptar «¿Permitir depuración USB?». `adb devices` debe listarlo como `device`.
+2. **PC:** `flutter doctor` sin errores de Android. Conectar el teléfono por USB y aceptar la depuración. `adb devices`
+   debe mostrarlo como `device`.
+3. **Backend local de pruebas:** `qa_android/1_backend_de_pruebas.ps1`. Usa una base local nueva, nunca Neon real, y la
+   IA apagada. Para probar los documentos en el teléfono, publicar HTML sintético en una dirección `https` con un
+   certificado válido.
+4. **Instalar una compilación de desarrollo:** `qa_android/2_compilar_qa.ps1 -Telefono <id>` (USB con
+   `adb reverse tcp:8080 tcp:8080`). Sin cable, en la misma Wi-Fi:
 
-**Backend de pruebas en el PC:** `docs/integracion_final_estudio/qa_android/1_backend_de_pruebas.ps1`. Usa una base
-local nueva, la IA apagada y documentos sintéticos solo si se quieren probar los documentos. Para el teléfono, los
-documentos deben estar en una dirección `https` con un certificado válido (Android no acepta certificados propios).
+   ```powershell
+   flutter run --debug -d <id> --dart-define=API_BASE_URL=http://<IP-del-PC>:8080/api/v1 --dart-define=ALLOW_INSECURE_API=true
+   ```
 
-**Opción A: USB (recomendada)**
+   Hay que abrir el puerto 8080 en el cortafuegos.
+5. **Evidencia por fila:** `qa_android/3_evidencia.ps1 -Telefono <id> -Fila <N.º>`.
 
-```powershell
-.\docs\integracion_final_estudio\qa_android\2_compilar_qa.ps1 -Telefono <id de adb devices>
-```
-
-El script hace `adb reverse tcp:8080 tcp:8080` (así `127.0.0.1:8080` del teléfono es tu PC) e instala con
-`flutter run --debug`.
-
-**Opción B: misma red Wi-Fi (sin cable)**
-
-```powershell
-flutter run --debug -d <id> --dart-define=API_BASE_URL=http://<IP-del-PC>:8080/api/v1 --dart-define=ALLOW_INSECURE_API=true
-```
-
-El PC y el teléfono deben estar en la misma red, y el cortafuegos de Windows debe permitir el puerto 8080. No uses
-`10.0.2.2`: solo funciona en el emulador.
-
-**Evidencia de cada fila:** `3_evidencia.ps1 -Telefono <id> -Fila <N.º>` guarda modelo, versión de Android, commit,
-captura y `logcat`. Anota en la matriz OK/FALLA/BLOQUEADO, la severidad y los pasos. Antes de compartir el `logcat`,
-comprueba que no contenga datos personales.
-
-## 6. Decisiones que te corresponden
-
-| # | Decisión | Situación actual |
-|---|---|---|
-| 1 | **Formato de los documentos aprobados.** La app muestra texto o HTML sencillo; un PDF no se puede leer en la app | Publicar las versiones aprobadas como texto o HTML (con UTF-8) en una dirección `https`. Si se quiere PDF, haría falta un visor (una dependencia nueva, no autorizada en esta orden) |
-| 2 | **¿Exigir llegar al final del documento?** Hoy la casilla se activa solo tras desplazarse hasta el final y pulsar «He leído el documento» | Es más garantista para el consentimiento informado; si prefieres activarla con solo abrir el documento, es un cambio pequeño |
-| 3 | **Enlaces pulsables** dentro de los documentos | Hoy se muestran con su destino y se pueden copiar. Para abrirlos con un toque haría falta `url_launcher` (dependencia nueva) |
-| 4 | **Forma de la casilla de privacidad** | El contrato exige `acceptedPrivacyVersion`. Con `privacyRecord=CONSTANCIA` la casilla dice «He leído…» en vez de «Acepto…». Lo decide la revisión legal en el Backend |
-| 5 | **Correo ya registrado** | Hoy se muestra el mensaje del Backend y se conserva el formulario. El contrato sugiere ofrecer «Iniciar sesión» o «Recuperar contraseña»; no se hizo por estar fuera del alcance de documentos |
+Nunca una APK de producción, Google Play ni distribución a participantes.
