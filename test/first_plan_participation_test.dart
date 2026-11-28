@@ -15,6 +15,7 @@ import 'package:fitsense_mobile/features/authentication/presentation/providers/a
 import 'package:fitsense_mobile/features/authentication/presentation/state/auth_state.dart';
 import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/welcome/data/plan_generation_repository.dart';
+import 'package:fitsense_mobile/features/welcome/presentation/first_plan_generation_controller.dart';
 import 'package:fitsense_mobile/features/welcome/presentation/first_plan_result_page.dart';
 import 'package:fitsense_mobile/features/welcome/presentation/welcome_routes.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
@@ -117,6 +118,20 @@ void main() {
     await tester.tap(find.text('Consultar mi plan actual'));
     await settle(tester);
     expect(find.text('Preparando cuenta'), findsOneWidget, reason: 'the account setup reads the current plan');
+  });
+  test('after PARTICIPACION_NO_VIGENTE, start() never asks again (the tour and the result screen both call it)', () async {
+    final generation = FakeGeneration(starts: [coded(422, 'Tu cuenta no tiene una participacion activa en el estudio.', 'PARTICIPACION_NO_VIGENTE')]);
+    final container = ProviderContainer(overrides: [
+      authViewModelProvider.overrideWith(StaysParticipant.new),
+      planGenerationRepositoryProvider.overrideWithValue(generation),
+    ]);
+    addTearDown(container.dispose);
+    final controller = container.read(firstPlanGenerationProvider.notifier);
+    await controller.start();
+    await controller.start();
+    await controller.start();
+    expect(generation.startCalls, 1);
+    expect(container.read(firstPlanGenerationProvider).participationEnded, isTrue);
   });
 }
 

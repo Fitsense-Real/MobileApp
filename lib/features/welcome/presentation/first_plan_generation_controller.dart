@@ -91,6 +91,9 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
   Future<void> start() async {
     final userId = _userId;
     if (userId == null || _starting) return;
+    // The backend already said this account cannot receive plans (e.g. it
+    // withdrew): asking again could only be refused. The screen shows its state.
+    if (state.participationEnded) return;
     final current = state.operation;
     if (current != null && (!current.isTerminal || current.status == GenerationStatus.completed)) {
       if (!current.isTerminal) _schedule();
