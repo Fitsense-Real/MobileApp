@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import 'dart:typed_data';
+import 'dart:convert';
 // Mobile-C3 · incidence I-01: after «Cerrar sesión» no per-account request is
 // sent (they could only answer 401: the token is already gone), nothing of the
 // previous account stays in memory, and the next account loads its own data.
@@ -82,4 +85,38 @@ void main() {
     expect(backend.requests.skip(perAccount.length).every((r) => r.headers['Authorization'] == 'Bearer jwt-8'), isTrue,
         reason: 'with the new account token, never the old one');
   });
+
+  test('quick account switch while requests are in flight: only the new account\'s data stays', () async {
+    // Slow backend: every answer says which account (token) asked for it.
+    final backend = SlowBackend();
+    final container = ProviderContainer(overrides: [
+      dioProvider.overrideWithValue(scriptedDio(ScriptedBackend((o) => (status: 200, body: null)))..httpClientAdapter = backend),
+      authViewModelProvider.overrideWith(Session.new),
+    ]);
+    addTearDown(container.dispose);
+    final subscriptions = [for (final p in [weeklyMetricsProvider, interventionsProvider]) container.listen(p, (_, _) {})];
+    addTearDown(() { for (final s in subscriptions) { s.close(); } });
+    await Future<void>.delayed(const Duration(milliseconds: 5)); // account 7 requests are in flight
+    await const FlutterSecureStorage().deleteAll();
+    (container.read(authViewModelProvider.notifier) as Session).signOut();
+    FlutterSecureStorage.setMockInitialValues({'access_token': 'jwt-8'});
+    (container.read(authViewModelProvider.notifier) as Session).signIn(8);
+    await settle(container);
+    await Future<void>.delayed(const Duration(milliseconds: 150)); // late answers for account 7 arrive
+    expect(container.read(weeklyMetricsProvider).value, [{'token': 'Bearer jwt-8'}]);
+    expect(container.read(interventionsProvider).value, [{'token': 'Bearer jwt-8'}]);
+  });
+}
+
+/// Answers after 60 ms with the token that asked, to catch late results of a previous account.
+class SlowBackend implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? stream, Future<void>? cancel) async {
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    return ResponseBody.fromString(jsonEncode([{'token': options.headers['Authorization']}]), 200,
+        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
