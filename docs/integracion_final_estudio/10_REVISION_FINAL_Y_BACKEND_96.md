@@ -9,12 +9,19 @@ Orden: «Revisión, integración definitiva de consentimientos y merge de PR pen
 | Mobile `generation` | `1cd9f97b4566de90ddcede2c46ff4da5714edebe` (con la #32) |
 | `main` | `3a4e26d1fed5170c6790cd05c9129f58ce88b4d0`, sin cambios |
 | Backend `generation` | `41c498a`, sin cambios |
-| **Backend #96** | **Abierta, sin fusionar.** Cabecera `035e961` al empezar y `401ca56` durante la revisión; las dos se probaron |
+| **Backend #96** | Abierta al empezar (cabeceras `035e961` y `401ca56`, las dos probadas); **fusionada durante la revisión** en `generation` **`434a9dc05b3479be88eabba9e23658d2ecb38052`**, con el mismo código que `401ca56` |
 
 La orden fija el orden del merge: **primero Backend #96 integrado y su contrato verificado**, luego Mobile #33, #34 y
-#35. Backend #96 **no está integrado** en `generation`, así que **no se fusionó ninguna PR de Mobile**. Todo lo demás
-está hecho: revisión, correcciones, regresión combinada y pruebas contra la cabecera de #96. Cuando #96 se fusione,
-falta repetir el contrato contra el `generation` resultante y fusionar #33 → #34 → #35, una por una.
+#35. Mientras #96 estuvo abierta no se fusionó nada; se hicieron la revisión, las correcciones, la regresión combinada y
+las pruebas contra su cabecera. Cuando #96 se fusionó, el contrato crítico se repitió contra el Backend `434a9dc`
+compilado en local (11/11, [`evidencia/backend_96/contrato-en-vivo-96.txt`](evidencia/backend_96/contrato-en-vivo-96.txt)).
+Solo entonces se fusionaron las PR de Mobile, una por una:
+
+| PR | Merge (SHA completo) | `flutter test` en `generation` | CI de `generation` |
+|---|---|---|---|
+| [#33](https://github.com/Fitsense-Real/MobileApp/pull/33) Mobile-C1 (`d6f3471`) | `ed11b5aa4a0d8809392c6ca31d06960db07d9ae6` | 520 ✓ · 0 ✗ · 44 | [verify ✓](https://github.com/Fitsense-Real/MobileApp/actions/runs/46110773059) |
+| [#34](https://github.com/Fitsense-Real/MobileApp/pull/34) Mobile-C3 (`8af00d4`) | `9e9ebbc161f232fb35a6e17484d715cd574c7aa5` | 522 ✓ · 0 ✗ · 44 | ver la PR #35 |
+| [#35](https://github.com/Fitsense-Real/MobileApp/pull/35) Mobile-C4 (esta documentación) | se registra en el informe final | — | — |
 
 ## 2. Qué trae Backend #96 y cómo responde Mobile
 
@@ -118,11 +125,9 @@ Rama temporal local: `generation` `1cd9f97` + #33 `d6f3471` + #34 `8af00d4` + #3
 522 = 494 + 26 de #33 + 2 de #34. Omitidas: las 31 de siempre + 12 en vivo de consentimientos + 1 en vivo de retirada
 (solo corren con Backend). Ninguna prueba se quitó ni se desactivó. `flutter analyze`: sin incidencias.
 
-## 8. Lo que falta para cerrar
+## 8. Lo que queda
 
-1. **Backend:** fusionar #96 en `generation`.
-2. **Mobile:** repetir el contrato crítico contra ese `generation` (I-01, I-04…I-09, I-12) y fusionar #33 → CI → #34 →
-   CI → #35 → `flutter analyze` / `flutter test` / CI final.
-3. **Backend (opcional):** exponer `Retry-After` por CORS para la versión web.
+1. Tras fusionar #35: `flutter analyze` y `flutter test` sobre el `generation` final, y comprobar la CI.
+2. **Backend (opcional):** exponer `Retry-After` por CORS para la versión web.
 4. Lo demás sigue igual que en [09](09_PENDIENTES_PARA_PREPRODUCCION.md): textos aprobados, correo real, matriz Android
    (ninguna prueba física ejecutada).

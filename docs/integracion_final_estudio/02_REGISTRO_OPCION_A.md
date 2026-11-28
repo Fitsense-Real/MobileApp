@@ -1,8 +1,8 @@
 # 02 · Registro con la opción A (Mobile-C1, PR #33)
 
 > **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
-> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
-> porque Backend #96 no está integrado.
+> los **tres** documentos publicados y Mobile usa los códigos estables de Backend #96. Backend #96 se fusionó
+> (`434a9dc`) y después se fusionaron #33 (`ed11b5a`) y #34 (`9e9ebbc`).
 
 **Decisión:** Kora es exclusiva para participantes del estudio de tesis. Ya no hay opción B en Mobile: se quitó
 `PLANS_FOR_NON_PARTICIPANTS`.
