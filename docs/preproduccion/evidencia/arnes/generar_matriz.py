@@ -49,7 +49,7 @@ R = [
 
 # Cierre de preproducción (27/11/2026): estado de cada ID tras las PR Mobile-M1…M6.
 CIERRE = {
- 'M-01': ('BLOQUEADO POR DECISIÓN', 'M1: ya no hay callejón sin salida (aviso antes de crear la cuenta sin participar; pantalla «Por ahora no hay una rutina para ti» con contacto, comprobar de nuevo y cerrar sesión). Falta decidir el modelo A/B; la opción B queda preparada (PLANS_FOR_NON_PARTICIPANTS)', 'M1'),
+ 'M-01': ('PREPARADO SIN ACTIVAR', 'Opción A decidida (28/11/2026). M1: sin callejón sin salida. C1 (PR #33, abierta): registro solo para quien acepta participar, con el consentimiento publicado; «No deseo participar» no crea cuenta; opción B eliminada', 'M1, C1'),
  'M-02': ('BLOQUEADO POR BACKEND', 'M1: lector de documentos en la app, lectura obligatoria antes de aceptar, consentimiento del estudio antes de la casilla (STUDY_CONSENT_URL). Faltan textos aprobados y que el Backend los sirva por versión', 'M1'),
  'M-03': ('PREPARADO SIN ACTIVAR', 'M1: el registro envía acceptedTermsVersion/acceptedPrivacyVersion cuando la compilación tiene versión y dirección; 422 de versión desactualizada o no publicada explicados. Falta configurar versiones y activar enforce-on-signup en el Backend a la vez', 'M1'),
  'M-04': ('BLOQUEADO POR BACKEND', 'M2: «Ya tengo un código», «Pegar código», código nuevo con el correo escrito, caducidad explicada, vuelta al login con el correo; probado de punta a punta en la app contra el Backend local (dev-log). Falta proveedor de correo real; la bandera sigue apagada', 'M2'),

@@ -1,0 +1,21 @@
+# Incidencia I-01: respuestas 401 de fondo al cerrar sesión (app real, Backend 41c498a local)
+
+## Antes (compilación de Mobile-C1, sin la corrección): arnés escenarios_posmerge.js «cuenta»
+02:38:27 S4 · Cierre de sesión y cambio de cuenta
+02:38:52 OK    primera cuenta entra
+02:38:55   [api] GET /users/me/interventions 401
+02:38:55   [api] GET /users/me/metrics/weekly 401
+02:38:55   [api] GET /users/me/profile 401
+02:38:58 OK    vuelve al inicio de sesión
+02:39:18 OK    la otra cuenta entra
+02:39:20 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+02:39:28 OK    mensaje de conexión claro
+
+## Después (compilación de Mobile-C3 955af82): mismo recorrido
+02:53:07 S4 · Cierre de sesión y cambio de cuenta
+02:53:31 OK    primera cuenta entra
+02:53:37 OK    vuelve al inicio de sesión
+02:53:57 OK    la otra cuenta entra
+02:53:59 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+02:54:08 OK    mensaje de conexión claro
+respuestas 401: 0

@@ -17,7 +17,10 @@ teléfono físico.
 | 09 | [Pruebas y resultados](09_PRUEBAS_Y_RESULTADOS.md) |
 | 10 | [Pendientes para el piloto y recomendación](10_PENDIENTES_PARA_EL_PILOTO.md) |
 | 11 | [Merge final y validación posmerge](11_MERGE_FINAL_Y_VALIDACION.md) |
-| 12 | [Matriz para dos teléfonos](12_MATRIZ_DOS_TELEFONOS.csv) (pendiente) |
+| 12 | [Matriz para dos teléfonos](12_MATRIZ_DOS_TELEFONOS.csv) (pendiente; ampliada a 46 comprobaciones el 28/11/2026) |
+
+Continuación (opción A, contrato de consentimientos del Backend `41c498a`, I-01 y QA Android):
+[`docs/integracion_final_estudio/`](../integracion_final_estudio/).
 
 Matriz actualizada: [`../preproduccion/08_MATRIZ_DE_PENDIENTES.md`](../preproduccion/08_MATRIZ_DE_PENDIENTES.md).
 Capturas: [`capturas/despues/`](capturas/despues/), [`capturas/comparaciones/`](capturas/comparaciones/) y

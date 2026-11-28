@@ -3,6 +3,11 @@
 PR Mobile-M1 · rama `claude/mobile-m1-registro-consentimientos` · `947448b` · base `generation` `76dcf34`.
 Pendientes: M-01, M-02, M-03, M-27, M-18, M-34.
 
+> **Actualización 28/11/2026 — opción A decidida.** Kora es exclusiva para participantes del estudio; la opción B ya no
+> existe en Mobile (`PLANS_FOR_NON_PARTICIPANTS` eliminada en la PR #33). Las versiones de los documentos salen ahora
+> de `GET /legal-documents`, no de `--dart-define`. Estado actual: [`docs/integracion_final_estudio/`](../integracion_final_estudio/).
+> Lo que sigue se conserva como evidencia histórica.
+
 ## 1. Contratos comprobados antes de cambiar nada
 
 | Contrato (Backend `77b9df3`) | Estado |

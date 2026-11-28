@@ -1,0 +1,38 @@
+# Contrato de registro en vivo (test/live/consentimientos_live_test.dart, rama Mobile-C1 b8397bd)
+# Backend Fitsense-Real/Backend generation 41c498a LOCAL: base aislada kora_integracion_final, IA apagada (sin token),
+# push apagado, correo dev-log (el código se lee del log local y nunca se imprime), exigencia de consentimientos FORZADA solo
+# en esta instancia y documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA (no es una aprobacion real)»).
+# Solo cuentas @audit.local. Contraseña por variable de entorno; no figura en ningún archivo. 28/11/2026 (hora UTC).
+
+## Backend con los tres documentos publicados y exigencia encendida (KORA_LIVE_DOCS=si)
+CONTRATO I-01 GET /legal-documents → enforcedOnSignup=true, privacyRecord=acceptance, TERMS_OF_SERVICE=T-QA-1, PRIVACY_POLICY=P-QA-1, STUDY_PARTICIPATION=C-QA-1
+CONTRATO I-05 POST /auth/register → 422 «La version aceptada de TERMS_OF_SERVICE no es la vigente (T-QA-1).»
+CONTRATO I-05 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-06 POST /auth/register → 422 «La version aceptada de PRIVACY_POLICY no es la vigente (P-QA-1).»
+CONTRATO I-06 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-07 POST /auth/register → 422 «Para participar en el estudio tienes que aceptar la version vigente del consentimiento informado.»
+CONTRATO I-07 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-08 POST /auth/register → 422 «La version aceptada de STUDY_PARTICIPATION no es la vigente (C-QA-1).»
+CONTRATO I-08 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-04 POST /auth/register {firstName: Contrato, lastName: i04, email: audit-contrato-i04-1795832194906@audit.local, timezone: America/Lima, acceptsStudyParticipation: true, acceptedTermsVersion: T-QA-1, acceptedPrivacyVersion: P-QA-1, acceptedStudyConsentVersion: C-QA-1} → 201, studyParticipant=true
+CONTRATO I-09 historial STUDY_PARTICIPATION: versión C-QA-1, CASILLA_REGISTRO, 2026-11-28T02:16:35.087531Z
+CONTRATO I-09 historial TERMS_OF_SERVICE: versión T-QA-1, CASILLA_REGISTRO, 2026-11-28T02:16:35.088904Z
+CONTRATO I-09 historial PRIVACY_POLICY: versión P-QA-1, CASILLA_REGISTRO, 2026-11-28T02:16:35.089484Z
+CONTRATO I-10 POST /users/me/plan/generation → 422 «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-10 registro sin participar por la API → 201 (studyParticipant=false); la app no ofrece este camino
+CONTRATO I-11 generación 37c48fa2-d52c-4e30-9456-71334e1be75c → GenerationStatus.completed, plan 2
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 plan actual antes 2, después 2
+CONTRATO I-12 POST /users/me/withdraw → withdrawnAt=2026-11-28 02:16:38.101609Z
+CONTRATO I-12 POST /users/me/plan/generation → 422 «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-12 historial: STUDY_PARTICIPATION retirado=true
+CONTRATO I-13 login con clave incorrecta repetida → 429 «Demasiados intentos de inicio de sesion. Espera antes de volver a intentarlo. Podrás intentarlo de nuevo en 15 minutos.»
+00:03 +11 ~1: All tests passed!
+
+## Backend sin documentos (KORA_LIVE_DOCS=no)
+CONTRATO I-02 GET /legal-documents → enforcedOnSignup=false, 0 documentos, registro cerrado
+00:00 +1 ~11: All tests passed!
+
+# Nota I-14: no se reproduce un 409. Una petición de generación repetida (también simultánea) devuelve la operación COMPLETED
+# existente (idempotente) y el plan no cambia. La app trata 409/422 de plan como «reconciliar con el actual» (isPlanConflict).

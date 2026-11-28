@@ -1,0 +1,119 @@
+# Recorridos de la app real (Flutter web release de la rama Mobile-C1) contra el Backend LOCAL
+# Backend Fitsense-Real/Backend generation 41c498a LOCAL: base aislada kora_integracion_final, IA apagada (sin token),
+# push apagado, correo dev-log (el código se lee del log local y nunca se imprime), exigencia de consentimientos FORZADA solo
+# en esta instancia y documentos SINTÉTICOS (approval-reference «PRUEBA-LOCAL-SINTETICA (no es una aprobacion real)»).
+# Solo cuentas @audit.local. Contraseña por variable de entorno; no figura en ningún archivo. 28/11/2026 (hora UTC).
+# Arnés: evidencia/arnes/escenarios_c1.js. Las líneas [api] GET se omiten; se conservan los POST y las comprobaciones.
+#
+# Intentos fallidos del ARNÉS (no de la app), corregidos y repetidos: (1) el lector carga el documento en un texto
+# seleccionable que no está en el árbol de semántica; se espera el botón «Desplázate hasta el final»; (2) el desplazamiento
+# hacia el botón «Leer» iba en sentido contrario cuando estaba en el borde inferior; (3) el resumen de documentos está en
+# Perfil › Cuenta; (4) el reinicio del Backend desde el arnés se mataba a sí mismo (pkill -f); (5) «crear cuentas» coincidía
+# con «CREAR CUENTA» sin distinguir mayúsculas; (6) el aviso de conexión tapaba el botón al reintentar.
+# En el navegador, CORS oculta Retry-After (el Backend no lo expone): el tiempo de espera del 429 solo se ve en Android
+# (comprobado en la prueba en vivo nativa: «Podrás intentarlo de nuevo en 15 minutos»).
+
+02:19:03 UA1 (I-03) · Rechazar participar en la app
+02:19:09 OK    explica el estudio antes de escribir nada
+02:19:09   captura C1-01-registro-arriba
+02:19:21   captura C1-02-documentos-sin-leer
+02:19:24 OK    mensaje respetuoso y claro
+02:19:24   captura C1-03-no-deseo-participar
+02:19:26 OK    sale del registro
+02:19:26 OK    ningún POST /auth/register
+02:19:26 fin
+
+02:23:03 UA2 (I-04, I-09) · Aceptar con los documentos publicados, perfil, plan y Perfil › Documentos
+02:23:56   captura C1-04-todo-aceptado
+02:23:58   [api] POST /auth/register 201
+02:23:58   [api] POST /auth/login 200
+02:24:00 OK    entra al perfil
+02:24:00   cuerpo enviado: {"firstName":"Auditoria","lastName":"Opcion A","email":"audit-ui-acepta-1795832583486@audit.local","timezone":"America/Lima","acceptsStudyParticipation":true,"acceptedTermsVersion":"T-QA-1","acceptedPrivacyVersion":"P-QA-1","acceptedStudyConsentVersion":"C-QA-1"}
+02:24:00 OK    envía las cuatro versiones leídas
+02:24:26   [api] POST /users/me/profile 201
+02:24:26   [api] POST /users/me/plan/generation 202
+02:25:21 OK    plan visible
+02:25:47 FALLA Perfil muestra el consentimiento con su versión
+02:25:49 FALLA distingue condiciones y privacidad
+# ↑ Fallo del ARNÉS: buscaba el resumen en la pantalla principal de Perfil; está en Perfil › Cuenta. Repetido en UA2b (abajo): OK.
+02:25:50   captura C1-05-perfil-documentos
+02:25:50 fin
+
+02:26:11 UA2b (I-09) · Perfil › Cuenta › Documentos de la cuenta creada en UA2
+02:26:19   [api] POST /auth/login 200
+02:26:41 OK    Perfil muestra el consentimiento con su versión
+02:26:41 OK    distingue condiciones y privacidad
+02:26:41   captura C1-05-perfil-documentos
+02:26:41 fin
+
+02:32:45 UA3 (§5.4) · La versión cambia mientras la persona se registra
+02:33:50   Backend reiniciado: términos T-QA-2 documentos si
+02:33:54 OK    explica el cambio
+02:33:54   captura C1-06-documentos-cambiaron
+02:33:54 OK    no envía la versión desactualizada
+02:33:57 OK    muestra la versión vigente
+02:34:30   [api] POST /auth/register 201
+02:34:31   [api] POST /auth/login 200
+02:34:32 OK    con la versión vigente sí se crea
+02:34:32 OK    envía T-QA-2
+02:34:47   Backend reiniciado: términos T-QA-1 documentos si
+02:34:47 fin
+
+02:35:50 UA4 (I-15) · Se pierde la conexión al crear la cuenta
+02:36:44   [falla] http://localhost:8080/api/v1/auth/register net::ERR_INTERNET_DISCONNECTED
+02:36:48 OK    sigue en el registro con un mensaje
+02:36:48   captura C1-07-sin-conexion-al-crear
+02:36:56   [api] POST /auth/register 201
+02:36:56   [api] POST /auth/login 200
+02:36:58 OK    con conexión, mismo formulario, se crea una sola cuenta
+02:36:58 OK    una sola cuenta en la base (1)
+02:36:58 fin
+
+02:30:15 UA5 (I-10, I-12) · Cuenta sin participación y cuenta retirada en la app
+02:30:24   [api] POST /auth/login 200
+02:30:25 OK    C1-08-sin-participacion: estado correcto
+02:30:27 OK    C1-08-sin-participacion: sin «Reintentar generación» ni error genérico
+02:30:31 OK    C1-08-sin-participacion: ninguna petición de generación (0)
+02:30:31   captura C1-08-sin-participacion
+02:30:38   [api] POST /auth/login 200
+02:30:40 OK    C1-09-retirada: estado correcto
+02:30:41 OK    C1-09-retirada: sin «Reintentar generación» ni error genérico
+02:30:45 OK    C1-09-retirada: ninguna petición de generación (0)
+02:30:45   captura C1-09-retirada
+02:30:45 fin
+
+02:37:37 UA6 (I-13) · 429 al iniciar sesión con la clave mal repetida
+02:37:44   [api] POST /auth/login 401
+02:37:47   [api] POST /auth/login 401
+02:37:51   [api] POST /auth/login 401
+02:37:54   [api] POST /auth/login 401
+02:37:58   [api] POST /auth/login 401
+02:38:02   [api] POST /auth/login 429
+02:38:05   [api] POST /auth/login 429
+02:38:08 OK    mensaje del Backend, sin códigos internos
+02:38:08   captura C1-10-limite-429
+02:38:08 fin
+
+02:36:58 UA7 (I-02) · Sin documentos publicados el registro queda cerrado
+02:37:12   Backend reiniciado: términos T-QA-1 documentos no
+02:37:18 OK    registro cerrado con explicación
+02:37:18 OK    sin formulario ni casilla de participación
+02:37:18 OK    ningún POST
+02:37:18   captura C1-11-registro-cerrado
+02:37:30   Backend reiniciado: términos T-QA-1 documentos si
+02:37:30 fin
+
+02:38:27 S4 · Cierre de sesión y cambio de cuenta
+02:38:36   [api] POST /auth/login 200
+02:38:52 OK    primera cuenta entra
+02:38:58 OK    vuelve al inicio de sesión
+02:38:58   captura P8a-tras-cerrar-sesion
+02:39:01   [api] POST /auth/login 200
+02:39:18 OK    la otra cuenta entra
+02:39:20 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+02:39:20   captura P8-otra-cuenta
+02:39:20 S5 · Error de conexión al iniciar sesión
+02:39:28   [falla] http://localhost:8080/api/v1/auth/login net::ERR_INTERNET_DISCONNECTED
+02:39:28 OK    mensaje de conexión claro
+02:39:28   captura P9-sin-conexion-login
+02:39:29 fin
