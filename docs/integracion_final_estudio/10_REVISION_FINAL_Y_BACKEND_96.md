@@ -111,7 +111,7 @@ Rama temporal local: `generation` `1cd9f97` + #33 `d6f3471` + #34 `8af00d4` + #3
 | | Aprobadas | Fallidas | Omitidas |
 |---|---|---|---|
 | `generation` (referencia) | 494 | 0 | 31 |
-| #33 sola | 520 | 0 | 43 (31 + 12 en vivo) |
+| #33 sola | 520 | 0 | 44 (31 + 13 en vivo) |
 | #34 sola | 496 | 0 | 31 |
 | **#33 + #34 + #35** | **522** | **0** | **44** |
 
