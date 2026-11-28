@@ -34,6 +34,12 @@ Estado de cada ID en la matriz actualizada
 RESUELTO: M-08, M-34, M-35 · BLOQUEADO POR BACKEND: M-28, M-29, M-37 · PENDIENTE DE DISPOSITIVO: M-32 · PENDIENTE:
 M-20, M-21, M-30, M-31 (parcial), M-33, M-41 · NO APLICA: M-36 (P3 excluido).
 
+**Incidencia de seguimiento detectada tras el merge (fuera de la matriz de la auditoría):**
+
+| ID | Prioridad | Qué pasa | Estado |
+|---|---|---|---|
+| I-01 | P2 | Al cerrar sesión, tres consultas de fondo del Inicio salen sin token y reciben 401. Sin efecto visible ni fuga entre cuentas. Comportamiento previo a #26–#31, no regresión ([11](11_MERGE_FINAL_Y_VALIDACION.md) §4.3) | PENDIENTE (corregir en una PR propia) |
+
 ## 4. Decisiones que esperan respuesta
 
 | # | Decisión | Desbloquea |

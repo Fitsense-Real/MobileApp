@@ -95,7 +95,11 @@ apagado, recuperación `dev-log`, **base nueva aislada** `kora_merge_final`, sol
 | Push: contrato de dispositivos y registro antes de la primera generación | 1/1 ✓ y 3/3 ✓ (FID ficticios) | ídem |
 | O20 por etapas (`o20_cierre`, `o20_dos_semanas`, `o20_grabar`) | No ejecutadas: necesitan un Backend preparado por etapas | — |
 
+**Total en vivo: 12/12 ✓ · 0 ✗** (3 omitidas por diseño, como en CI).
+
 ### 4.3 Escenarios integrales en la app real (Flutter web release de `f8f5e24`)
+
+**15 escenarios, todos ✓** (el 12 con la salvedad indicada). Son pruebas en navegador, **no** en un teléfono físico.
 
 | # | Escenario | Resultado | Evidencia |
 |---|---|---|---|
@@ -115,9 +119,11 @@ apagado, recuperación `dev-log`, **base nueva aislada** `kora_merge_final`, sol
 | 14 | Error de conexión | ✓ Mensaje claro de conexión al iniciar sesión sin servidor | `P9` |
 | 15 | 320 × 568 | ✓ Inicio y rutina | `D1`, `D2` |
 
-**Observación (no es regresión):** al cerrar sesión, tres consultas de fondo del Inicio salen ya sin token y reciben
-401. La pantalla queda en el acceso y la siguiente cuenta no ve datos de la anterior. El código de cierre de sesión no
-cambió en #26–#31: es comportamiento previo. P2 menor, sin acción en esta orden.
+**Incidencia menor para seguimiento (I-01, no es regresión):** al cerrar sesión, tres consultas de fondo del Inicio
+(`/users/me/profile`, `/users/me/interventions`, `/users/me/metrics/weekly`) salen ya sin token y reciben 401. La
+pantalla queda en el acceso y la siguiente cuenta no ve datos de la anterior. El código de cierre de sesión no cambió en
+#26–#31: es comportamiento previo. Prioridad P2; registrada en [10](10_PENDIENTES_PARA_EL_PILOTO.md) §3 para corregirla
+en una PR propia (no se corrigió aquí: esta orden no autoriza cambios de código).
 
 Las capturas posmerge están en [`capturas/posmerge/`](capturas/posmerge/) y los arneses en
 [`evidencia/arnes/`](evidencia/arnes/) (`escenarios_posmerge.js`, `perfil_sin_plan.py`). Las capturas web no sustituyen
