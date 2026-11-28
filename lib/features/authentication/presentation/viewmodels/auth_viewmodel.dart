@@ -73,6 +73,7 @@ class AuthViewModel extends Notifier<AuthState> {
     bool acceptsStudyParticipation = false,
     String? acceptedTermsVersion,
     String? acceptedPrivacyVersion,
+    String? acceptedStudyConsentVersion,
   }) async {
     state = state.copyWith(
       isLoading: true,
@@ -89,6 +90,7 @@ class AuthViewModel extends Notifier<AuthState> {
         acceptsStudyParticipation: acceptsStudyParticipation,
         acceptedTermsVersion: acceptedTermsVersion,
         acceptedPrivacyVersion: acceptedPrivacyVersion,
+        acceptedStudyConsentVersion: acceptedStudyConsentVersion,
       );
 
       state = AuthState(user: user);

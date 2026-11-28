@@ -134,7 +134,7 @@ void main() {
       await open(tester, null, plans, generation: generation, user: () => SignedIn(7, false));
       await tester.pumpAndSettle();
       expect(find.text('Crear perfil'), findsNothing);
-      expect(find.textContaining('prepara rutinas solo para las personas que participan'), findsOneWidget);
+      expect(find.textContaining('Kora es exclusiva para las personas que participan'), findsOneWidget);
       expect(find.textContaining('ana7@example.com'), findsOneWidget, reason: 'the account the team must look for');
       expect(find.text('Cerrar sesión'), findsOneWidget);
       expect(find.text('Reintentar generación'), findsNothing, reason: 'never a retry that can only fail');

@@ -16,6 +16,7 @@ abstract class AuthRepository {
     bool acceptsStudyParticipation = false,
     String? acceptedTermsVersion,
     String? acceptedPrivacyVersion,
+    String? acceptedStudyConsentVersion,
   });
 
   Future<User?> getCurrentUser();

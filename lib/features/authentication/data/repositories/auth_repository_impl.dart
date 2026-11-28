@@ -44,6 +44,7 @@ class AuthRepositoryImpl implements AuthRepository {
     bool acceptsStudyParticipation = false,
     String? acceptedTermsVersion,
     String? acceptedPrivacyVersion,
+    String? acceptedStudyConsentVersion,
   }) async {
 
     final response = await remoteDataSource.register(
@@ -56,6 +57,7 @@ class AuthRepositoryImpl implements AuthRepository {
         acceptsStudyParticipation: acceptsStudyParticipation,
         acceptedTermsVersion: acceptedTermsVersion,
         acceptedPrivacyVersion: acceptedPrivacyVersion,
+        acceptedStudyConsentVersion: acceptedStudyConsentVersion,
       ),
     );
 

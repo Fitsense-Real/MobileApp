@@ -45,8 +45,12 @@ void main() {
     });
   });
 
-  Future<ConsentsStub> openPage(WidgetTester tester, {Map<ConsentType, String> urls = const {
-    ConsentType.termsOfService: 'https://docs.test/terminos', ConsentType.privacyPolicy: 'https://docs.test/privacidad'}}) async {
+  const published = PublishedDocuments(documents: [
+    LegalDocument(type: ConsentType.termsOfService, title: 'Condiciones de uso', url: 'https://docs.test/terminos', version: 'prueba-terminos-1'),
+    LegalDocument(type: ConsentType.privacyPolicy, title: 'Política de privacidad', url: 'https://docs.test/privacidad', version: 'prueba-privacidad-1'),
+  ]);
+
+  Future<ConsentsStub> openPage(WidgetTester tester, {PublishedDocuments documents = published}) async {
     tester.view.physicalSize = const Size(1080, 6000);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -58,7 +62,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(ProviderScope(overrides: [
       consentsRepositoryProvider.overrideWithValue(stub),
-      legalDocumentUrlsProvider.overrideWithValue(urls),
+      publishedDocumentsProvider.overrideWith((ref) async => documents),
       documentTextRepositoryProvider.overrideWithValue(_Texts()),
     ], child: MaterialApp.router(routerConfig: router, theme: AppTheme.light)));
     await tester.pumpAndSettle();
@@ -84,7 +88,7 @@ void main() {
     await tester.pump();
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull, reason: 'both are needed');
     await read(tester);
-    await tester.tap(find.text('He leído la política de privacidad'));
+    await tester.tap(find.text('Acepto la política de privacidad'));
     await tester.pump();
     await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
@@ -92,10 +96,16 @@ void main() {
     expect(find.text('Preparando cuenta'), findsOneWidget);
   });
 
-  testWidgets('a document without an address in this build cannot be accepted: it says so', (tester) async {
-    final stub = await openPage(tester, urls: const {});
+  testWidgets('privacy recorded as CONSTANCIA: the box says «He leído», not «Acepto»', (tester) async {
+    await openPage(tester, documents: PublishedDocuments(privacyRecord: PrivacyRecord.acknowledgement, documents: published.documents));
+    expect(find.text('He leído la política de privacidad'), findsOneWidget);
+    expect(find.text('Acepto la política de privacidad'), findsNothing);
+  });
+
+  testWidgets('a version the backend does not publish as a document cannot be accepted: it says so', (tester) async {
+    final stub = await openPage(tester, documents: const PublishedDocuments());
     expect(find.text('Leer'), findsNothing);
-    expect(find.textContaining('todavía no se puede leer en la app'), findsNWidgets(2));
+    expect(find.textContaining('no está publicado para leerlo en la app'), findsNWidgets(2));
     expect(tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile)).every((b) => b.onChanged == null), isTrue);
     expect(stub.accepted, isEmpty);
   });

@@ -41,6 +41,8 @@ class _ConsentPageState extends ConsumerState<ConsentPage> {
   @override
   Widget build(BuildContext context) {
     final status = ref.watch(consentStatusProvider);
+    // Address and title of each pending document, as the backend publishes it.
+    final published = ref.watch(publishedDocumentsProvider).asData?.value ?? const PublishedDocuments();
     return KoraPage(
       maxWidth: 560,
       child: status.when(
@@ -55,8 +57,8 @@ class _ConsentPageState extends ConsumerState<ConsentPage> {
             const SizedBox(height: 16),
             for (final type in pending) ...[
               Builder(builder: (context) {
-                final url = ref.watch(legalDocumentUrlsProvider)[type] ?? '';
-                final doc = LegalDocument(type: type, title: type.label, url: url, version: '${data.currentVersions[type]}');
+                final version = '${data.currentVersions[type]}';
+                final doc = published.find(type, version) ?? LegalDocument(type: type, title: type.documentTitle, url: '', version: version);
                 return KoraCard(padding: const EdgeInsets.fromLTRB(16, 12, 8, 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Expanded(child: Text('${type.label} · versión ${data.currentVersions[type]}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
@@ -67,13 +69,15 @@ class _ConsentPageState extends ConsumerState<ConsentPage> {
                       child: Text(read.contains(type) ? 'Volver a leer' : 'Leer'),
                     ),
                   ]),
-                  if (!doc.readable) const Text('Este documento todavía no se puede leer en la app. Contacta al equipo del estudio antes de aceptarlo.', style: TextStyle(color: Kora.muted)),
+                  if (!doc.readable) const Text('Este documento no está publicado para leerlo en la app. Contacta al equipo del estudio antes de aceptarlo.', style: TextStyle(color: Kora.muted)),
                   Material(type: MaterialType.transparency, child: CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
                     controlAffinity: ListTileControlAffinity.leading,
                     value: checked.contains(type),
                     onChanged: saving || !read.contains(type) ? null : (v) => setState(() => v == true ? checked.add(type) : checked.remove(type)),
-                    title: Text(type == ConsentType.termsOfService ? 'Acepto las condiciones de uso' : 'He leído la política de privacidad'),
+                    title: Text(type == ConsentType.termsOfService
+                        ? 'Acepto las condiciones de uso'
+                        : published.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
                     subtitle: read.contains(type) ? null : const Text('Primero léelo completo.'),
                   )),
                 ]));
