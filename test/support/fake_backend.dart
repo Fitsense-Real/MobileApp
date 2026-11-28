@@ -8,8 +8,11 @@ typedef FakeAnswer = ({int status, Object? body});
 /// HTTP adapter that answers like the backend, recording every request.
 /// A handler may throw a [DioException] to simulate a lost connection.
 class ScriptedBackend implements HttpClientAdapter {
-  ScriptedBackend(this.handler);
+  ScriptedBackend(this.handler, {this.headers});
   final FakeAnswer Function(RequestOptions options) handler;
+
+  /// Extra response headers (e.g. `Retry-After` on a 429).
+  final Map<String, List<String>> Function(RequestOptions options)? headers;
   final requests = <RequestOptions>[];
 
   List<String> get routes => [for (final r in requests) '${r.method} ${r.path}'];
@@ -21,7 +24,7 @@ class ScriptedBackend implements HttpClientAdapter {
     requests.add(options);
     final r = handler(options);
     return ResponseBody.fromString(r.body == null ? '' : jsonEncode(r.body), r.status,
-        headers: {Headers.contentTypeHeader: [Headers.jsonContentType]});
+        headers: {Headers.contentTypeHeader: [Headers.jsonContentType], ...?headers?.call(options)});
   }
 
   @override

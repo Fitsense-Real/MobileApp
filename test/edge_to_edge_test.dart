@@ -16,6 +16,8 @@ import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
 import 'support/system_bars.dart';
 import 'support/welcome_fakes.dart';
+import 'package:fitsense_mobile/features/consents/data/consents_repository.dart';
+import 'package:fitsense_mobile/features/consents/domain/legal_documents.dart';
 
 /// Android 16 (targetSdk 36) always draws edge to edge. These screens are
 /// checked with a status bar, a navigation bar and, where there is typing,
@@ -39,6 +41,13 @@ Future<void> pumpScreen(WidgetTester tester, Widget app, {Size size = const Size
 
 String iso(DateTime d) => d.toIso8601String().substring(0, 10);
 
+/// Synthetic published documents (sign-up open), for layout tests only.
+const _published = PublishedDocuments(documents: [
+  LegalDocument(type: ConsentType.studyParticipation, title: 'Consentimiento informado', url: 'https://docs.test/consentimiento', version: 'C-PRUEBA-1'),
+  LegalDocument(type: ConsentType.termsOfService, title: 'Condiciones de uso', url: 'https://docs.test/terminos', version: 'T-PRUEBA-1'),
+  LegalDocument(type: ConsentType.privacyPolicy, title: 'Política de privacidad', url: 'https://docs.test/privacidad', version: 'P-PRUEBA-1'),
+]);
+
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
@@ -47,7 +56,7 @@ void main() {
       GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginPage()),
       GoRoute(path: AppRoutes.register, builder: (_, __) => const RegisterPage()),
     ]);
-    return ProviderScope(child: MaterialApp.router(routerConfig: router, theme: AppTheme.light));
+    return ProviderScope(overrides: [publishedDocumentsProvider.overrideWith((ref) async => _published)], child: MaterialApp.router(routerConfig: router, theme: AppTheme.light));
   }
 
   for (final location in [AppRoutes.login, AppRoutes.register]) {

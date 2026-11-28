@@ -23,7 +23,7 @@ class NoPlanAvailableView extends ConsumerWidget {
     final withdrawn = user?.withdrawnAt;
     final explanation = switch (reason) {
       PlanIneligibility.notParticipant =>
-        'Por ahora Kora prepara rutinas solo para las personas que participan en el estudio, y tu cuenta no está inscrita como participante.',
+        'Kora es exclusiva para las personas que participan en el estudio, y tu cuenta no está inscrita como participante.',
       PlanIneligibility.withdrawn =>
         'Te retiraste del estudio${withdrawn == null ? '' : ' el ${withdrawn.toLocal().day.toString().padLeft(2, '0')}/${withdrawn.toLocal().month.toString().padLeft(2, '0')}/${withdrawn.toLocal().year}'}. '
             'Desde entonces Kora no prepara rutinas nuevas. Los datos que ya registraste se conservan.',
@@ -38,7 +38,7 @@ class NoPlanAvailableView extends ConsumerWidget {
         Text(explanation, style: const TextStyle(fontSize: 16, height: 1.5)),
         const SizedBox(height: 16),
         KoraCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('¿Quieres participar o crees que es un error?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(reason == PlanIneligibility.withdrawn ? '¿Tienes dudas sobre tu retirada?' : '¿Crees que es un error?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
             StudyConfig.contact.trim().isEmpty

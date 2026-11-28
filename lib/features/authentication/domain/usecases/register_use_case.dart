@@ -15,6 +15,7 @@ class RegisterUseCase {
     bool acceptsStudyParticipation = false,
     String? acceptedTermsVersion,
     String? acceptedPrivacyVersion,
+    String? acceptedStudyConsentVersion,
   }) {
     return repository.register(
       firstName: firstName,
@@ -25,6 +26,7 @@ class RegisterUseCase {
       acceptsStudyParticipation: acceptsStudyParticipation,
       acceptedTermsVersion: acceptedTermsVersion,
       acceptedPrivacyVersion: acceptedPrivacyVersion,
+      acceptedStudyConsentVersion: acceptedStudyConsentVersion,
     );
   }
 }

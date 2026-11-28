@@ -21,7 +21,7 @@ enum CheckProblem {
 
 /// State of the first-plan generation as the app knows it.
 class FirstPlanGenerationState {
-  const FirstPlanGenerationState({this.operation, this.problem = CheckProblem.none, this.error});
+  const FirstPlanGenerationState({this.operation, this.problem = CheckProblem.none, this.error, this.errorStatus, this.errorCode});
 
   /// Last state reported by the backend; null until the first answer.
   final GenerationOperation? operation;
@@ -33,13 +33,28 @@ class FirstPlanGenerationState {
   /// The backend refused the request (e.g. 422 incomplete profile).
   final String? error;
 
+  /// HTTP status and stable code (`details[0]`) of [error]: 409 means the plan
+  /// changed or a generation is already running (consult the current plan, do
+  /// not retry blindly); `PARTICIPACION_NO_VIGENTE` means the account is no
+  /// longer an active participant (e.g. withdrew while the plan was prepared).
+  final int? errorStatus;
+  final String? errorCode;
+
+  /// The backend says this account cannot receive plans now.
+  bool get participationEnded => errorCode == 'PARTICIPACION_NO_VIGENTE';
+
+  /// A conflict with the plan of the account (HTTP 409).
+  bool get planConflict => errorStatus == 409;
+
   bool get isWaiting => error == null && (operation == null || !operation!.isTerminal);
 
-  FirstPlanGenerationState copyWith({GenerationOperation? operation, CheckProblem? problem, String? error, bool clearError = false}) =>
+  FirstPlanGenerationState copyWith({GenerationOperation? operation, CheckProblem? problem, String? error, int? errorStatus, String? errorCode, bool clearError = false}) =>
       FirstPlanGenerationState(
         operation: operation ?? this.operation,
         problem: problem ?? this.problem,
         error: clearError ? null : error ?? this.error,
+        errorStatus: clearError ? null : errorStatus ?? this.errorStatus,
+        errorCode: clearError ? null : errorCode ?? this.errorCode,
       );
 }
 
@@ -76,6 +91,9 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
   Future<void> start() async {
     final userId = _userId;
     if (userId == null || _starting) return;
+    // The backend already said this account cannot receive plans (e.g. it
+    // withdrew): asking again could only be refused. The screen shows its state.
+    if (state.participationEnded) return;
     final current = state.operation;
     if (current != null && (!current.isTerminal || current.status == GenerationStatus.completed)) {
       if (!current.isTerminal) _schedule();
@@ -176,7 +194,7 @@ class FirstPlanGenerationController extends Notifier<FirstPlanGenerationState> {
       _schedule();
       return;
     }
-    state = state.copyWith(error: apiError(e), problem: CheckProblem.none);
+    state = state.copyWith(error: apiError(e), errorStatus: status, errorCode: apiErrorCode(e), problem: CheckProblem.none);
   }
 }
 

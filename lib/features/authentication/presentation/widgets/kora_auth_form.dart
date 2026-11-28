@@ -5,17 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/api/api_constants.dart';
+import '../../../../core/api/api_error.dart';
 import '../../../../core/config/study_config.dart';
 import '../../../../shared/widgets/kora_ui.dart';
 import '../../../../shared/widgets/fs_text_field.dart';
+import '../../../consents/data/consents_repository.dart';
 import '../../../consents/domain/legal_documents.dart';
 import '../../../consents/presentation/document_reader_page.dart';
-import '../../../plans/domain/plan_eligibility.dart';
 import '../../domain/timezones.dart';
 import '../providers/auth_provider.dart';
-
-/// Documents of this build, overridable in tests.
-final signUpDocumentsProvider = Provider<SignUpDocuments>((ref) => SignUpDocuments.fromConfig());
 
 class KoraAuthForm extends ConsumerStatefulWidget {
   const KoraAuthForm({super.key, this.register = false, this.initialEmail});
@@ -30,6 +28,8 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
   final _name = TextEditingController();
   final _lastName = TextEditingController();
   late String _timezone = StudyConfig.defaultTimezone;
+
+  /// Option A: the account exists only for people who accept to take part.
   bool _consent = false;
   late final _email = TextEditingController(text: widget.initialEmail ?? '');
   final _password = TextEditingController();
@@ -41,6 +41,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
   /// Terms and privacy accepted (only after reading them).
   final _accepted = <LegalDocument>{};
   String? _documentsError;
+  bool _checking = false;
 
   @override
   void dispose() {
@@ -50,30 +51,48 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     super.dispose();
   }
 
-  SignUpDocuments get _documents => ref.read(signUpDocumentsProvider);
-
   Future<void> _readDocument(LegalDocument document) async {
     final done = await DocumentReaderPage.open(context, document);
     if (!mounted || !done) return;
     setState(() { _read.add(document); _documentsError = null; });
   }
 
-  /// Without the plans for non-participants, creating the account without
-  /// taking part leads nowhere: say it before the account exists.
-  Future<bool> _confirmWithoutParticipation() async {
-    final create = await showDialog<bool>(
+  /// The person does not want to take part: Kora is only for participants, so
+  /// no account is created and nothing typed is kept.
+  Future<void> _decline() async {
+    final leave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Crear la cuenta sin participar?'),
-        content: const Text('Por ahora Kora prepara rutinas solo para las personas que participan en el estudio. '
-            'Si creas la cuenta sin participar, no recibirás una rutina.'),
+        title: const Text('No participar en el estudio'),
+        content: const Text('Kora es exclusiva para las personas que participan en el estudio. '
+            'Si no deseas participar, no se creará ninguna cuenta y no se guardará nada de lo que escribiste. '
+            'Gracias por tu tiempo.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Revisar participación')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Crear sin participar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Volver al registro')),
+          TextButton(key: const Key('leave-sign-up'), onPressed: () => Navigator.pop(context, true), child: const Text('Salir del registro')),
         ],
       ),
     );
-    return create == true;
+    if (leave != true || !mounted) return;
+    for (final c in [_name, _lastName, _email, _password, _confirm]) {
+      c.clear();
+    }
+    setState(() { _consent = false; _read.clear(); _accepted.clear(); });
+    context.go(AppRoutes.splash);
+  }
+
+  /// The documents changed (or stopped being published) while the person was
+  /// signing up: nothing was created; read them again as they are now.
+  Future<void> _documentsChanged({required bool unpublished}) async {
+    setState(() { _read.clear(); _accepted.clear(); _consent = false; });
+    ref.invalidate(publishedDocumentsProvider);
+    await showDialog<void>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Los documentos cambiaron'),
+      content: Text(unpublished
+          ? 'Uno de los documentos ya no está publicado. Tu cuenta no se creó. Inténtalo más tarde o contacta al equipo del estudio.'
+          : 'Se publicó una versión nueva de un documento. Tu cuenta no se creó. Vuelve a leer la versión vigente y acéptala si estás de acuerdo.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido'))],
+    ));
   }
 
   Future<void> _submit() async {
@@ -90,37 +109,51 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
       }
       return;
     }
-    final documents = _documents;
-    if (documents.required.any((d) => !_accepted.contains(d))) {
-      setState(() => _documentsError = 'Lee y acepta cada documento para crear la cuenta.');
+    final documents = ref.read(publishedDocumentsProvider).asData?.value;
+    if (documents == null || !documents.signUpOpen) return;
+    final shown = documents.toRead;
+    if (shown.any((d) => !_read.contains(d)) || [documents.terms!, documents.privacy!].any((d) => !_accepted.contains(d))) {
+      setState(() => _documentsError = 'Lee cada documento completo y acepta las condiciones y la política de privacidad.');
       return;
     }
-    if (!_consent && !ref.read(plansForNonParticipantsProvider) && !await _confirmWithoutParticipation()) return;
+    if (!_consent) {
+      setState(() => _documentsError = 'Kora es solo para participantes: marca «Acepto participar» o elige «No deseo participar».');
+      return;
+    }
+    // What the person read must still be exactly what is published.
+    setState(() => _checking = true);
+    PublishedDocuments current;
+    try {
+      current = await ref.read(legalDocumentsRepositoryProvider).current();
+    } catch (e) {
+      if (mounted) { setState(() => _checking = false); _snack('No se pudo comprobar los documentos: ${apiError(e)} Tu cuenta no se creó.'); }
+      return;
+    }
     if (!mounted) return;
+    setState(() => _checking = false);
+    if (!current.signUpOpen || current.changedSince(shown)) {
+      await _documentsChanged(unpublished: !current.signUpOpen);
+      return;
+    }
     final email = _email.text.trim(), password = _password.text;
     final created = await model.register(
       firstName: _name.text.trim(),
       lastName: _lastName.text.trim(),
       timezone: _timezone,
-      acceptsStudyParticipation: _consent,
-      acceptedTermsVersion: documents.terms?.version,
-      acceptedPrivacyVersion: documents.privacy?.version,
+      acceptsStudyParticipation: true,
+      acceptedTermsVersion: documents.terms!.version,
+      acceptedPrivacyVersion: documents.privacy!.version,
+      acceptedStudyConsentVersion: documents.studyConsent!.version,
       email: email,
       password: password,
     );
     if (!mounted) return;
     if (!created) {
-      final message = ref.read(authViewModelProvider).errorMessage;
-      if (isOutdatedDocument(message) || isUnpublishedDocument(message)) {
+      final auth = ref.read(authViewModelProvider);
+      final message = auth.errorMessage;
+      if (isDocumentProblem(message, code: auth.errorCode)) {
         // The account was not created (same transaction in the backend).
-        setState(() { _read.clear(); _accepted.clear(); });
-        await showDialog<void>(context: context, builder: (context) => AlertDialog(
-          title: const Text('Los documentos cambiaron'),
-          content: Text(isOutdatedDocument(message)
-              ? 'Se publicó una versión nueva de un documento. Tu cuenta no se creó. Actualiza la aplicación o vuelve a leer la versión vigente antes de aceptarla.'
-              : 'Uno de los documentos todavía no está publicado. Tu cuenta no se creó. Inténtalo más tarde o contacta al equipo del estudio.'),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendido'))],
-        ));
+        await _documentsChanged(unpublished: isUnpublishedDocument(message, code: auth.errorCode));
       } else {
         _snack(message ?? 'No se pudo conectar. Inténtalo nuevamente.');
       }
@@ -139,8 +172,9 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
 
   void _snack(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
-  Widget _documentTile(LegalDocument document, bool busy) {
+  Widget _documentTile(LegalDocument document, bool busy, {required String acceptLabel, bool study = false}) {
     final read = _read.contains(document);
+    final value = study ? _consent : _accepted.contains(document);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: KoraCard(
@@ -148,15 +182,22 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text('${document.title} · versión ${document.version}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-            TextButton(onPressed: busy ? null : () => _readDocument(document), child: Text(read ? 'Volver a leer' : 'Leer')),
+            TextButton(key: Key('read-${document.type.code}'), onPressed: busy ? null : () => _readDocument(document), child: Text(read ? 'Volver a leer' : 'Leer')),
           ]),
           Material(type: MaterialType.transparency, child: CheckboxListTile(
-            key: Key('accept-${document.type.code}'),
+            key: Key(study ? 'accept-study' : 'accept-${document.type.code}'),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
-            value: _accepted.contains(document),
-            onChanged: busy || !read ? null : (v) => setState(() { v == true ? _accepted.add(document) : _accepted.remove(document); _documentsError = null; }),
-            title: Text(document.type.code == 'TERMS_OF_SERVICE' ? 'Acepto las condiciones de uso' : 'He leído la política de privacidad'),
+            value: value,
+            onChanged: busy || !read ? null : (v) => setState(() {
+              if (study) {
+                _consent = v ?? false;
+              } else {
+                v == true ? _accepted.add(document) : _accepted.remove(document);
+              }
+              _documentsError = null;
+            }),
+            title: Text(acceptLabel),
             subtitle: read ? null : const Text('Primero léelo completo.'),
           )),
         ]),
@@ -164,46 +205,61 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     );
   }
 
-  Widget _participation(bool busy) {
-    final consentDoc = _documents.studyConsent;
-    final mustRead = consentDoc != null && !_read.contains(consentDoc);
-    final optional = ref.watch(plansForNonParticipantsProvider);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const SizedBox(height: 8),
-      const Text('Participación en el estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-      const SizedBox(height: 6),
-      Text(
-        optional
-            ? 'Participar es opcional. Puedes usar Kora sin participar en el estudio.'
-            : 'Kora se usa dentro de un estudio de 12 semanas y, por ahora, prepara rutinas solo para quienes participan.',
-        style: const TextStyle(color: Kora.muted, fontSize: 14, height: 1.45),
-      ),
-      if (consentDoc != null) ...[
-        const SizedBox(height: 4),
-        Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-          onPressed: busy ? null : () => _readDocument(consentDoc),
-          icon: const Icon(Icons.description_outlined, size: 20),
-          label: Text(mustRead ? 'Leer el consentimiento informado (versión ${consentDoc.version})' : 'Volver a leer el consentimiento informado'),
+  /// Option A, said before anything is typed.
+  Widget _studyIntro() => const KoraCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Kora es parte de un estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          SizedBox(height: 6),
+          Text('Kora se usa dentro de un estudio de tesis de 12 semanas y es exclusiva para las personas que aceptan participar. '
+              'Antes de crear tu cuenta podrás leer las condiciones de uso, la política de privacidad y el consentimiento informado. '
+              'Participar es voluntario: si no deseas hacerlo, no se crea ninguna cuenta.',
+              style: TextStyle(color: Kora.muted, fontSize: 14, height: 1.45)),
+        ]),
+      );
+
+  Widget _documentsBlock(PublishedDocuments documents, bool busy) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Documentos del estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 8),
+        _documentTile(documents.terms!, busy, acceptLabel: 'Acepto las condiciones de uso'),
+        _documentTile(documents.privacy!, busy, acceptLabel: documents.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
+        _documentTile(documents.studyConsent!, busy, acceptLabel: 'Acepto participar voluntariamente en el estudio', study: true),
+        if (_documentsError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_documentsError!, style: TextStyle(color: Colors.red.shade800))),
+        Align(alignment: Alignment.centerLeft, child: TextButton(
+          key: const Key('decline-study'),
+          onPressed: busy ? null : _decline,
+          child: const Text('No deseo participar'),
         )),
-      ],
-      CheckboxListTile(
-        key: const Key('accept-study'),
-        contentPadding: EdgeInsets.zero,
-        value: _consent,
-        onChanged: busy || mustRead ? null : (v) => setState(() => _consent = v ?? false),
-        title: const Text('Acepto participar en el estudio'),
-        subtitle: Text(mustRead
-            ? 'Primero lee el consentimiento informado.'
-            : optional ? 'Opcional. Déjalo desmarcado si no deseas participar.' : 'Sin participar podrás crear la cuenta, pero no recibirás una rutina.'),
-        controlAffinity: ListTileControlAffinity.leading,
-      ),
-    ]);
-  }
+      ]);
+
+  /// Sign-up cannot go on: documents not available or not published yet.
+  Widget _signUpUnavailable({required String title, required String text, VoidCallback? retry}) => KoraCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(text, style: const TextStyle(fontSize: 15, height: 1.45)),
+          if (retry != null) ...[
+            const SizedBox(height: 12),
+            KoraButton(label: 'Reintentar', onPressed: retry),
+          ],
+        ]),
+      );
+
+  static String _missingName(ConsentType type) => switch (type) {
+        ConsentType.termsOfService => 'las condiciones de uso',
+        ConsentType.privacyPolicy => 'la política de privacidad',
+        ConsentType.studyParticipation => 'el consentimiento informado',
+      };
+
+  String get _contactLine => StudyConfig.contact.trim().isEmpty
+      ? 'Si te invitaron al estudio, escribe al equipo que te invitó.'
+      : 'Si te invitaron al estudio, escribe al equipo: ${StudyConfig.contact.trim()}.';
 
   @override
   Widget build(BuildContext context) {
-    final busy = ref.watch(authViewModelProvider).isLoading;
-    final documents = widget.register ? ref.watch(signUpDocumentsProvider) : const SignUpDocuments();
+    final busy = ref.watch(authViewModelProvider).isLoading || _checking;
+    final published = widget.register ? ref.watch(publishedDocumentsProvider) : null;
+    final documents = published?.asData?.value;
+    final open = !widget.register || (documents?.signUpOpen ?? false);
     return KoraPage(
       maxWidth: 520,
       child: ListView(
@@ -233,7 +289,31 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                 : 'Ingresa tus credenciales para acceder a tu panel de entrenamiento personalizado.',
           ),
           const SizedBox(height: 32),
-          AutofillGroup(
+          if (widget.register) ...[
+            _studyIntro(),
+            const SizedBox(height: 16),
+            if (published != null && published.hasError && !published.isLoading)
+              _signUpUnavailable(
+                title: 'No pudimos consultar los documentos',
+                text: 'Para crear la cuenta necesitas leer los documentos vigentes del estudio. ${apiError(published.error!)}',
+                retry: () => ref.invalidate(publishedDocumentsProvider),
+              )
+            else if (published == null || published.isLoading)
+              const KoraCard(child: Row(children: [
+                SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                SizedBox(width: 14),
+                Expanded(child: Text('Consultando los documentos del estudio…', style: TextStyle(fontSize: 15))),
+              ]))
+            else if (!open)
+              _signUpUnavailable(
+                title: 'El registro todavía no está abierto',
+                text: 'Para crear una cuenta tienen que estar publicados los tres documentos del estudio, y todavía falta${documents!.missing.length == 1 ? '' : 'n'}: '
+                    '${[for (final t in documents.missing) _missingName(t)].join(', ')}. Hasta entonces no se pueden crear cuentas. $_contactLine',
+                retry: () => ref.invalidate(publishedDocumentsProvider),
+              ),
+            const SizedBox(height: 16),
+          ],
+          if (open) AutofillGroup(
             child: Form(
               key: _form,
               child: Column(
@@ -317,13 +397,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
                       child: Text('Define el día de tus entrenamientos y la hora de los recordatorios.', style: TextStyle(color: Kora.muted, fontSize: 13)),
                     ),
                     const SizedBox(height: 16),
-                    if (documents.required.isNotEmpty) ...[
-                      const Text('Documentos', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      const SizedBox(height: 8),
-                      for (final document in documents.required) _documentTile(document, busy),
-                      if (_documentsError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_documentsError!, style: TextStyle(color: Colors.red.shade800))),
-                    ],
-                    _participation(busy),
+                    _documentsBlock(documents!, busy),
                     const SizedBox(height: 16),
                   ],
                   KoraButton(

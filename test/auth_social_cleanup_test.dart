@@ -7,6 +7,8 @@ import 'package:fitsense_mobile/app/router/app_routes.dart';
 import 'package:fitsense_mobile/features/authentication/presentation/pages/login_page.dart';
 import 'package:fitsense_mobile/features/authentication/presentation/pages/register_page.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+import 'package:fitsense_mobile/features/consents/data/consents_repository.dart';
+import 'package:fitsense_mobile/features/consents/domain/legal_documents.dart';
 
 /// Google Play: no disabled buttons for features that do not exist.
 /// Social sign-in is not implemented, so it must not appear at all.
@@ -21,6 +23,7 @@ Future<void> pumpAuth(WidgetTester tester, String location, {Size size = const S
   ]);
   addTearDown(router.dispose);
   await tester.pumpWidget(ProviderScope(
+    overrides: [publishedDocumentsProvider.overrideWith((ref) async => _published)],
     child: MediaQuery(
       data: MediaQueryData(size: size, textScaler: TextScaler.linear(textScale)),
       child: MaterialApp.router(routerConfig: router, theme: AppTheme.light),
@@ -28,6 +31,13 @@ Future<void> pumpAuth(WidgetTester tester, String location, {Size size = const S
   ));
   await tester.pumpAndSettle();
 }
+
+/// Synthetic published documents (sign-up open), for layout tests only.
+const _published = PublishedDocuments(documents: [
+  LegalDocument(type: ConsentType.studyParticipation, title: 'Consentimiento informado', url: 'https://docs.test/consentimiento', version: 'C-PRUEBA-1'),
+  LegalDocument(type: ConsentType.termsOfService, title: 'Condiciones de uso', url: 'https://docs.test/terminos', version: 'T-PRUEBA-1'),
+  LegalDocument(type: ConsentType.privacyPolicy, title: 'Política de privacidad', url: 'https://docs.test/privacidad', version: 'P-PRUEBA-1'),
+]);
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));

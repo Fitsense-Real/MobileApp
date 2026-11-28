@@ -54,7 +54,7 @@ class _AccountSetupPageState extends ConsumerState<AccountSetupPage> {
       if (!mounted) return;
       // Not a participant (or withdrawn): no profile setup or generation that
       // can only end in a refusal. A current plan is still shown below.
-      final ineligible = planIneligibility(ref.read(authViewModelProvider).user, plansForNonParticipants: ref.read(plansForNonParticipantsProvider));
+      final ineligible = planIneligibility(ref.read(authViewModelProvider).user);
       if (profile == null && ineligible != null) {
         setState(() => blocked = ineligible);
         return;

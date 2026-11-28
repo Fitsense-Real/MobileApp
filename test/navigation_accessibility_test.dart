@@ -15,6 +15,8 @@ import 'package:fitsense_mobile/features/plans/data/plan_repository.dart';
 import 'package:fitsense_mobile/features/reminders/data/reminder_scheduler.dart';
 import 'package:fitsense_mobile/shared/theme/app_theme.dart';
 import 'package:fitsense_mobile/shared/widgets/kora_ui.dart';
+import 'package:fitsense_mobile/features/authentication/presentation/providers/auth_provider.dart';
+import 'support/welcome_fakes.dart' show SignedIn;
 
 double contrast(Color a, Color b) {
   double lum(Color c) {
@@ -185,4 +187,19 @@ void main() {
     expect(ReminderLaunch.take(), isNull);
   });
 
+
+  testWidgets('withdrawn with a plan: Inicio says so (history and week in course only), never a generation', (tester) async {
+    await openDashboard(tester, const Size(360, 780), metrics: const [], extra: [authViewModelProvider.overrideWith(() => SignedIn(7, true, DateTime.utc(2026, 11, 28)))]);
+    expect(find.byKey(const Key('withdrawn-notice')), findsOneWidget);
+    expect(find.text('Sin resúmenes semanales desde tu retirada'), findsOneWidget);
+    expect(find.textContaining('al cerrar tu primera semana'), findsNothing, reason: 'it would promise a summary that never comes');
+    expect(find.textContaining('Te retiraste del estudio el 28/11/2026'), findsOneWidget);
+    expect(find.textContaining('ya no prepara rutinas nuevas'), findsOneWidget);
+  });
+
+  testWidgets('active participant: no withdrawal notice', (tester) async {
+    await openDashboard(tester, const Size(360, 780), metrics: const [], extra: [authViewModelProvider.overrideWith(() => SignedIn())]);
+    expect(find.byKey(const Key('withdrawn-notice')), findsNothing);
+    expect(find.text('Tus datos aparecerán al cerrar tu primera semana'), findsOneWidget);
+  });
 }

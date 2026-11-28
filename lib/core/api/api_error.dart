@@ -55,17 +55,23 @@ String apiError(Object error) {
     final lines = <String>[
       if (details is List)
         for (final item in details)
-          if ('$item'.trim().isNotEmpty) '$item',
+          // Machine codes (`DEMASIADAS_SOLICITUDES`) are for the app, not for people.
+          if ('$item'.trim().isNotEmpty && !_machineCode.hasMatch('$item'.trim())) '$item',
       if (details is Map)
         for (final entry in details.entries) '${entry.key}: ${entry.value}',
     ];
+    final wait = status == 429 ? retryAfterText(error) : null;
     if (lines.isNotEmpty) {
       return [
         if (message is String && message.isNotEmpty) message,
         ...lines,
+        ?wait,
       ].join('\n');
     }
-    if (message is String && message.isNotEmpty) return message;
+    if (message is String && message.isNotEmpty) return wait == null ? message : '$message $wait';
+  }
+  if (status == 429) {
+    return ['Demasiadas solicitudes. Espera un momento antes de volver a intentarlo.', ?retryAfterText(error)].join(' ');
   }
   switch (error.type) {
     case DioExceptionType.connectionError:
@@ -82,6 +88,39 @@ String apiError(Object error) {
     return 'El servidor tuvo un problema ($status). Inténtalo más tarde.';
   }
   return 'No se pudo completar la operación (${status ?? 'sin conexión'}). Inténtalo nuevamente.';
+}
+
+final _machineCode = RegExp(r'^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$');
+
+/// The stable code the backend puts in `details[0]` (e.g. `VERSION_NO_VIGENTE`,
+/// `PARTICIPACION_NO_VIGENTE`), or null. The app reacts to the code; the text
+/// is only shown.
+String? apiErrorCode(Object? error) {
+  final cause = error is ApiException ? error.cause : error;
+  if (cause is! DioException) return null;
+  final data = cause.response?.data;
+  final details = data is Map ? data['details'] : null;
+  if (details is! List) return null;
+  for (final item in details) {
+    if (_machineCode.hasMatch('$item'.trim())) return '$item'.trim();
+  }
+  return null;
+}
+
+/// Seconds the backend asks to wait after a 429 (`Retry-After`), or null.
+int? retryAfterSeconds(Object error) {
+  if (error is! DioException) return null;
+  final value = error.response?.headers.value('retry-after');
+  return value == null ? null : int.tryParse(value.trim());
+}
+
+/// "Podrás intentarlo de nuevo en N minutos." from `Retry-After`, or null.
+String? retryAfterText(Object error) {
+  final seconds = retryAfterSeconds(error);
+  if (seconds == null || seconds <= 0) return null;
+  if (seconds < 60) return 'Podrás intentarlo de nuevo en unos segundos.';
+  final minutes = (seconds / 60).ceil();
+  return 'Podrás intentarlo de nuevo en $minutes ${minutes == 1 ? 'minuto' : 'minutos'}.';
 }
 
 /// The port hint only helps a developer with a local backend; a participant

@@ -597,6 +597,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
+  /// Withdrawn from the study: no weekly summaries are prepared any more, so
+  /// texts that promise them would be wrong. Metrics already calculated are shown.
+  bool get withdrawnFromStudy => ref.watch(authViewModelProvider).user?.withdrawnAt != null;
+
   Widget compactProgress(List<Json> rows) {
     final metric = rows.firstOrNull;
     final percent = metric?['weightedAdherencePct'] as num?;
@@ -643,7 +647,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   Text(
                     metric == null
-                        ? 'Tus datos aparecerán al cerrar tu primera semana'
+                        ? (withdrawnFromStudy ? 'Sin resúmenes semanales desde tu retirada' : 'Tus datos aparecerán al cerrar tu primera semana')
                         : '${metricValue(metric['completedWorkouts'])}/${metricValue(metric['scheduledWorkouts'])} entrenamientos',
                     style: const TextStyle(fontSize: 12, color: Kora.muted),
                   ),
@@ -811,7 +815,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget progress(List<Json> rows, List<Json> interventions, [List<Json>? adaptations]) {
     if (rows.isEmpty) {
       return surface(
-        const Text('Todavía no hay métricas semanales calculadas. Aparecerán cuando termine tu primera semana con plan: se calculan cada lunes con lo que registraste.'),
+        Text(withdrawnFromStudy
+            ? 'No hay métricas semanales calculadas. Desde tu retirada del estudio Kora ya no prepara resúmenes semanales.'
+            : 'Todavía no hay métricas semanales calculadas. Aparecerán cuando termine tu primera semana con plan: se calculan cada lunes con lo que registraste.'),
       );
     }
     final metric =
@@ -1293,26 +1299,38 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     ]);
   });
 
-  /// Terms and privacy (backend V63): what this person accepted, or that no
-  /// version is published yet. Nothing is shown if the check fails.
+  /// What the backend has recorded for this person (`GET /users/me/consents`),
+  /// one line per kind of document: the research consent, the terms and the
+  /// privacy policy are different things. Nothing is shown that is not in the
+  /// server's history; nothing at all if the check fails.
   Widget consentsSummary() => Consumer(builder: (context, ref, _) {
     final status = ref.watch(consentStatusProvider).asData?.value;
     if (status == null) return const SizedBox.shrink();
-    final documents = SignUpDocuments.fromConfig();
+    final published = ref.watch(publishedDocumentsProvider).asData?.value ?? const PublishedDocuments();
     Widget row(ConsentType type) {
+      final record = status.accepted(type);
       final current = status.currentVersions[type];
-      final accepted = status.acceptedVersion(type);
-      final text = type == ConsentType.studyParticipation
-          ? (accepted == null ? '${type.label}: sin consentimiento registrado.' : '${type.label}: aceptada (versión $accepted).')
-          : current == null
-              ? '${type.label}: todavía sin versión publicada.'
-              : accepted == current ? '${type.label}: aceptada (versión $current).' : '${type.label}: pendiente de aceptar (versión $current).';
-      final url = accepted == null ? null : documents.urlFor(type, accepted);
+      final date = record?.grantedAt == null ? '' : ' el ${displayDate(record!.grantedAt!)}';
+      final text = switch (type) {
+        ConsentType.studyParticipation => record == null
+            ? 'Consentimiento del estudio: no hay ninguno registrado.'
+            : record.withoutApprovedDocument
+                ? 'Participación en el estudio registrada$date sin un consentimiento informado publicado (etiqueta ${record.version}, no es un documento aprobado).'
+                : 'Consentimiento del estudio: aceptado$date (versión ${record.version}).',
+        _ => record == null
+            ? (current == null ? '${type.label}: todavía sin versión publicada.' : '${type.label}: pendiente de aceptar (versión $current).')
+            : record.acknowledgement
+                ? '${type.label}: informada$date (versión ${record.version}).'
+                : current != null && record.version != current
+                    ? '${type.label}: aceptaste la versión ${record.version}$date; la vigente es la $current.'
+                    : '${type.label}: aceptada$date (versión ${record.version}).',
+      };
+      final document = record == null ? null : published.find(type, record.version);
       return Row(children: [
         Expanded(child: Text(text, style: const TextStyle(color: Kora.muted, height: 1.5))),
-        if (url != null)
+        if (document != null)
           TextButton(
-            onPressed: () => DocumentReaderPage.open(context, LegalDocument(type: type, title: type.label, url: url, version: accepted!)),
+            onPressed: () => DocumentReaderPage.open(context, document),
             child: const Text('Leer'),
           ),
       ]);
@@ -1637,6 +1655,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 style: TextStyle(color: Kora.muted, fontSize: 12),
               ),
               const SizedBox(height: 26),
+              // Withdrawn from the study: the plan of the week in course and the
+              // history stay readable, but nothing new is prepared (same terms as
+              // the withdrawal dialog). Never a generation request from here.
+              if (user?.withdrawnAt case final withdrawnAt?) ...[
+                KoraCard(
+                  key: const Key('withdrawn-notice'),
+                  child: Text(
+                    'Te retiraste del estudio el ${displayDate(withdrawnAt.toIso8601String())}. Kora ya no prepara rutinas nuevas ni '
+                    'resúmenes semanales; puedes consultar tu historial y el plan de la semana en curso.',
+                    style: const TextStyle(fontSize: 14, height: 1.45),
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
               KeyedSubtree(
                 key: widget.tourTargets?.planCard,
                 child: section(

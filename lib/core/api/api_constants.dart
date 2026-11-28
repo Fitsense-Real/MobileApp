@@ -12,7 +12,10 @@ class ApiConstants {
   // Autenticación (públicos, sin JWT)
   static const login = '/auth/login';
   static const register = '/auth/register';
-  static const publicPaths = {login, register, forgotPassword, resetPassword};
+  static const publicPaths = {login, register, forgotPassword, resetPassword, legalDocuments};
+
+  /// Published legal documents (B2.2, public): terms, privacy, informed consent.
+  static const legalDocuments = '/legal-documents';
 
   /// PasswordResetController: request a code by email, then confirm it.
   /// Backend 5977d28 sends the recovery code by email, but production has no

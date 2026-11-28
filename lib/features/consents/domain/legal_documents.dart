@@ -1,20 +1,33 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/config/app_links.dart';
-import '../../../core/config/study_config.dart';
+import '../../../core/api/api_constants.dart';
+import '../../../core/api/json.dart';
+import '../../../core/providers/dio_provider.dart';
 import '../data/consents_repository.dart';
 
-/// A document the person can read in the app before accepting it.
-///
-/// [version] is what the backend records (terms and privacy). The study
-/// consent has a displayed version only: the backend stores its own.
+/// A legal document published by the backend (`GET /api/v1/legal-documents`,
+/// `LegalDocumentsController.DocumentoResource` of Backend `generation`
+/// 41c498a): only documents `PUBLISHED`, with an approval reference and already
+/// in force are listed. [version] is exactly what sign-up sends back.
 class LegalDocument {
-  const LegalDocument({required this.type, required this.title, required this.url, required this.version});
+  const LegalDocument({required this.type, required this.title, required this.url, required this.version, this.effectiveFrom});
   final ConsentType type;
   final String title;
   final String url;
   final String version;
+  final String? effectiveFrom;
 
   bool get readable => url.trim().isNotEmpty;
+
+  static LegalDocument? fromJson(Json json) {
+    final type = ConsentType.of(json['type']);
+    final version = '${json['version'] ?? ''}'.trim();
+    final url = '${json['url'] ?? ''}'.trim();
+    // Only what the backend says is published and approved; anything else is ignored.
+    if (type == null || version.isEmpty || url.isEmpty || (json['status'] != null && json['status'] != 'PUBLISHED')) return null;
+    final title = '${json['title'] ?? ''}'.trim();
+    return LegalDocument(type: type, title: title.isEmpty ? type.documentTitle : title, url: url, version: version, effectiveFrom: json['effectiveFrom'] as String?);
+  }
 
   @override
   bool operator ==(Object other) => other is LegalDocument && other.type == type && other.url == url && other.version == version;
@@ -23,63 +36,96 @@ class LegalDocument {
   int get hashCode => Object.hash(type, url, version);
 }
 
-/// Documents of the sign-up, from the build configuration. A document appears
-/// only when its address **and** its approved version are configured: nothing
-/// is shown, and nothing is sent, while a document is not approved.
-class SignUpDocuments {
-  const SignUpDocuments({this.terms, this.privacy, this.studyConsent});
+/// How the backend records the privacy policy (`fitsense.consent.privacy-record`):
+/// an acceptance, or a record that the person was informed.
+enum PrivacyRecord { acceptance, acknowledgement }
 
-  final LegalDocument? terms;
-  final LegalDocument? privacy;
-  final LegalDocument? studyConsent;
+/// `GET /api/v1/legal-documents` (`DocumentosResource`): public, no JWT.
+class PublishedDocuments {
+  const PublishedDocuments({this.enforcedOnSignup = false, this.privacyRecord = PrivacyRecord.acceptance, this.documents = const []});
 
-  static LegalDocument? _of(ConsentType type, String title, String url, String version) =>
-      url.trim().isEmpty || version.trim().isEmpty ? null : LegalDocument(type: type, title: title, url: url.trim(), version: version.trim());
+  /// Whether the backend requires the documents at sign-up (`enforce-on-signup`).
+  final bool enforcedOnSignup;
+  final PrivacyRecord privacyRecord;
+  final List<LegalDocument> documents;
 
-  factory SignUpDocuments.fromConfig({
-    String termsUrl = AppLinks.termsUrl,
-    String termsVersion = StudyConfig.termsVersion,
-    String privacyUrl = AppLinks.privacyPolicyUrl,
-    String privacyVersion = StudyConfig.privacyVersion,
-    String studyConsentUrl = StudyConfig.studyConsentUrl,
-    String studyConsentVersion = StudyConfig.studyConsentVersion,
-  }) => SignUpDocuments(
-        terms: _of(ConsentType.termsOfService, 'Condiciones de uso', termsUrl, termsVersion),
-        privacy: _of(ConsentType.privacyPolicy, 'Política de privacidad', privacyUrl, privacyVersion),
-        studyConsent: studyConsentUrl.trim().isEmpty
-            ? null
-            : LegalDocument(type: ConsentType.studyParticipation, title: 'Consentimiento informado del estudio', url: studyConsentUrl.trim(),
-                version: studyConsentVersion.trim().isEmpty ? 'sin versión indicada' : studyConsentVersion.trim()),
+  factory PublishedDocuments.fromJson(Json json) => PublishedDocuments(
+        enforcedOnSignup: json['enforcedOnSignup'] == true,
+        privacyRecord: json['privacyRecord'] == 'CONSTANCIA' ? PrivacyRecord.acknowledgement : PrivacyRecord.acceptance,
+        documents: [for (final row in jsonRows(json['documents'])) ?LegalDocument.fromJson(row)],
       );
 
-  /// Terms and privacy that must be accepted to create the account.
-  List<LegalDocument> get required => [?terms, ?privacy];
+  LegalDocument? of(ConsentType type) => documents.where((d) => d.type == type).firstOrNull;
+  LegalDocument? get terms => of(ConsentType.termsOfService);
+  LegalDocument? get privacy => of(ConsentType.privacyPolicy);
+  LegalDocument? get studyConsent => of(ConsentType.studyParticipation);
 
-  /// Address of the document of [type] whose version is [version], to read
-  /// again what was accepted (Perfil). Null when this build does not have it.
-  String? urlFor(ConsentType type, String version) {
-    final doc = switch (type) {
-      ConsentType.termsOfService => terms,
-      ConsentType.privacyPolicy => privacy,
-      ConsentType.studyParticipation => studyConsent,
-    };
-    if (doc == null) return null;
-    if (type != ConsentType.studyParticipation && doc.version != version) return null;
-    return doc.url;
+  /// The documents the definitive sign-up requires (the backend's
+  /// `enforce-on-signup`): terms, privacy policy and the informed consent.
+  static const required = [ConsentType.termsOfService, ConsentType.privacyPolicy, ConsentType.studyParticipation];
+
+  /// Required documents the backend does not publish (yet).
+  List<ConsentType> get missing => [for (final t in required) if (of(t) == null) t];
+
+  /// Option A (Kora is only for participants of the study): an account can be
+  /// created only with a valid acceptance of the three documents. Without the
+  /// informed consent the backend would record the participation as
+  /// `CASILLA_SIN_DOCUMENTO_APROBADO`, which is not valid evidence; without terms
+  /// or privacy the definitive sign-up cannot be satisfied. Missing any of them,
+  /// sign-up stays closed.
+  bool get signUpOpen => missing.isEmpty;
+
+  /// Every published document, in the order they are read at sign-up.
+  List<LegalDocument> get toRead => [?terms, ?privacy, ?studyConsent];
+
+  /// The published document of [type] whose version is [version], to read
+  /// again what was accepted (Perfil). Null when it is no longer published.
+  LegalDocument? find(ConsentType type, String version) => documents.where((d) => d.type == type && d.version == version).firstOrNull;
+
+  /// True when [shown] (what the person read) is no longer exactly what is published.
+  bool changedSince(List<LegalDocument> shown) {
+    String key(LegalDocument d) => '${d.type.code}:${d.version}';
+    return {for (final d in shown) key(d)}.difference({for (final d in documents) key(d)}).isNotEmpty ||
+        {for (final d in toRead) key(d)}.difference({for (final d in shown) key(d)}).isNotEmpty;
   }
 }
 
+class LegalDocumentsRepository {
+  LegalDocumentsRepository(this._dio);
+  final Dio _dio;
+  static const path = ApiConstants.legalDocuments;
+
+  Future<PublishedDocuments> current() async => PublishedDocuments.fromJson(jsonMap((await _dio.get(path)).data));
+}
+
+final legalDocumentsRepositoryProvider = Provider((ref) => LegalDocumentsRepository(ref.read(dioProvider)));
+
+/// What is published now. Re-read on every sign-up and before sending it.
+/// No automatic retry: without connection the sign-up says so and offers «Reintentar».
+final publishedDocumentsProvider = FutureProvider.autoDispose<PublishedDocuments>(
+  (ref) => ref.read(legalDocumentsRepositoryProvider).current(),
+  retry: (_, _) => null,
+);
+
+/// Stable codes of the consent contract (`ConsentimientoRechazadoException`,
+/// Backend PR #96) in `details[0]` of the 422.
+const documentRejectionCodes = {'CONSENTIMIENTO_REQUERIDO', 'PARTICIPACION_REQUERIDA', 'DOCUMENTO_NO_PUBLICADO', 'VERSION_NO_VIGENTE', 'VERSION_SIN_PARTICIPACION'};
+
 /// The backend's 422 when an accepted version is not the current one
-/// (`ConsentimientoService.vigente`): "La version aceptada de X no es la vigente (v)".
-bool isOutdatedDocument(Object? message) => '$message'.contains('no es la vigente');
+/// (`VERSION_NO_VIGENTE`; text "La version aceptada de X no es la vigente (v)").
+bool isOutdatedDocument(Object? message, {String? code}) => code == 'VERSION_NO_VIGENTE' || '$message'.contains('no es la vigente');
 
-/// The backend's 422 when no version of a document is approved yet.
-bool isUnpublishedDocument(Object? message) => '$message'.contains('no hay una version aprobada');
+/// The backend's 422 when no version of a document is approved yet (`DOCUMENTO_NO_PUBLICADO`).
+bool isUnpublishedDocument(Object? message, {String? code}) =>
+    code == 'DOCUMENTO_NO_PUBLICADO' || '$message'.toLowerCase().contains('no hay una version aprobada');
 
-/// Public address of each document in this build (empty: not available).
-/// Overridable in tests.
-final legalDocumentUrlsProvider = Provider<Map<ConsentType, String>>((ref) => {
-      ConsentType.termsOfService: AppLinks.termsUrl,
-      ConsentType.privacyPolicy: AppLinks.privacyPolicyUrl,
-      ConsentType.studyParticipation: StudyConfig.studyConsentUrl,
-    });
+/// The backend's 422 when it requires a document the app did not send
+/// (`CONSENTIMIENTO_REQUERIDO`; "Para registrarte tienes que aceptar…").
+bool isMissingDocument(Object? message, {String? code}) => code == 'CONSENTIMIENTO_REQUERIDO' || '$message'.contains('tienes que aceptar');
+
+/// Any 422 of the sign-up about documents: the account was not created and the
+/// documents have to be read again as they are published now. The code decides
+/// when the backend sends one (PR #96); the text is the fallback for older ones.
+bool isDocumentProblem(Object? message, {String? code}) =>
+    (code != null && documentRejectionCodes.contains(code)) ||
+    isOutdatedDocument(message) || isUnpublishedDocument(message) || isMissingDocument(message);
