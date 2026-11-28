@@ -1,5 +1,9 @@
 # 04 · Contratos con el Backend `41c498a` (M3)
 
+> **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
+> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
+> porque Backend #96 no está integrado.
+
 Backend `Fitsense-Real/Backend` `generation` `41c498ab6220119cfb6b59fe07ba5c5c6112a64e`, compilado y ejecutado en este
 entorno:
 - **Base y servicios:** PostgreSQL de pruebas aislado (`kora_integracion_final`), perfil `local-dev`, IA apagada

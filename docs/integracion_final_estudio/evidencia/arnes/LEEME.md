@@ -14,3 +14,14 @@ JWT se leen de variables de entorno; ningún archivo contiene credenciales.
 | `recuperacion_api.py` | Comprobaciones de recuperación por la API (lee el código del log local; nunca lo imprime) |
 
 La prueba de contrato en Dart es `test/live/consentimientos_live_test.dart` (PR #33).
+
+Revisión con Backend #96:
+
+| Archivo | Uso |
+|---|---|
+| `backend_96.sh` | Igual que `backend_41c.sh` con la base `kora_integracion_96`; `IA_SIMULADA=si` arranca con el perfil por defecto y la IA apuntando a `ia_simulada.py` (nunca Replicate) |
+| `ia_simulada.py` | Proveedor de IA simulado: responde tarde (`RETRASO`, 20 s) y con 503 |
+| `cuenta_perfil_sin_plan.py` | Participante con perfil y sin plan, para la retirada mientras la app espera |
+
+La prueba en Dart es `test/live/retirada_durante_generacion_live_test.dart` (PR #33).
+

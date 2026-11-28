@@ -1,5 +1,9 @@
 # 01 · Estado de Mobile y cierre de la PR #32
 
+> **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
+> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
+> porque Backend #96 no está integrado.
+
 | | |
 |---|---|
 | Orden | Integración definitiva con el Backend, opción A y preparación de QA Android |

@@ -1,5 +1,9 @@
 # 03 · Documentos y consentimientos versionados (Mobile-C1, PR #33)
 
+> **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
+> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
+> porque Backend #96 no está integrado.
+
 ## 1. Consulta de documentos (contrato real)
 
 `GET /api/v1/legal-documents`: público, sin JWT, `Cache-Control: no-cache`. Respuesta real del Backend `41c498a`, con

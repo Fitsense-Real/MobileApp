@@ -1,5 +1,9 @@
 # 09 · Pendientes para preproducción
 
+> **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
+> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
+> porque Backend #96 no está integrado.
+
 Estados: **RESUELTO / PREPARADO SIN ACTIVAR / BLOQUEADO POR BACKEND / BLOQUEADO POR APROBACIÓN / PENDIENTE DE DISPOSITIVO
 / PENDIENTE.**
 
@@ -53,7 +57,7 @@ Estados: **RESUELTO / PREPARADO SIN ACTIVAR / BLOQUEADO POR BACKEND / BLOQUEADO 
 
 ## 5. Qué falta para preproducción, en orden
 
-1. Revisar y fusionar las PR #33 (C1) y #34 (C3); después, esta (C4).
+1. **Backend:** fusionar #96. **Mobile:** repetir el contrato con ese `generation` y fusionar #33 → #34 → #35 ([10](10_REVISION_FINAL_Y_BACKEND_96.md) §8).
 2. **Equipo / comité:** aprobar los textos y su versión. **Backend:** publicarlos y decidir `privacy-record`.
 3. **Backend:** proveedor de correo y prueba con buzón sintético.
 4. **Activación conjunta** en el entorno de pruebas: exigencia encendida, I-01…I-09 repetidos y historial comprobado en

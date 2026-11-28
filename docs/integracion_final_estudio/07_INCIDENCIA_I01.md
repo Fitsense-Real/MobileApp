@@ -1,5 +1,9 @@
 # 07 · Incidencia I-01: 401 de fondo al cerrar sesión (Mobile-C3, PR #34)
 
+> **Revisión del 28/11/2026 (orden de merge):** ver [10](10_REVISION_FINAL_Y_BACKEND_96.md). El registro exige ahora
+> los **tres** documentos publicados; Mobile usa los códigos estables de Backend #96; las PR siguen **sin fusionar**
+> porque Backend #96 no está integrado.
+
 Prioridad P2. Comportamiento previo a las PR #26–#31, documentado en `docs/cierre_preproduccion/11` §4.3.
 
 ## 1. Causa
