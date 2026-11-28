@@ -10,7 +10,9 @@ import '../../../../core/config/study_config.dart';
 import '../../../../shared/widgets/kora_ui.dart';
 import '../../../../shared/widgets/fs_text_field.dart';
 import '../../../consents/data/consents_repository.dart';
+import '../../../consents/data/document_text_repository.dart';
 import '../../../consents/domain/legal_documents.dart';
+import '../../../consents/presentation/document_acceptance.dart';
 import '../../../consents/presentation/document_reader_page.dart';
 import '../../domain/timezones.dart';
 import '../providers/auth_provider.dart';
@@ -35,11 +37,11 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
-  /// Documents opened and read to the end in this sign-up.
-  final _read = <LegalDocument>{};
-
-  /// Terms and privacy accepted (only after reading them).
+  /// Terms and privacy accepted with their checkbox (never automatically).
   final _accepted = <LegalDocument>{};
+
+  /// Documents that could not be shown: they cannot be accepted.
+  final _unavailable = <ConsentType>{};
   String? _documentsError;
   bool _checking = false;
 
@@ -51,10 +53,25 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     super.dispose();
   }
 
-  Future<void> _readDocument(LegalDocument document) async {
-    final done = await DocumentReaderPage.open(context, document);
-    if (!mounted || !done) return;
-    setState(() { _read.add(document); _documentsError = null; });
+  /// Opens the document only to read it: it never ticks the box. A document
+  /// that cannot be shown cannot be accepted.
+  Future<void> _openDocument(LegalDocument document) async {
+    final shown = await DocumentReaderPage.open(context, document);
+    if (!mounted || shown == null) return;
+    setState(() => _setAvailable(document, shown));
+  }
+
+  void _setAvailable(LegalDocument document, bool available) {
+    if (available) {
+      _unavailable.remove(document.type);
+      return;
+    }
+    _unavailable.add(document.type);
+    if (document.type == ConsentType.studyParticipation) {
+      _consent = false;
+    } else {
+      _accepted.remove(document);
+    }
   }
 
   /// The person does not want to take part: Kora is only for participants, so
@@ -77,14 +94,14 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     for (final c in [_name, _lastName, _email, _password, _confirm]) {
       c.clear();
     }
-    setState(() { _consent = false; _read.clear(); _accepted.clear(); });
+    setState(() { _consent = false; _accepted.clear(); _unavailable.clear(); });
     context.go(AppRoutes.splash);
   }
 
   /// The documents changed (or stopped being published) while the person was
   /// signing up: nothing was created; read them again as they are now.
   Future<void> _documentsChanged({required bool unpublished}) async {
-    setState(() { _read.clear(); _accepted.clear(); _consent = false; });
+    setState(() { _accepted.clear(); _unavailable.clear(); _consent = false; });
     ref.invalidate(publishedDocumentsProvider);
     await showDialog<void>(context: context, builder: (context) => AlertDialog(
       title: const Text('Los documentos cambiaron'),
@@ -112,8 +129,8 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     final documents = ref.read(publishedDocumentsProvider).asData?.value;
     if (documents == null || !documents.signUpOpen) return;
     final shown = documents.toRead;
-    if (shown.any((d) => !_read.contains(d)) || [documents.terms!, documents.privacy!].any((d) => !_accepted.contains(d))) {
-      setState(() => _documentsError = 'Lee cada documento completo y acepta las condiciones y la política de privacidad.');
+    if ([documents.terms!, documents.privacy!].any((d) => !_accepted.contains(d))) {
+      setState(() => _documentsError = 'Para crear la cuenta marca la aceptación de los Términos y condiciones y de la Política de privacidad.');
       return;
     }
     if (!_consent) {
@@ -133,6 +150,24 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     setState(() => _checking = false);
     if (!current.signUpOpen || current.changedSince(shown)) {
       await _documentsChanged(unpublished: !current.signUpOpen);
+      return;
+    }
+    // A document that cannot be shown cannot be accepted, even if its box was
+    // ticked without opening it.
+    final texts = ref.read(documentTextRepositoryProvider);
+    final failed = <LegalDocument>[];
+    setState(() => _checking = true);
+    await Future.wait([for (final d in shown) texts.fetch(d.url).then((_) {}, onError: (_) => failed.add(d))]);
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if (failed.isNotEmpty) {
+      setState(() {
+        for (final d in failed) {
+          _setAvailable(d, false);
+        }
+        _documentsError = 'No se pudo abrir: ${[for (final d in failed) DocumentReaderPage.titleOf(d.type)].join(', ')}. '
+            'Un documento que no se puede mostrar no se puede aceptar. Tu cuenta no se creó; inténtalo de nuevo o contacta al equipo del estudio.';
+      });
       return;
     }
     final email = _email.text.trim(), password = _password.text;
@@ -172,36 +207,24 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
 
   void _snack(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
-  Widget _documentTile(LegalDocument document, bool busy, {required String acceptLabel, bool study = false}) {
-    final read = _read.contains(document);
-    final value = study ? _consent : _accepted.contains(document);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: KoraCard(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text('${document.title} · versión ${document.version}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-            TextButton(key: Key('read-${document.type.code}'), onPressed: busy ? null : () => _readDocument(document), child: Text(read ? 'Volver a leer' : 'Leer')),
-          ]),
-          Material(type: MaterialType.transparency, child: CheckboxListTile(
-            key: Key(study ? 'accept-study' : 'accept-${document.type.code}'),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: value,
-            onChanged: busy || !read ? null : (v) => setState(() {
-              if (study) {
-                _consent = v ?? false;
-              } else {
-                v == true ? _accepted.add(document) : _accepted.remove(document);
-              }
-              _documentsError = null;
-            }),
-            title: Text(acceptLabel),
-            subtitle: read ? null : const Text('Primero léelo completo.'),
-          )),
-        ]),
-      ),
+  Widget _acceptance(LegalDocument document, bool busy, {required String before, bool study = false}) {
+    final unavailable = _unavailable.contains(document.type);
+    return DocumentAcceptance(
+      type: document.type,
+      before: before,
+      value: study ? _consent : _accepted.contains(document),
+      checkboxKey: Key(study ? 'accept-study' : 'accept-${document.type.code}'),
+      onOpen: busy ? null : () => _openDocument(document),
+      onChanged: busy || unavailable ? null : (v) => setState(() {
+        if (study) {
+          _consent = v;
+        } else {
+          v ? _accepted.add(document) : _accepted.remove(document);
+        }
+        _documentsError = null;
+      }),
+      note: unavailable ? 'No se pudo abrir el documento, así que no se puede aceptar. Pulsa «${DocumentReaderPage.titleOf(document.type)}» para intentarlo de nuevo.' : null,
+      noteIsError: true,
     );
   }
 
@@ -211,18 +234,16 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
           Text('Kora es parte de un estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           SizedBox(height: 6),
           Text('Kora se usa dentro de un estudio de tesis de 12 semanas y es exclusiva para las personas que aceptan participar. '
-              'Antes de crear tu cuenta podrás leer las condiciones de uso, la política de privacidad y el consentimiento informado. '
+              'Antes de crear tu cuenta podrás leer los términos y condiciones, la política de privacidad y el consentimiento informado. '
               'Participar es voluntario: si no deseas hacerlo, no se crea ninguna cuenta.',
               style: TextStyle(color: Kora.muted, fontSize: 14, height: 1.45)),
         ]),
       );
 
   Widget _documentsBlock(PublishedDocuments documents, bool busy) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('Documentos del estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 8),
-        _documentTile(documents.terms!, busy, acceptLabel: 'Acepto las condiciones de uso'),
-        _documentTile(documents.privacy!, busy, acceptLabel: documents.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
-        _documentTile(documents.studyConsent!, busy, acceptLabel: 'Acepto participar voluntariamente en el estudio', study: true),
+        _acceptance(documents.terms!, busy, before: 'Acepto los '),
+        _acceptance(documents.privacy!, busy, before: documents.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la ' : 'Acepto la '),
+        _acceptance(documents.studyConsent!, busy, before: 'Acepto participar voluntariamente en el estudio según el ', study: true),
         if (_documentsError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_documentsError!, style: TextStyle(color: Colors.red.shade800))),
         Align(alignment: Alignment.centerLeft, child: TextButton(
           key: const Key('decline-study'),

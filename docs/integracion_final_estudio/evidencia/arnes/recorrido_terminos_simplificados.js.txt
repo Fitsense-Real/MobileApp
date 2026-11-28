@@ -1,0 +1,153 @@
+// Términos simplificados (28/11/2026): recorrido de la app real (Flutter web release) contra el Backend LOCAL 9aa7abf
+// (base aislada, documentos SINTÉTICOS, IA apagada). Solo cuentas sintéticas @audit.local. Nunca Neon ni el usuario 48.
+// Uso: AUDIT_PASSWORD=<aleatoria> SHOTS=<dir> WEB_DIR=<compilación web> node recorrido_terminos_simplificados.js
+const { chromium } = require('playwright');
+const fs = require('fs');
+const PASS = process.env.AUDIT_PASSWORD;
+const SHOTS = process.env.SHOTS;
+const APP = 'http://localhost:5050/';
+const API = 'http://localhost:8080/api/v1';
+fs.mkdirSync(SHOTS, { recursive: true });
+const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+
+async function open({ width = 390, height = 844, blockGifs = false } = {}) {
+  const browser = await chromium.launch({ proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1,localhost:8443' } : undefined });
+  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, locale: 'es-PE', ignoreHTTPSErrors: true });
+  const p = await ctx.newPage();
+  // Entorno de la auditoria: gstatic.com no es accesible; CanvasKit se sirve desde la propia compilacion web.
+  await p.route(/gstatic\.com\/flutter-canvaskit\/[^/]+\/(.*)$/, async r => {
+    const rel = r.request().url().match(/flutter-canvaskit\/[^/]+\/(.*)$/)[1];
+    const file = (process.env.WEB_DIR || '') + '/canvaskit/' + rel;
+    if (!fs.existsSync(file)) return r.abort();
+    await r.fulfill({ body: fs.readFileSync(file), contentType: rel.endsWith('.wasm') ? 'application/wasm' : 'text/javascript' });
+  });
+  if (blockGifs) await p.route(/raw\.githubusercontent\.com/, r => r.abort('internetdisconnected'));
+  p.on('response', r => { if (r.url().startsWith(API)) log('  [api]', r.request().method(), r.url().replace(API, ''), r.status()); });
+  p.on('requestfailed', r => { if (!r.url().includes('localhost:5050')) log('  [falla]', r.url().slice(0, 110), r.failure()?.errorText); });
+  await p.goto(APP);
+  await p.waitForSelector('flt-semantics-placeholder, flt-semantics', { state: 'attached', timeout: 60000 });
+  await p.waitForTimeout(1500);
+  await p.evaluate(() => document.querySelector('flt-semantics-placeholder')?.click());
+  await p.waitForTimeout(800);
+  return { browser, p };
+}
+
+async function nodes(p) {
+  return p.$$eval('flt-semantics', ns => ns.map(n => ((n.getAttribute('aria-label') || '') + ' ' + (n.textContent || '')).replace(/\s+/g, ' ').trim()).filter(Boolean));
+}
+async function waitText(p, text, timeout = 30000) {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if ((await nodes(p)).some(s => s.toLowerCase().includes(text.toLowerCase()))) return true;
+    await p.waitForTimeout(400);
+  }
+  return false;
+}
+async function tap(p, text, { role, exact } = {}) {
+  const end = Date.now() + 15000;
+  while (Date.now() < end) {
+    const hits = await p.$$eval('flt-semantics', (ns, [text, role, exact]) => {
+      const m = n => { const s = ((n.getAttribute('aria-label') || '') + ' ' + (n.textContent || '')).replace(/\s+/g, ' ').trim();
+        return exact ? (n.getAttribute('aria-label') === text || (n.textContent || '').trim() === text) : s.toLowerCase().includes(text.toLowerCase()); };
+      const c = ns.filter(n => m(n) && (!role || n.getAttribute('role') === role));
+      const cl = c.filter(n => ['button', 'link', 'tab', 'checkbox', 'radio', 'switch', 'menuitem', 'option'].includes(n.getAttribute('role')) || n.hasAttribute('flt-tappable'));
+      const pick = cl.length ? cl : c;
+      return pick.filter(n => !pick.some(o => o !== n && n.contains(o))).map(n => { const r = n.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2, r.width]; }).filter(r => r[2] > 0);
+    }, [text, role, exact]);
+    if (hits.length) {
+      const content = /^(Ver instrucciones|Registrar ejercicio|Tengo dolor|Programado|Ayuda y soporte|Cuenta)/.test(text);
+      const [x, y] = content ? hits[0] : hits[hits.length - 1]; const { width: vw, height: vh } = p.viewportSize();
+      // The fixed action bar and the navigation bar cover the bottom: never tap there unless it is the target bar itself.
+      const bottom = vh - (/^(Ver instrucciones|Registrar ejercicio|Tengo dolor|Programado|Ayuda y soporte|Cuenta)/.test(text) ? 190 : 8);
+      if (y > bottom || y < 8) { await p.mouse.move(vw / 2, vh / 2); await p.mouse.wheel(0, y > bottom ? Math.min(y - vh / 2, 600) : Math.max(y - vh / 2, -600)); await p.waitForTimeout(500); continue; }
+      await p.mouse.click(x, y); await p.waitForTimeout(700); return;
+    }
+    // Content further down is not in the semantics tree until it is near the screen.
+    if (/^(Ver instrucciones|Registrar ejercicio|Tengo dolor|Programado|Ayuda y soporte|Cuenta)/.test(text)) await scroll(p, 350);
+    await p.waitForTimeout(400);
+  }
+  throw new Error('No encontrado: ' + text);
+}
+async function fill(p, label, value) {
+  const end = Date.now() + 15000;
+  while (Date.now() < end) {
+    const r = await p.$$eval('flt-semantics, input, textarea', (ns, label) => {
+      const n = ns.find(n => (n.getAttribute('aria-label') || '').toLowerCase().includes(label.toLowerCase()) && (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.getAttribute('role') === 'textbox' || n.querySelector('input,textarea')));
+      if (!n) return null; const b = n.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2];
+    }, label);
+    const vh = p.viewportSize().height;
+    if (r && (r[1] > vh - 8 || r[1] < 8)) { await p.mouse.move(p.viewportSize().width / 2, vh / 2); await p.mouse.wheel(0, r[1] > vh ? 500 : -500); await p.waitForTimeout(500); continue; }
+    if (r) { await p.mouse.click(r[0], r[1]); await p.waitForTimeout(300); await p.keyboard.press('Control+A'); await p.keyboard.type(value, { delay: 5 }); await p.waitForTimeout(200); return; }
+    await p.waitForTimeout(400);
+  }
+  throw new Error('Sin campo: ' + label);
+}
+async function scroll(p, dy) { await p.mouse.move(p.viewportSize().width / 2, p.viewportSize().height / 2); await p.mouse.wheel(0, dy); await p.waitForTimeout(700); }
+async function shot(p, name) { await p.screenshot({ path: `${SHOTS}/${name}.png` }); log('  captura', name); }
+async function login(p, email) {
+  await tap(p, 'INICIA SESIÓN'); await fill(p, 'Correo', email); await fill(p, 'Contraseña', PASS);
+  await tap(p, 'INICIAR SESIÓN');
+}
+
+
+async function perfil(p) {
+  for (const a of steps) {
+    if (a.tap) await tap(p, a.tap, a); else if (a.fill) await fill(p, a.fill, a.value);
+    else if (a.wait) await p.waitForTimeout(a.wait); else if (a.scroll) await scroll(p, a.scroll);
+  }
+}
+
+// ---- Mobile-C1: opción A y consentimientos en la app real ----
+const { execSync } = require('child_process');
+const ok = (name, cond) => { log(cond ? 'OK   ' : 'FALLA', name); if (!cond) process.exitCode = 1; };
+async function toBottomLocal(p, text, n = 16) { for (let i = 0; i < n && !(await waitText(p, text, 300)); i++) await scroll(p, 600); }
+async function tapLink(p, text) {
+  for (let k = 0; k < 10; k++) {
+    const r = await p.$$eval('flt-semantics-host a', (ns, text) => { const n = ns.find(n => (n.textContent || '').trim() === text); if (!n) return null; const b = n.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; }, text);
+    if (!r) { await scroll(p, 300); continue; }
+    const vh = p.viewportSize().height; if (r[1] > vh - 40) { await scroll(p, 250); continue; } if (r[1] < 40) { await scroll(p, -250); continue; }
+    await p.mouse.click(r[0], r[1]); await p.waitForTimeout(1200); return;
+  }
+  throw new Error('Enlace no encontrado: ' + text);
+}
+async function checked(p, label) {
+  return p.$$eval('flt-semantics[role="checkbox"]', (ns, label) => { const n = ns.find(n => (n.getAttribute('aria-label') || '').includes(label)); return n ? n.getAttribute('aria-checked') : 'no-encontrada'; }, label);
+}
+async function fillAccount(p, email) {
+  await fill(p, 'Nombres', 'Auditoria'); await fill(p, 'Apellidos', 'Terminos simples');
+  await fill(p, 'Correo', email); await fill(p, 'Contraseña', PASS); await fill(p, 'Confirmar', PASS);
+}
+(async () => {
+  const posts = [];
+  const email = `audit-ui-terminos-${Date.now()}@audit.local`;
+  const { browser, p } = await open();
+  p.on('request', r => { if (r.method() === 'POST' && r.url().includes('/auth/register')) posts.push(r.postData()); });
+  await tap(p, 'COMENZAR AHORA'); await p.waitForTimeout(1500);
+  await fillAccount(p, email);
+  await p.keyboard.press('Tab'); await p.mouse.click(386, 300); await p.waitForTimeout(400); for (let i = 0; i < 4; i++) await scroll(p, 500);
+  ok('«Acepto los Términos y condiciones» empieza desmarcada', await checked(p, 'Acepto los Términos y condiciones') === 'false');
+  ok('privacidad y consentimiento también desmarcadas', await checked(p, 'Acepto la Política de privacidad') === 'false' && await checked(p, 'Acepto participar voluntariamente') === 'false');
+  await shot(p, 'W-01-registro-casillas-sin-marcar');
+  ok('«Términos y condiciones» es un enlace (<a>) dentro de la frase', await p.$$eval('flt-semantics-host a', ns => ns.some(n => n.textContent.trim() === 'Términos y condiciones')));
+  await tapLink(p, 'Términos y condiciones');
+  ok('el nombre abre el documento con su versión', await waitText(p, 'Versión T-QA-3', 15000));
+  ok('muestra subtítulos y párrafos', await waitText(p, '2. Uso de la aplicación', 3000) && await waitText(p, 'equipo@estudio.example', 3000));
+  ok('sin botón para aceptar en el documento', !(await waitText(p, 'He leído el documento', 500)) && !(await waitText(p, 'Acepto y continúo', 300)));
+  await shot(p, 'W-02-terminos');
+  await tap(p, 'Volver', { role: 'button' }); await p.waitForTimeout(1200);
+  ok('abrir el documento no marca la casilla', await checked(p, 'Acepto los Términos y condiciones') === 'false');
+  for (const l of ['Acepto los Términos y condiciones', 'Acepto la Política de privacidad', 'Acepto participar voluntariamente']) await tap(p, l, { role: 'checkbox' });
+  ok('las tres se marcan a mano', await checked(p, 'Acepto los Términos y condiciones') === 'true' && await checked(p, 'Acepto la Política de privacidad') === 'true' && await checked(p, 'Acepto participar voluntariamente') === 'true');
+  await tap(p, 'Acepto los Términos y condiciones', { role: 'checkbox' });
+  ok('y se desmarcan', await checked(p, 'Acepto los Términos y condiciones') === 'false');
+  await tap(p, 'Acepto los Términos y condiciones', { role: 'checkbox' });
+  await scroll(p, 250); await shot(p, 'W-03-registro-casillas-marcadas');
+  await toBottomLocal(p, 'CREAR CUENTA'); await tap(p, 'CREAR CUENTA');
+  ok('cuenta creada: entra al perfil', await waitText(p, 'Paso 1 de 5', 25000));
+  const body = JSON.parse(posts[posts.length - 1] || '{}'); delete body.password;
+  log('  cuerpo enviado:', JSON.stringify(body));
+  ok('lo escrito antes de abrir el documento se conserva (nombre y correo enviados sin reescribirlos)', body.email === email && body.firstName === 'Auditoria' && body.lastName === 'Terminos simples');
+  ok('envía las versiones mostradas', body.acceptsStudyParticipation === true && body.acceptedTermsVersion === 'T-QA-3' && body.acceptedPrivacyVersion === 'P-QA-1' && body.acceptedStudyConsentVersion === 'C-QA-1');
+  fs.writeFileSync(SHOTS + '/cuenta.txt', email);
+  await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });

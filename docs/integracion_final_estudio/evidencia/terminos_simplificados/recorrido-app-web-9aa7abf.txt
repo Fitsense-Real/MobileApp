@@ -1,0 +1,18 @@
+18:29:07 OK    «Acepto los Términos y condiciones» empieza desmarcada
+18:29:07 OK    privacidad y consentimiento también desmarcadas
+18:29:07   captura W-01-registro-casillas-sin-marcar
+18:29:07 OK    «Términos y condiciones» es un enlace (<a>) dentro de la frase
+18:29:08 OK    el nombre abre el documento con su versión
+18:29:08 OK    muestra subtítulos y párrafos
+18:29:10 OK    sin botón para aceptar en el documento
+18:29:10   captura W-02-terminos
+18:29:12 OK    abrir el documento no marca la casilla
+18:29:14 OK    las tres se marcan a mano
+18:29:14 OK    y se desmarcan
+18:29:16   captura W-03-registro-casillas-marcadas
+18:29:17   [api] POST /auth/register 201
+18:29:17   [api] POST /auth/login 200
+18:29:19 OK    cuenta creada: entra al perfil
+18:29:19   cuerpo enviado: {"firstName":"Auditoria","lastName":"Terminos simples","email":"audit-ui-terminos-<marca de tiempo>@audit.local","timezone":"America/Lima","acceptsStudyParticipation":true,"acceptedTermsVersion":"T-QA-3","acceptedPrivacyVersion":"P-QA-1","acceptedStudyConsentVersion":"C-QA-1"}
+18:29:19 OK    lo escrito antes de abrir el documento se conserva (nombre y correo enviados sin reescribirlos)
+18:29:19 OK    envía las versiones mostradas

@@ -1,0 +1,12 @@
+    consent_type     | document_version | affirmative_action | source | vigente 
+---------------------+------------------+--------------------+--------+---------
+ PRIVACY_POLICY      | P-QA-1           | CASILLA_REGISTRO   | APP    | t
+ STUDY_PARTICIPATION | C-QA-1           | CASILLA_REGISTRO   | APP    | t
+ TERMS_OF_SERVICE    | T-QA-3           | CASILLA_REGISTRO   | APP    | t
+(3 rows)
+
+ is_study_participant | status 
+----------------------+--------
+ t                    | ACTIVE
+(1 row)
+

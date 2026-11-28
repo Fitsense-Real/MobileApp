@@ -34,6 +34,8 @@ hasta el final; la versión enviada es la del documento leído.
 
 ## 2. Lectura
 
+> **Actualización del 28/11/2026 ([12](12_TERMINOS_SIMPLIFICADOS.md)):** ya no hay «Leer» ni «He leído el documento», y no hace falta llegar al final. Cada documento es una línea «☐ Acepto los Términos y condiciones». El nombre abre el documento, pero no marca la casilla, que se marca a mano. Un documento que no se puede mostrar sigue sin poder aceptarse. Las versiones, la opción A y lo que se envía al Backend no cambian.
+
 El lector descarga el texto o HTML simple de la dirección, lo muestra completo con su versión y solo cuenta como leído
 cuando se llega al final («He leído el documento»). Salir antes no cuenta.
 

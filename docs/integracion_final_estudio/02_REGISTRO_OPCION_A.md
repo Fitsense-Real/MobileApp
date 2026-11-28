@@ -9,6 +9,8 @@
 
 ## 1. Recorrido
 
+> **Actualización del 28/11/2026 ([12](12_TERMINOS_SIMPLIFICADOS.md)):** ya no hay «Leer» ni «He leído el documento», y no hace falta llegar al final. Cada documento es una línea «☐ Acepto los Términos y condiciones». El nombre abre el documento, pero no marca la casilla, que se marca a mano. Un documento que no se puede mostrar sigue sin poder aceptarse. Las versiones, la opción A y lo que se envía al Backend no cambian.
+
 | Paso | Qué ve la persona | Qué se envía |
 |---|---|---|
 | 1. Abrir Kora → «Comenzar ahora» | Registro | `GET /legal-documents` |
