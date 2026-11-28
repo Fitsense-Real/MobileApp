@@ -1,0 +1,168 @@
+# Documentos en Flutter: recorridos de la app real y contrato en vivo
+# Backend Fitsense-Real/Backend generation 9aa7abf (#96-#98 y #100), compilado y ejecutado en LOCAL: base aislada
+# kora_documentos_9aa, cuentas @audit.local, documentos SINTÉTICOS servidos por HTTPS local (el servidor repite la cabecera
+# Content-Type; la privacidad es HTML con enlaces; T-PDF es un PDF), exigencia de consentimientos FORZADA solo aquí, IA
+# apagada salvo el proveedor SIMULADO local de la retirada (nunca Replicate). Mobile: rama claude/mobile-documentos-formato-enlaces.
+# Contraseñas por variable de entorno. 28/11/2026 (UTC). Líneas [api] GET omitidas.
+
+15:46:30 UA1 (I-03) · Rechazar participar en la app
+15:46:37 OK    explica el estudio antes de escribir nada
+15:46:37   captura C1-01-registro-arriba
+15:46:49   captura C1-02-documentos-sin-leer
+15:46:52 OK    mensaje respetuoso y claro
+15:46:52   captura C1-03-no-deseo-participar
+15:46:54 OK    sale del registro
+15:46:54 OK    ningún POST /auth/register
+15:46:54 fin
+
+15:46:54 UA2 (I-04, I-09) · Aceptar con los documentos publicados, perfil, plan y Perfil › Documentos
+15:48:01   captura C1-04-todo-aceptado
+15:48:02   [api] POST /auth/register 201
+15:48:03   [api] POST /auth/login 200
+15:48:04 OK    entra al perfil
+15:48:04   cuerpo enviado: {"firstName":"Auditoria","lastName":"Opcion A","email":"audit-ui-acepta-1795880814578@audit.local","timezone":"America/Lima","acceptsStudyParticipation":true,"acceptedTermsVersion":"T-QA-1","acceptedPrivacyVersion":"P-QA-1","acceptedStudyConsentVersion":"C-QA-1"}
+15:48:04 OK    envía las cuatro versiones leídas
+15:48:30   [api] POST /users/me/profile 201
+15:48:30   [api] POST /users/me/plan/generation 202
+15:49:26 OK    plan visible
+15:49:32 OK    Perfil muestra el consentimiento con su versión
+15:49:32 OK    distingue condiciones y privacidad
+15:49:33   captura C1-05-perfil-documentos
+15:49:33 fin
+
+15:49:33 UA2b (I-09) · Perfil › Cuenta › Documentos de la cuenta creada en UA2
+15:49:41   [api] POST /auth/login 200
+15:50:03 OK    Perfil muestra el consentimiento con su versión
+15:50:03 OK    distingue condiciones y privacidad
+15:50:03   captura C1-05-perfil-documentos
+15:50:03 fin
+
+15:50:04 UA3 (§5.4) · La versión cambia mientras la persona se registra
+15:51:24   Backend reiniciado: términos T-QA-2 documentos si
+15:51:28 OK    explica el cambio
+15:51:28   captura C1-06-documentos-cambiaron
+15:51:28 OK    no envía la versión desactualizada
+15:51:31 OK    muestra la versión vigente
+15:52:17   [api] POST /auth/register 201
+15:52:18   [api] POST /auth/login 200
+15:52:20 OK    con la versión vigente sí se crea
+15:52:20 OK    envía T-QA-2
+15:52:34   Backend reiniciado: términos T-QA-1 documentos si
+15:52:34 fin
+
+15:52:35 UA8 · Documento publicado que no es texto ni HTML (un PDF): no se puede leer ni aceptar
+15:52:49   Backend reiniciado: términos T-PDF documentos si
+15:53:07 OK    el lector explica que no puede mostrarlo
+15:53:07 OK    sin «He leído el documento»
+15:53:08   captura D-01-documento-pdf
+15:53:09 OK    la casilla sigue pidiendo leerlo
+15:53:24   Backend reiniciado: términos T-QA-1 documentos si
+15:53:24 fin
+
+15:54:59 UA9 · Enlaces de un documento HTML conservan su destino
+15:55:26   captura D-02-documento-con-enlaces
+15:55:26   texto visible contiene el correo: false · la página: false
+15:55:26 fin
+
+15:53:24 UA7 (I-02) · Sin documentos publicados el registro queda cerrado
+15:53:38   Backend reiniciado: términos T-QA-1 documentos no
+15:53:44 OK    registro cerrado con explicación
+15:53:44 OK    sin formulario ni casilla de participación
+15:53:44 OK    ningún POST
+15:53:44   captura C1-11-registro-cerrado
+15:53:59   Backend reiniciado: términos T-QA-1 documentos si
+15:53:59 fin
+
+15:53:59 UA5 (I-10, I-12) · Cuenta sin participación y cuenta retirada en la app
+15:53:59 C1-08-sin-participacion: sin cuenta (el Backend rechaza crearla sin participar)
+15:54:08   [api] POST /auth/login 200
+15:54:09 OK    C1-09-retirada: estado correcto
+15:54:11 OK    C1-09-retirada: sin «Reintentar generación» ni error genérico
+15:54:15 OK    C1-09-retirada: ninguna petición de generación (0)
+15:54:15   captura C1-09-retirada
+15:54:15 fin
+
+15:54:15 UA6 (I-13) · 429 al iniciar sesión con la clave mal repetida
+15:54:23   [api] POST /auth/login 401
+15:54:26   [api] POST /auth/login 401
+15:54:30   [api] POST /auth/login 401
+15:54:33   [api] POST /auth/login 401
+15:54:37   [api] POST /auth/login 401
+15:54:40   [api] POST /auth/login 429
+15:54:44   [api] POST /auth/login 429
+15:54:47 OK    mensaje del Backend, sin códigos internos
+15:54:47   captura C1-10-limite-429
+15:54:47 fin
+
+15:55:27 UA4 (I-15) · Se pierde la conexión al crear la cuenta
+15:56:34   [falla] http://localhost:8080/api/v1/auth/register net::ERR_INTERNET_DISCONNECTED
+15:56:38 OK    sigue en el registro con un mensaje
+15:56:38   captura C1-07-sin-conexion-al-crear
+15:56:46   [api] POST /auth/register 201
+15:56:46   [api] POST /auth/login 200
+15:56:48 OK    con conexión, mismo formulario, se crea una sola cuenta
+15:56:48 OK    una sola cuenta en la base (1)
+15:56:48 fin
+
+15:56:54 S4 · Cierre de sesión y cambio de cuenta
+15:57:02   [api] POST /auth/login 200
+15:57:18 OK    primera cuenta entra
+15:57:24 OK    vuelve al inicio de sesión
+15:57:24   captura P8a-tras-cerrar-sesion
+15:57:28   [api] POST /auth/login 200
+15:57:44 OK    la otra cuenta entra
+15:57:47 OK    Perfil muestra el correo de la otra cuenta y no el de la primera
+15:57:47   captura P8-otra-cuenta
+15:57:47 S5 · Error de conexión al iniciar sesión
+15:57:55   [falla] http://localhost:8080/api/v1/auth/login net::ERR_INTERNET_DISCONNECTED
+15:57:55 OK    mensaje de conexión claro
+15:57:55   captura P9-sin-conexion-login
+15:57:55 fin
+
+15:59:03   [api] POST /auth/login 200
+15:59:04 recorrido de Kapi mientras se prepara la rutina: true · POST de generación: 0
+15:59:05 retirada por la API durante la espera -> 200
+15:59:05   [api] POST /users/me/plan/generation 202
+15:59:26 la app muestra el estado de retirada: true
+15:59:26   captura R96-retirada-en-espera
+15:59:26 «Algo salió mal» o «Intentar de nuevo» visibles: false
+15:59:34 POST de generación en total: 1 (debe ser 1)
+
+# UA9: la comprobación automática del texto da false porque Flutter web pinta en un lienzo; la captura
+# capturas/documentos_flutter/D-02-documento-con-enlaces.jpg muestra «el equipo del estudio (equipo@estudio.example)»
+# y «la pagina de privacidad (https://estudio.example/privacidad)».
+401 tras cerrar sesión: 0
+
+## Contrato en vivo (test/live/consentimientos_live_test.dart)
+CONTRATO I-01 GET /legal-documents → enforcedOnSignup=true, privacyRecord=acceptance, TERMS_OF_SERVICE=T-QA-1, PRIVACY_POLICY=P-QA-1, STUDY_PARTICIPATION=C-QA-1
+CONTRATO I-05 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de TERMS_OF_SERVICE no es la vigente (T-QA-1).»
+CONTRATO I-05 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-06 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de PRIVACY_POLICY no es la vigente (P-QA-1).»
+CONTRATO I-06 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-07 POST /auth/register → 422 CONSENTIMIENTO_REQUERIDO «Para participar en el estudio tienes que aceptar la version vigente del consentimiento informado.»
+CONTRATO I-07 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-08 POST /auth/register → 422 VERSION_NO_VIGENTE «La version aceptada de STUDY_PARTICIPATION no es la vigente (C-QA-1).»
+CONTRATO I-08 login con ese correo → 401 (no quedó ninguna cuenta)
+CONTRATO I-04 POST /auth/register {firstName: Contrato, lastName: i04, email: audit-contrato-i04-1795881606502@audit.local, timezone: America/Lima, acceptsStudyParticipation: true, acceptedTermsVersion: T-QA-1, acceptedPrivacyVersion: P-QA-1, acceptedStudyConsentVersion: C-QA-1} → 201, studyParticipant=true
+CONTRATO I-09 historial STUDY_PARTICIPATION: versión C-QA-1, CASILLA_REGISTRO, 2026-11-28T16:00:07.218237Z
+CONTRATO I-09 historial TERMS_OF_SERVICE: versión T-QA-1, CASILLA_REGISTRO, 2026-11-28T16:00:07.225095Z
+CONTRATO I-09 historial PRIVACY_POLICY: versión P-QA-1, CASILLA_REGISTRO, 2026-11-28T16:00:07.226753Z
+CONTRATO I-10 POST /auth/register sin participar → 422 PARTICIPACION_REQUERIDA «Kora solo esta disponible para las personas que participan en el estudio. Para registrarte tienes que aceptar participar.»
+CONTRATO I-11 generación 6d589009-6007-4d12-936b-d1f1cce33e10 → GenerationStatus.completed, plan 4
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 POST /users/me/plan/generation (simultáneo) → 200 COMPLETED
+CONTRATO I-14 plan actual antes 4, después 4
+CONTRATO I-12 POST /users/me/withdraw → withdrawnAt=2026-11-28 16:00:10.733236Z
+CONTRATO I-12 POST /users/me/plan/generation → 422 PARTICIPACION_NO_VIGENTE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.»
+CONTRATO I-12 historial: STUDY_PARTICIPATION retirado=true
+CONTRATO I-13 login con clave incorrecta repetida → 429 «Demasiados intentos de inicio de sesion. Espera antes de volver a intentarlo. Podrás intentarlo de nuevo en 15 minutos.»
+00:04 +11 ~1: All tests passed!
+
+## Retirada durante la generación (IA SIMULADA)
+RETIRADA 1. POST /users/me/plan/generation → GenerationStatus.pending (813f2ad1-9aad-4466-9b63-42cede23ad14)
+RETIRADA 2. la operación está en GenerationStatus.processing: la IA simulada todavía no respondió
+RETIRADA 3. POST /users/me/withdraw durante la generación → withdrawnAt=2026-11-28 15:58:34.337906Z
+RETIRADA 4. la operación termina → GenerationStatus.failed NO_GENERABLE «En este momento no es posible preparar tu rutina. Si persiste, contacta al equipo del estudio.» planId=null
+RETIRADA 5. GET /users/me/plan/current → 404
+RETIRADA 6. nueva petición de generación → 422 [PARTICIPACION_NO_VIGENTE]
+00:23 +1: All tests passed!

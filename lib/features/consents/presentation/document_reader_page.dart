@@ -63,21 +63,36 @@ class _DocumentReaderPageState extends ConsumerState<DocumentReaderPage> {
         onPressed: reachedEnd ? () => Navigator.of(context).pop(true) : null,
       ),
     )),
+    // Only a compact bar stays fixed (back and a short title): with large text a
+    // fixed header would leave no room for the document on a small phone. The
+    // full title and the version open the scrollable text.
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(padding: const EdgeInsets.fromLTRB(8, 8, 20, 0), child: Row(children: [
         IconButton(onPressed: () => Navigator.of(context).pop(false), icon: const Icon(Icons.arrow_back), tooltip: 'Volver'),
-        Expanded(child: Text(widget.document.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+        Expanded(child: Text(widget.document.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
       ])),
-      Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 8), child: Text('Versión ${widget.document.version}', style: const TextStyle(color: Kora.muted, fontSize: 14))),
       Expanded(child: text != null
-          ? Scrollbar(controller: scroll, child: SingleChildScrollView(controller: scroll, padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), child: SelectableText(text!, style: const TextStyle(fontSize: 16, height: 1.55))))
-          : Center(child: Padding(padding: const EdgeInsets.all(24), child: error == null
-              ? const CircularProgressIndicator()
-              : Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('No se pudo abrir el documento. $error', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 16),
-                  KoraButton(label: 'Reintentar', onPressed: load),
-                ])))),
+          ? Scrollbar(controller: scroll, child: SingleChildScrollView(
+              controller: scroll,
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.document.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text('Versión ${widget.document.version}', style: const TextStyle(color: Kora.muted, fontSize: 14)),
+                const SizedBox(height: 12),
+                SelectableText(text!, style: const TextStyle(fontSize: 16, height: 1.55)),
+              ]),
+            ))
+          : SingleChildScrollView(padding: const EdgeInsets.all(24), child: Column(children: [
+              Text('Versión ${widget.document.version}', style: const TextStyle(color: Kora.muted, fontSize: 14)),
+              const SizedBox(height: 24),
+              if (error == null) const CircularProgressIndicator()
+              else ...[
+                Text('No se pudo abrir el documento. $error', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 16),
+                KoraButton(label: 'Reintentar', onPressed: load),
+              ],
+            ]))),
     ]),
   );
 }
