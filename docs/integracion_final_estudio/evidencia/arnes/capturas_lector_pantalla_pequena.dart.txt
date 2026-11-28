@@ -1,0 +1,45 @@
+// Prueba TEMPORAL usada para generar capturas/documentos_flutter/D-03..D-06 (no forma parte de la suite). Copiar a test/,
+// sustituir la ruta de salida y ejecutar: flutter test test/zz_capturas_test.dart --update-goldens
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fitsense_mobile/features/consents/data/consents_repository.dart';
+import 'package:fitsense_mobile/features/consents/data/document_text_repository.dart';
+import 'package:fitsense_mobile/features/consents/domain/legal_documents.dart';
+import 'package:fitsense_mobile/features/consents/presentation/document_reader_page.dart';
+import 'package:fitsense_mobile/shared/theme/app_theme.dart';
+
+class H implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? s, Future<void>? c) async => ResponseBody.fromBytes(utf8.encode(
+      '<h1>DOCUMENTO SINT&Eacute;TICO DE PRUEBA - NO APROBADO</h1><p>Consentimiento informado (texto de prueba). Para dudas escribe a <a href="mailto:equipo@estudio.example">el equipo del estudio</a>.</p>' + List.generate(12, (i) => '<p>P&aacute;rrafo de relleno ${i + 1}.</p>').join()), 200,
+      headers: {Headers.contentTypeHeader: ['text/html; charset=utf-8']});
+  @override
+  void close({bool force = false}) {}
+}
+
+Future<void> loadFonts() async {
+  final font = FontLoader('Poppins');
+  for (final w in ['Regular', 'SemiBold', 'Bold', 'ExtraBold', 'Black']) { font.addFont(rootBundle.load('assets/fonts/Poppins-$w.ttf')); }
+  await font.load();
+  await (FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+}
+
+void main() {
+  setUpAll(loadFonts);
+  for (final (name, size, scale) in [('D-03-lector-320x568-texto-200', const Size(320, 568), 2.0), ('D-04-lector-568x320-texto-200', const Size(568, 320), 2.0), ('D-05-lector-320x568-texto-130', const Size(320, 568), 1.3), ('D-06-lector-320x568-texto-100', const Size(320, 568), 1.0)]) {
+    testWidgets(name, (tester) async {
+      tester.view.physicalSize = size * 2; tester.view.devicePixelRatio = 2; addTearDown(tester.view.reset);
+      await tester.pumpWidget(ProviderScope(overrides: [documentTextRepositoryProvider.overrideWithValue(DocumentTextRepository(Dio()..httpClientAdapter = H()))],
+        child: MediaQuery(data: MediaQueryData(size: size, devicePixelRatio: 2, textScaler: TextScaler.linear(scale)), child: MaterialApp(debugShowCheckedModeBanner: false, theme: AppTheme.light, home: const Scaffold(body: SizedBox())))));
+      DocumentReaderPage.open(tester.element(find.byType(SizedBox).first), const LegalDocument(type: ConsentType.studyParticipation, title: 'Consentimiento informado del estudio', url: 'https://x/c', version: 'C-PRUEBA-1')).ignore();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await expectLater(find.byType(DocumentReaderPage), matchesGoldenFile('capturas/$name.png'));
+    });
+  }
+}
