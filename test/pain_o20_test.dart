@@ -137,12 +137,14 @@ DioException http(int status, String message) {
   return DioException(requestOptions: options, response: Response(requestOptions: options, statusCode: status, data: {'status': status, 'message': message, 'details': []}));
 }
 
-Future<void> pumpPage(WidgetTester tester, Widget child, List<Override> overrides) async {
+/// Per-account data is read only with a signed-in account (as in the app), so
+/// the page opens signed in unless the test brings its own session.
+Future<void> pumpPage(WidgetTester tester, Widget child, List<Override> overrides, {bool ownSession = false}) async {
   tester.view.physicalSize = const Size(600, 1800);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(ProviderScope(overrides: overrides, child: MaterialApp(home: child)));
+  await tester.pumpWidget(ProviderScope(overrides: [if (!ownSession) authViewModelProvider.overrideWith(Switchable.new), ...overrides], child: MaterialApp(home: child)));
   await tester.pumpAndSettle();
 }
 
@@ -548,7 +550,7 @@ void main() {
       await pumpPage(tester, const Scaffold(body: PainExclusionsSheet()), [
         ...overrides(),
         authViewModelProvider.overrideWith(() => auth = Switchable()),
-      ]);
+      ], ownSession: true);
       expect(find.byKey(const Key('effective-537')), findsOneWidget);
       final reads = pain.effectiveReads;
       auth.signOut();
