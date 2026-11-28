@@ -60,11 +60,20 @@ class PublishedDocuments {
   LegalDocument? get privacy => of(ConsentType.privacyPolicy);
   LegalDocument? get studyConsent => of(ConsentType.studyParticipation);
 
+  /// The documents the definitive sign-up requires (the backend's
+  /// `enforce-on-signup`): terms, privacy policy and the informed consent.
+  static const required = [ConsentType.termsOfService, ConsentType.privacyPolicy, ConsentType.studyParticipation];
+
+  /// Required documents the backend does not publish (yet).
+  List<ConsentType> get missing => [for (final t in required) if (of(t) == null) t];
+
   /// Option A (Kora is only for participants of the study): an account can be
-  /// created only with a valid acceptance, and that needs the informed consent
-  /// published. Without it the backend would record the participation as
-  /// `CASILLA_SIN_DOCUMENTO_APROBADO`, which is not valid evidence.
-  bool get signUpOpen => studyConsent != null;
+  /// created only with a valid acceptance of the three documents. Without the
+  /// informed consent the backend would record the participation as
+  /// `CASILLA_SIN_DOCUMENTO_APROBADO`, which is not valid evidence; without terms
+  /// or privacy the definitive sign-up cannot be satisfied. Missing any of them,
+  /// sign-up stays closed.
+  bool get signUpOpen => missing.isEmpty;
 
   /// Every published document, in the order they are read at sign-up.
   List<LegalDocument> get toRead => [?terms, ?privacy, ?studyConsent];
@@ -98,18 +107,25 @@ final publishedDocumentsProvider = FutureProvider.autoDispose<PublishedDocuments
   retry: (_, _) => null,
 );
 
-/// The backend's 422 when an accepted version is not the current one
-/// (`ConsentimientoService.vigente`): "La version aceptada de X no es la vigente (v)".
-bool isOutdatedDocument(Object? message) => '$message'.contains('no es la vigente');
+/// Stable codes of the consent contract (`ConsentimientoRechazadoException`,
+/// Backend PR #96) in `details[0]` of the 422.
+const documentRejectionCodes = {'CONSENTIMIENTO_REQUERIDO', 'PARTICIPACION_REQUERIDA', 'DOCUMENTO_NO_PUBLICADO', 'VERSION_NO_VIGENTE', 'VERSION_SIN_PARTICIPACION'};
 
-/// The backend's 422 when no version of a document is approved yet.
-bool isUnpublishedDocument(Object? message) => '$message'.toLowerCase().contains('no hay una version aprobada');
+/// The backend's 422 when an accepted version is not the current one
+/// (`VERSION_NO_VIGENTE`; text "La version aceptada de X no es la vigente (v)").
+bool isOutdatedDocument(Object? message, {String? code}) => code == 'VERSION_NO_VIGENTE' || '$message'.contains('no es la vigente');
+
+/// The backend's 422 when no version of a document is approved yet (`DOCUMENTO_NO_PUBLICADO`).
+bool isUnpublishedDocument(Object? message, {String? code}) =>
+    code == 'DOCUMENTO_NO_PUBLICADO' || '$message'.toLowerCase().contains('no hay una version aprobada');
 
 /// The backend's 422 when it requires a document the app did not send
-/// (enforcement on): "Para registrarte tienes que aceptar…", "Para participar
-/// en el estudio tienes que aceptar…".
-bool isMissingDocument(Object? message) => '$message'.contains('tienes que aceptar');
+/// (`CONSENTIMIENTO_REQUERIDO`; "Para registrarte tienes que aceptar…").
+bool isMissingDocument(Object? message, {String? code}) => code == 'CONSENTIMIENTO_REQUERIDO' || '$message'.contains('tienes que aceptar');
 
 /// Any 422 of the sign-up about documents: the account was not created and the
-/// documents have to be read again as they are published now.
-bool isDocumentProblem(Object? message) => isOutdatedDocument(message) || isUnpublishedDocument(message) || isMissingDocument(message);
+/// documents have to be read again as they are published now. The code decides
+/// when the backend sends one (PR #96); the text is the fallback for older ones.
+bool isDocumentProblem(Object? message, {String? code}) =>
+    (code != null && documentRejectionCodes.contains(code)) ||
+    isOutdatedDocument(message) || isUnpublishedDocument(message) || isMissingDocument(message);

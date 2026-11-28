@@ -10,6 +10,7 @@ import '../../../reminders/presentation/reminders_controller.dart';
 import '../providers/auth_provider.dart';
 import '../state/auth_state.dart';
 import '../../../push/presentation/push_controller.dart';
+import '../../../../core/api/api_error.dart';
 
 class AuthViewModel extends Notifier<AuthState> {
   late final LoginUseCase _loginUseCase;
@@ -99,6 +100,7 @@ class AuthViewModel extends Notifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
+        errorCode: apiErrorCode(e),
       );
 
       return false;

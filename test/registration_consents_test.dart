@@ -38,6 +38,18 @@ class FakeDocuments extends DocumentTextRepository {
   }
 }
 
+/// The privacy policy address answers 404: its text can never be shown.
+class BrokenDocuments extends FakeDocuments {
+  @override
+  Future<String> fetch(String url) async {
+    if (url.contains('privacidad')) {
+      throw DioException(requestOptions: RequestOptions(path: url), type: DioExceptionType.badResponse,
+          response: Response(requestOptions: RequestOptions(path: url), statusCode: 404, data: 'Not Found'));
+    }
+    return super.fetch(url);
+  }
+}
+
 /// `DocumentoResource` exactly as the backend sends it.
 Map<String, dynamic> doc(String type, String version, String url, {String status = 'PUBLISHED', String? title}) =>
     {'type': type, 'version': version, 'title': title ?? 'Documento sintético', 'url': url, 'status': status, 'effectiveFrom': '2026-11-01'};
@@ -194,19 +206,14 @@ void main() {
       expect(find.text('Preparando cuenta'), findsOneWidget);
     });
 
-    testWidgets('only the informed consent published: only its version is sent', (tester) async {
+    testWidgets('only the informed consent published: still closed, and it says what is missing', (tester) async {
       final backend = await open(tester, documents: [(_) => (status: 200, body: published(documents: [
             doc('STUDY_PARTICIPATION', 'C-PRUEBA-1', 'https://docs.test/consentimiento'),
           ]))]);
-      expect(find.byKey(const Key('accept-TERMS_OF_SERVICE')), findsNothing);
-      await fillAccount(tester);
-      await read(tester, 'STUDY_PARTICIPATION');
-      await tapKey(tester, 'accept-study');
-      await submit(tester);
-      final body = backend.bodyOf('POST', '/auth/register');
-      expect(body['acceptedStudyConsentVersion'], 'C-PRUEBA-1');
-      expect(body.containsKey('acceptedTermsVersion'), isFalse);
-      expect(body.containsKey('acceptedPrivacyVersion'), isFalse);
+      expect(find.text('El registro todavía no está abierto'), findsOneWidget);
+      expect(find.textContaining('todavía faltan: las condiciones de uso, la política de privacidad.'), findsOneWidget);
+      expect(find.text('CREAR CUENTA'), findsNothing);
+      expect(backend.routes, ['GET /legal-documents']);
     });
 
     testWidgets('privacy recorded as CONSTANCIA: «He leído», not «Acepto»', (tester) async {
@@ -220,7 +227,7 @@ void main() {
     testWidgets('no informed consent published (today): no form, an explanation, nothing can be sent', (tester) async {
       final backend = await open(tester, documents: [(_) => (status: 200, body: published(documents: []))]);
       expect(find.text('El registro todavía no está abierto'), findsOneWidget);
-      expect(find.textContaining('aún no ha publicado el consentimiento informado'), findsOneWidget);
+      expect(find.textContaining('todavía faltan: las condiciones de uso, la política de privacidad, el consentimiento informado.'), findsOneWidget);
       expect(find.text('CREAR CUENTA'), findsNothing);
       expect(find.byKey(const Key('accept-study')), findsNothing, reason: 'no participation without a document to accept');
       expect(backend.routes, ['GET /legal-documents']);
@@ -232,6 +239,16 @@ void main() {
             doc('PRIVACY_POLICY', 'P-PRUEBA-1', 'https://docs.test/privacidad'),
           ]))]);
       expect(find.text('El registro todavía no está abierto'), findsOneWidget);
+      expect(find.textContaining('falta: el consentimiento informado'), findsOneWidget);
+    });
+
+    testWidgets('consent and terms but no privacy policy: still closed', (tester) async {
+      await open(tester, documents: [(_) => (status: 200, body: published(documents: [
+            doc('TERMS_OF_SERVICE', 'T-PRUEBA-1', 'https://docs.test/terminos'),
+            doc('STUDY_PARTICIPATION', 'C-PRUEBA-1', 'https://docs.test/consentimiento'),
+          ]))]);
+      expect(find.textContaining('falta: la política de privacidad'), findsOneWidget);
+      expect(find.text('CREAR CUENTA'), findsNothing);
     });
 
     testWidgets('documents cannot be checked (no connection): says so, «Reintentar» reads them again', (tester) async {
@@ -310,6 +327,42 @@ void main() {
       expect(find.widgetWithText(TextFormField, 'ana@audit.local'), findsOneWidget, reason: 'nothing typed is lost');
     });
 
+    testWidgets('422 with the stable code of Backend #96 (whatever the text): documents read again', (tester) async {
+      await open(tester, register: (_) => (status: 422, body: {...apiErrorBody(422, 'Texto cualquiera.'), 'details': ['VERSION_NO_VIGENTE']}));
+      await acceptAll(tester);
+      await submit(tester);
+      expect(find.text('Los documentos cambiaron'), findsOneWidget);
+    });
+
+    testWidgets('e-mail already registered: said clearly; form and acceptances kept; not a document problem', (tester) async {
+      await open(tester, register: (_) => (status: 422, body: apiErrorBody(422, 'Ya existe una cuenta registrada con el correo ana@audit.local.')));
+      await acceptAll(tester);
+      await submit(tester);
+      expect(find.text('Los documentos cambiaron'), findsNothing);
+      expect(find.textContaining('Ya existe una cuenta registrada'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'ana@audit.local'), findsOneWidget);
+      expect(box(tester, 'accept-study').value, isTrue, reason: 'only the e-mail has to be corrected');
+    });
+
+    testWidgets('unexpected answer (500 with an HTML page): a clear message, nothing lost', (tester) async {
+      await open(tester, register: (_) => (status: 500, body: '<html>Error</html>'));
+      await acceptAll(tester);
+      await submit(tester);
+      final snack = tester.widget<Text>(find.descendant(of: find.byType(SnackBar), matching: find.byType(Text))).data!;
+      expect(snack, contains('El servidor tuvo un problema (500)'));
+      expect(snack, isNot(contains('<html>')));
+      expect(find.text('Preparando cuenta'), findsNothing);
+      expect(box(tester, 'accept-study').value, isTrue);
+    });
+
+    testWidgets('429 without Retry-After (as Flutter web sees it): no waiting time is invented', (tester) async {
+      await open(tester, register: (_) => (status: 429, body: {...apiErrorBody(429, 'Demasiadas solicitudes desde esta conexion. Espera antes de volver a intentarlo.'), 'details': ['DEMASIADAS_SOLICITUDES']}));
+      await acceptAll(tester);
+      await submit(tester);
+      final snack = tester.widget<Text>(find.descendant(of: find.byType(SnackBar), matching: find.byType(Text))).data!;
+      expect(snack, 'Demasiadas solicitudes desde esta conexion. Espera antes de volver a intentarlo.');
+    });
+
     testWidgets('lost connection while creating: message, fields and acceptances kept, no navigation', (tester) async {
       await open(tester, register: (o) => throw connectionLost(o.path));
       await acceptAll(tester);
@@ -343,6 +396,17 @@ void main() {
       expect(box(tester, 'accept-TERMS_OF_SERVICE').onChanged, isNull);
     });
 
+    testWidgets('a document that cannot be opened (broken address): error, «Reintentar», and it can never be accepted', (tester) async {
+      await open(tester, texts: BrokenDocuments());
+      await tapKey(tester, 'read-PRIVACY_POLICY');
+      expect(find.textContaining('No se pudo abrir el documento'), findsOneWidget);
+      expect(find.text('He leído el documento'), findsNothing);
+      expect(find.text('Reintentar'), findsOneWidget);
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      expect(box(tester, 'accept-PRIVACY_POLICY').onChanged, isNull, reason: 'not shown = not read = not acceptable');
+    });
+
     testWidgets('a closed list of IANA zones; the choice is what is sent', (tester) async {
       final backend = await open(tester);
       await acceptAll(tester);
@@ -366,8 +430,10 @@ void main() {
       expect(docs.privacyRecord, PrivacyRecord.acknowledgement);
       expect(docs.toRead.map((d) => '${d.type.code}=${d.version}'), ['TERMS_OF_SERVICE=T-1', 'STUDY_PARTICIPATION=C-1']);
       expect(docs.studyConsent!.title, 'Consentimiento informado del estudio');
-      expect(docs.signUpOpen, isTrue);
-      expect(PublishedDocuments.fromJson(published(documents: [])).signUpOpen, isFalse);
+      expect(docs.signUpOpen, isFalse, reason: 'the privacy policy is a draft: not published');
+      expect(docs.missing, [ConsentType.privacyPolicy]);
+      expect(PublishedDocuments.fromJson(published()).signUpOpen, isTrue);
+      expect(PublishedDocuments.fromJson(published(documents: [])).missing, hasLength(3));
     });
 
     test('changedSince: a new version, a withdrawn document or a new one all count as a change', () {
@@ -388,7 +454,11 @@ void main() {
       expect(isDocumentProblem('La version aceptada de TERMS_OF_SERVICE no es la vigente (T-2).'), isTrue);
       expect(isDocumentProblem('Todavia no hay una version aprobada de PRIVACY_POLICY: no se puede aceptar.'), isTrue);
       expect(isDocumentProblem('Para registrarte tienes que aceptar las condiciones de uso y la politica de privacidad.'), isTrue);
-      expect(isDocumentProblem('El correo ya esta registrado.'), isFalse);
+      expect(isDocumentProblem('Ya existe una cuenta registrada con el correo x@audit.local.'), isFalse);
+      for (final code in ['CONSENTIMIENTO_REQUERIDO', 'PARTICIPACION_REQUERIDA', 'DOCUMENTO_NO_PUBLICADO', 'VERSION_NO_VIGENTE', 'VERSION_SIN_PARTICIPACION']) {
+        expect(isDocumentProblem('texto', code: code), isTrue, reason: code);
+      }
+      expect(isUnpublishedDocument('texto', code: 'DOCUMENTO_NO_PUBLICADO'), isTrue);
     });
 
     test('HTML documents are shown as plain text', () {

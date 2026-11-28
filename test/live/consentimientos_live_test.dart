@@ -73,14 +73,15 @@ void main() {
       expect(docs.signUpOpen, isTrue);
     });
 
-    Future<void> refused(String id, RegisterRequest r, bool Function(Object?) kind) async {
+    Future<void> refused(String id, RegisterRequest r, bool Function(Object?, {String? code}) kind) async {
       try {
         await auth.register(r);
         fail('$id: the account was created');
       } on ApiException catch (e) {
-        log('$id POST /auth/register → ${e.statusCode} «${e.message}»');
+        final code = apiErrorCode(e);
+        log('$id POST /auth/register → ${e.statusCode} ${code ?? '(sin código)'} «${e.message}»');
         expect(e.statusCode, 422);
-        expect(kind(e.message), isTrue, reason: e.message);
+        expect(kind(e.message, code: code), isTrue, reason: e.message);
       }
       expect(await loginOf(r.email), isNull, reason: '$id: no partial account');
       log('$id login con ese correo → 401 (no quedó ninguna cuenta)');
@@ -119,21 +120,27 @@ void main() {
       expect(status.pendingDocuments, isEmpty);
     });
 
-    test('I-10 · account without participation (only possible through the API): no plan', () async {
+    test('I-10 · without participation: the definitive sign-up refuses it (Backend #96) or the account gets no plan', () async {
       final r = request('i10', participates: false, terms: docs.terms!.version, privacy: docs.privacy!.version);
-      final user = await auth.register(r);
-      final jwt = (await loginOf(r.email))!;
-      await plain(jwt).post('/users/me/profile', data: profile);
       try {
-        final op = await PlanGenerationRepository(plain(jwt)).start();
-        log('I-10 POST /users/me/plan/generation → ${op.status} ${op.reasonCode ?? ''} ${op.message ?? ''}');
-        expect(op.isTerminal && op.status != GenerationStatus.completed, isTrue, reason: 'never a plan for a non-participant');
-      } on DioException catch (e) {
-        log('I-10 POST /users/me/plan/generation → ${e.response?.statusCode} «${apiError(e)}»');
-        expect(e.response?.statusCode, anyOf(403, 409, 422));
+        final user = await auth.register(r);
+        // Backend before PR #96: the account exists but must never receive a plan.
+        final jwt = (await loginOf(r.email))!;
+        await plain(jwt).post('/users/me/profile', data: profile);
+        try {
+          final op = await PlanGenerationRepository(plain(jwt)).start();
+          log('I-10 cuenta sin participar (201, studyParticipant=${user.studyParticipant}); generación → ${op.status}');
+          expect(op.status, isNot(GenerationStatus.completed));
+        } on DioException catch (e) {
+          log('I-10 cuenta sin participar (201); generación → ${e.response?.statusCode} ${apiErrorCode(e) ?? ''} «${apiError(e)}»');
+          expect(e.response?.statusCode, anyOf(403, 409, 422));
+        }
+      } on ApiException catch (e) {
+        log('I-10 POST /auth/register sin participar → ${e.statusCode} ${apiErrorCode(e)} «${e.message}»');
+        expect(e.statusCode, 422);
+        expect(apiErrorCode(e), 'PARTICIPACION_REQUERIDA');
+        expect(await loginOf(r.email), isNull, reason: 'no account');
       }
-      log('I-10 registro sin participar por la API → 201 (studyParticipant=${user.studyParticipant}); la app no ofrece este camino');
-      expect(user.studyParticipant, isFalse);
     });
 
     late String participantJwt;
@@ -178,7 +185,7 @@ void main() {
         log('I-12 POST /users/me/plan/generation → ${op.status} ${op.reasonCode ?? ''} ${op.message ?? ''}');
         expect(op.status, isNot(GenerationStatus.completed));
       } on DioException catch (e) {
-        log('I-12 POST /users/me/plan/generation → ${e.response?.statusCode} «${apiError(e)}»');
+        log('I-12 POST /users/me/plan/generation → ${e.response?.statusCode} ${apiErrorCode(e) ?? ''} «${apiError(e)}»');
         expect(e.response?.statusCode, anyOf(403, 409, 422));
       }
       final status = await ConsentsRepository(plain(jwt)).status();

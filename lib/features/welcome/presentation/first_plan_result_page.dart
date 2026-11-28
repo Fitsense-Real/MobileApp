@@ -10,6 +10,7 @@ import '../../../shared/widgets/mascot/kora_mascot.dart';
 import '../../authentication/presentation/providers/auth_provider.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart' show displayDate;
 import '../../plans/data/plan_repository.dart';
+import '../../plans/domain/plan_eligibility.dart';
 import '../domain/generation_operation.dart';
 import 'first_plan_generation_controller.dart';
 import 'kapi_precache.dart';
@@ -76,6 +77,35 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
     if (mounted) context.go(AppRoutes.dashboard);
   }
 
+  bool _checkingParticipation = false;
+
+  /// The backend refused or closed the generation because the account is no
+  /// longer an active participant (e.g. withdrew while the plan was being
+  /// prepared: Backend PR #96 does not publish it). Read the account again and,
+  /// if it is not eligible, show its real state (withdrawn / not a participant)
+  /// instead of «Algo salió mal». Never asks for another generation.
+  Future<void> _checkParticipation() async {
+    if (_checkingParticipation) return;
+    _checkingParticipation = true;
+    try {
+      await ref.read(authViewModelProvider.notifier).loadCurrentUser();
+    } catch (_) {}
+    if (!mounted) return;
+    if (planIneligibility(ref.read(authViewModelProvider).user) != null) {
+      await ref.read(firstPlanGenerationProvider.notifier).consume();
+      if (mounted) context.go(AppRoutes.accountSetup);
+    }
+  }
+
+  /// HTTP 409: the plan changed or a generation is already running. Nothing
+  /// obsolete is shown and nothing is retried automatically: the account setup
+  /// reads the current plan (and resumes the existing operation if there is none).
+  Future<void> _consultCurrentPlan() async {
+    await ref.read(firstPlanGenerationProvider.notifier).consume();
+    ref.invalidate(currentPlanProvider);
+    if (mounted) context.go(AppRoutes.accountSetup);
+  }
+
   Future<void> _logout() async {
     await ref.read(authViewModelProvider.notifier).logout();
     if (mounted) context.go(AppRoutes.login);
@@ -88,6 +118,8 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
     if (operation?.status == GenerationStatus.completed && operation?.planId != null && plan == null && planError == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadPlan(operation!.planId!));
     }
+    final closed = state.participationEnded || (operation?.status == GenerationStatus.failed && !operation!.retryable);
+    if (closed && !_checkingParticipation) WidgetsBinding.instance.addPostFrameCallback((_) => _checkParticipation());
     final view = _view(state);
     return PopScope(
       canPop: false,
@@ -128,6 +160,28 @@ class _FirstPlanResultPageState extends ConsumerState<FirstPlanResultPage> {
 
   _ResultView _view(FirstPlanGenerationState state) {
     final operation = state.operation;
+    if (state.participationEnded) {
+      return _ResultView(
+        mood: MascotMood.error,
+        title: 'Tu participación no está activa',
+        message: state.error!,
+        actions: [
+          KoraButton(label: 'Continuar', onPressed: () => context.go(AppRoutes.accountSetup)),
+          TextButton(onPressed: _logout, child: const Text('Cerrar sesión')),
+        ],
+      );
+    }
+    if (state.planConflict) {
+      return _ResultView(
+        mood: MascotMood.error,
+        title: 'Tu plan cambió',
+        message: '${state.error!}\n\nNo se muestra ninguna rutina anterior: consulta tu plan actual.',
+        actions: [
+          KoraButton(label: 'Consultar mi plan actual', onPressed: _consultCurrentPlan),
+          TextButton(onPressed: _logout, child: const Text('Cerrar sesión')),
+        ],
+      );
+    }
     if (state.error != null) {
       return _ResultView(
         mood: MascotMood.error,

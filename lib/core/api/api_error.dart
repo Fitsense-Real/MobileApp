@@ -92,6 +92,21 @@ String apiError(Object error) {
 
 final _machineCode = RegExp(r'^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$');
 
+/// The stable code the backend puts in `details[0]` (e.g. `VERSION_NO_VIGENTE`,
+/// `PARTICIPACION_NO_VIGENTE`), or null. The app reacts to the code; the text
+/// is only shown.
+String? apiErrorCode(Object? error) {
+  final cause = error is ApiException ? error.cause : error;
+  if (cause is! DioException) return null;
+  final data = cause.response?.data;
+  final details = data is Map ? data['details'] : null;
+  if (details is! List) return null;
+  for (final item in details) {
+    if (_machineCode.hasMatch('$item'.trim())) return '$item'.trim();
+  }
+  return null;
+}
+
 /// Seconds the backend asks to wait after a 429 (`Retry-After`), or null.
 int? retryAfterSeconds(Object error) {
   if (error is! DioException) return null;

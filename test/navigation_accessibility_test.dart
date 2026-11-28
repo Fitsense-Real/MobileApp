@@ -189,14 +189,17 @@ void main() {
 
 
   testWidgets('withdrawn with a plan: Inicio says so (history and week in course only), never a generation', (tester) async {
-    await openDashboard(tester, const Size(360, 780), extra: [authViewModelProvider.overrideWith(() => SignedIn(7, true, DateTime.utc(2026, 11, 28)))]);
+    await openDashboard(tester, const Size(360, 780), metrics: const [], extra: [authViewModelProvider.overrideWith(() => SignedIn(7, true, DateTime.utc(2026, 11, 28)))]);
     expect(find.byKey(const Key('withdrawn-notice')), findsOneWidget);
+    expect(find.text('Sin resúmenes semanales desde tu retirada'), findsOneWidget);
+    expect(find.textContaining('al cerrar tu primera semana'), findsNothing, reason: 'it would promise a summary that never comes');
     expect(find.textContaining('Te retiraste del estudio el 28/11/2026'), findsOneWidget);
     expect(find.textContaining('ya no prepara rutinas nuevas'), findsOneWidget);
   });
 
   testWidgets('active participant: no withdrawal notice', (tester) async {
-    await openDashboard(tester, const Size(360, 780), extra: [authViewModelProvider.overrideWith(() => SignedIn())]);
+    await openDashboard(tester, const Size(360, 780), metrics: const [], extra: [authViewModelProvider.overrideWith(() => SignedIn())]);
     expect(find.byKey(const Key('withdrawn-notice')), findsNothing);
+    expect(find.text('Tus datos aparecerán al cerrar tu primera semana'), findsOneWidget);
   });
 }

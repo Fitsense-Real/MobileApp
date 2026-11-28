@@ -597,6 +597,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
+  /// Withdrawn from the study: no weekly summaries are prepared any more, so
+  /// texts that promise them would be wrong. Metrics already calculated are shown.
+  bool get withdrawnFromStudy => ref.watch(authViewModelProvider).user?.withdrawnAt != null;
+
   Widget compactProgress(List<Json> rows) {
     final metric = rows.firstOrNull;
     final percent = metric?['weightedAdherencePct'] as num?;
@@ -643,7 +647,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   Text(
                     metric == null
-                        ? 'Tus datos aparecerán al cerrar tu primera semana'
+                        ? (withdrawnFromStudy ? 'Sin resúmenes semanales desde tu retirada' : 'Tus datos aparecerán al cerrar tu primera semana')
                         : '${metricValue(metric['completedWorkouts'])}/${metricValue(metric['scheduledWorkouts'])} entrenamientos',
                     style: const TextStyle(fontSize: 12, color: Kora.muted),
                   ),
@@ -811,7 +815,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget progress(List<Json> rows, List<Json> interventions, [List<Json>? adaptations]) {
     if (rows.isEmpty) {
       return surface(
-        const Text('Todavía no hay métricas semanales calculadas. Aparecerán cuando termine tu primera semana con plan: se calculan cada lunes con lo que registraste.'),
+        Text(withdrawnFromStudy
+            ? 'No hay métricas semanales calculadas. Desde tu retirada del estudio Kora ya no prepara resúmenes semanales.'
+            : 'Todavía no hay métricas semanales calculadas. Aparecerán cuando termine tu primera semana con plan: se calculan cada lunes con lo que registraste.'),
       );
     }
     final metric =

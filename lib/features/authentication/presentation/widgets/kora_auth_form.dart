@@ -9,6 +9,7 @@ import '../../../../core/api/api_error.dart';
 import '../../../../core/config/study_config.dart';
 import '../../../../shared/widgets/kora_ui.dart';
 import '../../../../shared/widgets/fs_text_field.dart';
+import '../../../consents/data/consents_repository.dart';
 import '../../../consents/domain/legal_documents.dart';
 import '../../../consents/presentation/document_reader_page.dart';
 import '../../domain/timezones.dart';
@@ -111,7 +112,7 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
     final documents = ref.read(publishedDocumentsProvider).asData?.value;
     if (documents == null || !documents.signUpOpen) return;
     final shown = documents.toRead;
-    if (shown.any((d) => !_read.contains(d)) || [?documents.terms, ?documents.privacy].any((d) => !_accepted.contains(d))) {
+    if (shown.any((d) => !_read.contains(d)) || [documents.terms!, documents.privacy!].any((d) => !_accepted.contains(d))) {
       setState(() => _documentsError = 'Lee cada documento completo y acepta las condiciones y la política de privacidad.');
       return;
     }
@@ -140,18 +141,19 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
       lastName: _lastName.text.trim(),
       timezone: _timezone,
       acceptsStudyParticipation: true,
-      acceptedTermsVersion: documents.terms?.version,
-      acceptedPrivacyVersion: documents.privacy?.version,
+      acceptedTermsVersion: documents.terms!.version,
+      acceptedPrivacyVersion: documents.privacy!.version,
       acceptedStudyConsentVersion: documents.studyConsent!.version,
       email: email,
       password: password,
     );
     if (!mounted) return;
     if (!created) {
-      final message = ref.read(authViewModelProvider).errorMessage;
-      if (isDocumentProblem(message)) {
+      final auth = ref.read(authViewModelProvider);
+      final message = auth.errorMessage;
+      if (isDocumentProblem(message, code: auth.errorCode)) {
         // The account was not created (same transaction in the backend).
-        await _documentsChanged(unpublished: isUnpublishedDocument(message));
+        await _documentsChanged(unpublished: isUnpublishedDocument(message, code: auth.errorCode));
       } else {
         _snack(message ?? 'No se pudo conectar. Inténtalo nuevamente.');
       }
@@ -218,9 +220,8 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
   Widget _documentsBlock(PublishedDocuments documents, bool busy) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const Text('Documentos del estudio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 8),
-        if (documents.terms case final terms?) _documentTile(terms, busy, acceptLabel: 'Acepto las condiciones de uso'),
-        if (documents.privacy case final privacy?)
-          _documentTile(privacy, busy, acceptLabel: documents.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
+        _documentTile(documents.terms!, busy, acceptLabel: 'Acepto las condiciones de uso'),
+        _documentTile(documents.privacy!, busy, acceptLabel: documents.privacyRecord == PrivacyRecord.acknowledgement ? 'He leído la política de privacidad' : 'Acepto la política de privacidad'),
         _documentTile(documents.studyConsent!, busy, acceptLabel: 'Acepto participar voluntariamente en el estudio', study: true),
         if (_documentsError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_documentsError!, style: TextStyle(color: Colors.red.shade800))),
         Align(alignment: Alignment.centerLeft, child: TextButton(
@@ -242,6 +243,12 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
           ],
         ]),
       );
+
+  static String _missingName(ConsentType type) => switch (type) {
+        ConsentType.termsOfService => 'las condiciones de uso',
+        ConsentType.privacyPolicy => 'la política de privacidad',
+        ConsentType.studyParticipation => 'el consentimiento informado',
+      };
 
   String get _contactLine => StudyConfig.contact.trim().isEmpty
       ? 'Si te invitaron al estudio, escribe al equipo que te invitó.'
@@ -300,7 +307,8 @@ class _KoraAuthFormState extends ConsumerState<KoraAuthForm> {
             else if (!open)
               _signUpUnavailable(
                 title: 'El registro todavía no está abierto',
-                text: 'El equipo del estudio aún no ha publicado el consentimiento informado, así que todavía no se pueden crear cuentas. $_contactLine',
+                text: 'Para crear una cuenta tienen que estar publicados los tres documentos del estudio, y todavía falta${documents!.missing.length == 1 ? '' : 'n'}: '
+                    '${[for (final t in documents.missing) _missingName(t)].join(', ')}. Hasta entonces no se pueden crear cuentas. $_contactLine',
                 retry: () => ref.invalidate(publishedDocumentsProvider),
               ),
             const SizedBox(height: 16),
